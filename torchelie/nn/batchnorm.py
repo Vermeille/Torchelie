@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class BatchNorm2dBase_(nn.Module):
     def __init__(self, channels, momentum=0.8):
         super(BatchNorm2dBase_, self).__init__()
