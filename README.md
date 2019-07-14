@@ -17,3 +17,7 @@ Contains modules.
 * `Debug` doesn't modify its input but prints some statistics. Easy to spot
   exploding or vanishing values.
 * `Reshape(*shape)` applies `.view(*shape)`.
+* `VQ` is a VectorQuantization layer, embedding the VQ-VAE loss in its backward
+  pass for a great ease of use.
+* `Noise` returns `x + a * z` where `a` is a learnable scalar, and `z` is a
+  gaussian noise of the same shape of `x`
