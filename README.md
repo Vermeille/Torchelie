@@ -9,6 +9,9 @@ Functions:
 
 * `freeze` and `unfreeze` that changes `requires_grad` for all tensor in a
   module.
+* `entropy(x, dim, reduce)` computes the entropy of `x` along dimension `dim`,
+  assuming it represents the unnormalized probabilities of a categorial
+  distribution.
 
 ## torchelie.nn
 
