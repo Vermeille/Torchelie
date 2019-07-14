@@ -30,6 +30,13 @@ Modules:
   pass instead of just the last value. Forward takes a `detach` boolean
   arguments if the activations must be detached or not.
 * `MaskedConv2d` is a masked convolution for PixelCNN
+* `BatchNorm2d`, `NoAffineBatchNorm2d` should be strictly equivalent to
+  Pytorch's, and `ConditionalBN2d` gets its weight and bias parameter from a
+  linear projection of a `z` vector.
+* `MovingAverageBN2d`, `NoAffineMABN2d` and `ConditionalMABN2d` are the same as
+  above, except they also use moving average of the statistics at train time
+  for greater stability. Useful ie for GANs if you can't use a big ass batch
+  size and BN introduces too much noise.
 
 ## `torchelie.loss`
 
