@@ -37,3 +37,14 @@ Modules:
 * `PerceptualLoss(l)` is a vgg16 based perceptual loss up to layer number `l`.
   Sum of L1 distances between `x`'s and `y`'s activations in vgg. Only `x` is
   backproped.
+
+### torchelie.loss.gan
+
+Each submodule is a GAN loss function. They all contain three methods:
+`real(x)` and `fake(x)` to train the discriminator, and `ŋenerated(x)` to
+improve the Generator.
+
+Available:
+
+* Standard loss (BCE)
+* Hinge
