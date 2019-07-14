@@ -83,15 +83,15 @@ class MovingAverageSpade2d(MovingAverageBN2dBase_):
 
     def forward(self, x, z=None):
         if z is not None:
-            self.condition(z, x)
+            self.condition(z, x.shape[2:])
 
         m, v = self.update_moments(x)
         weight = (1 + self.weight) / (v + 1e-8)
         bias = -m * weight + self.bias
         return weight * x + bias
 
-    def condition(self, z, like):
-        z = F.interpolate(z, size=like.shape[2:], mode='nearest')
+    def condition(self, z, size):
+        z = F.interpolate(z, size=size, mode='nearest')
         z = F.relu(self.initial(z), inplace=True)
         self.weight = self.make_weight(z)
         self.bias = self.make_bias(z)
