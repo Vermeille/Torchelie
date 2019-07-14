@@ -3,6 +3,12 @@
 Torchélie is my personal set of helpers, layers, visualization tools and
 whatnots that I build around PyTorch.
 
+Feel free to use this code or just even copy paste the bits you need. If you
+want to submit a PR, you're welcome, but talk to me first as I may not accept
+it if I don't think the value I get is not worth the maintenance cost. This is
+my own set of helpers that I share, not a PyTorch library that tries to fit
+everyone's use.
+
 ## `torchelie.utils`
 
 Functions:
