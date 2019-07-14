@@ -38,6 +38,7 @@ Modules:
   for greater stability. Useful ie for GANs if you can't use a big ass batch
   size and BN introduces too much noise.
 * `AdaIN2d` is adaptive instancenorm for style transfer and stylegan.
+* `FiLM2d` is affine conditioning `f(z) * x + g(z)`.
 * `Conv2d`, `Conv3x3`, `Conv1x1`, `Conv2dBNReLU`, `Conv2dCondBNReLU`, etc. Many
   different convenience blocks in `torchelie.nn.blocks.py`
 
