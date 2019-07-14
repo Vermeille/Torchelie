@@ -29,6 +29,7 @@ Modules:
   layers of instance `types` and returns a dict of activations in the forward
   pass instead of just the last value. Forward takes a `detach` boolean
   arguments if the activations must be detached or not.
+* `MaskedConv2d` is a masked convolution for PixelCNN
 
 ## `torchelie.loss`
 
@@ -37,6 +38,8 @@ Modules:
 * `PerceptualLoss(l)` is a vgg16 based perceptual loss up to layer number `l`.
   Sum of L1 distances between `x`'s and `y`'s activations in vgg. Only `x` is
   backproped.
+* `ortho(x)` applies an orthogonal regularizer as in _Brock et al (2018)_
+  (BigGAN)
 
 ### `torchelie.loss.gan`
 

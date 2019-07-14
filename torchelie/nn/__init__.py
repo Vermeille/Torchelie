@@ -4,3 +4,4 @@ from .noise import Noise
 from .vq import VQ
 from .imagenetinputnorm import ImageNetInputNorm
 from .withsavedactivations import WithSavedActivations
+from .maskedconv import MaskedConv2d
