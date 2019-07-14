@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .layers import Conv3x3
+
 class MovingAverageBN2dBase_(nn.Module):
     def __init__(self, channels, momentum=0.8):
         super(MovingAverageBN2dBase_, self).__init__()
@@ -52,7 +54,6 @@ class MovingAverageBN2d(MovingAverageBN2dBase_):
         return weight * x + bias
 
 
-
 class ConditionalMABN2d(MovingAverageBN2dBase_):
     def __init__(self, channels, cond_channels, momentum=0.6):
         super(ConditionalMABN2d, self).__init__(channels, momentum)
@@ -71,3 +72,27 @@ class ConditionalMABN2d(MovingAverageBN2dBase_):
     def condition(self, z):
         self.weight = self.make_weight(z)[:, :, None, None]
         self.bias = self.make_bias(z)[:, :, None, None]
+
+
+class MovingAverageSpade2d(MovingAverageBN2dBase_):
+    def __init__(self, channels, cond_channels, hidden, momentum=0.8):
+        super(MovingAverageSpade2d, self).__init__(channels, momentum)
+        self.initial = Conv3x3(cond_channels, hidden)
+        self.make_weight = Conv3x3(hidden, channels)
+        self.make_bias = Conv3x3(hidden, channels)
+
+    def forward(self, x, z=None):
+        if z is not None:
+            self.condition(z, x)
+
+        m, v = self.update_moments(x)
+        weight = (1 + self.weight) / (v + 1e-8)
+        bias = -m * weight + self.bias
+        return weight * x + bias
+
+    def condition(self, z, like):
+        z = F.interpolate(z, size=like.shape[2:], mode='nearest')
+        z = F.relu(self.initial(z), inplace=True)
+        self.weight = self.make_weight(z)
+        self.bias = self.make_bias(z)
+

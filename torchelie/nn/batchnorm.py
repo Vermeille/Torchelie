@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .layers import Conv3x3
+
 
 class BatchNorm2dBase_(nn.Module):
     def __init__(self, channels, momentum=0.8):
@@ -73,6 +75,25 @@ class ConditionalBN2d(BatchNorm2dBase_):
         self.bias = self.make_bias(z)[:, :, None, None]
 
 
+class Spade2d(BatchNorm2dBase_):
+    def __init__(self, channels, cond_channels, hidden, momentum=0.8):
+        super(Spade2d, self).__init__(channels, momentum)
+        self.initial = Conv3x3(cond_channels, hidden)
+        self.make_weight = Conv3x3(hidden, channels)
+        self.make_bias = Conv3x3(hidden, channels)
 
+    def forward(self, x, z=None):
+        if z is not None:
+            self.condition(z, x)
 
+        m, v = self.update_moments(x)
+        weight = (1 + self.weight) / (v + 1e-8)
+        bias = -m * weight + self.bias
+        return weight * x + bias
+
+    def condition(self, z, like):
+        z = F.interpolate(z, size=like.shape[2:], mode='nearest')
+        z = F.relu(self.initial(z), inplace=True)
+        self.weight = self.make_weight(z)
+        self.bias = self.make_bias(z)
 

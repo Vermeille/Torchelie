@@ -41,3 +41,4 @@ class FiLM2d(nn.Module):
         self.weight = self.make_weight(z)[:, :, None, None]
         self.bias = self.make_bias(z)[:, :, None, None]
 
+
