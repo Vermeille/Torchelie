@@ -23,6 +23,7 @@ Functions:
 
 Modules:
 
+* `Dummy` does nothing to its input.
 * `Debug` doesn't modify its input but prints some statistics. Easy to spot
   exploding or vanishing values.
 * `Reshape(*shape)` applies `x.view(x.shape[0], *shape)`.
@@ -48,6 +49,13 @@ Modules:
 * `Spade2d` / `MovingAverageSpade2d`, for GauGAN.
 * `Conv2d`, `Conv3x3`, `Conv1x1`, `Conv2dBNReLU`, `Conv2dCondBNReLU`, etc. Many
   different convenience blocks in `torchelie.nn.blocks.py`
+
+Blocks:
+
+* `ResBlock` is a classical residual block with batchnorm
+* `ConditionalResBlock` instead uses `ConditionalBN2d`
+* `SpadeResBlock` instead uses `Spade2d`
+
 
 ## `torchelie.loss`
 

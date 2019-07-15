@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from .layers import Conv2d
-from .batchnorm import ConditionalBN2d
+from .batchnorm import ConditionalBN2d, Spade2d
 
 
 def Conv2dNormReLU(in_ch, out_ch, ks, norm, leak=0):
@@ -44,3 +44,69 @@ class Conv2dCondBNReLU(nn.Module):
         else:
             x = F.leaky_relu(x, self.leak)
         return x
+
+
+class ResBlockBase_(nn.Module):
+    def __init__(self):
+        super(ResBlockBase_, self).__init__()
+        # inherit me and give me my members
+
+    def forward(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out += x
+        return self.relu(out)
+
+
+class CondResBlockBase_(nn.Module):
+    def __init__(self):
+        super(ResBlockBase_, self).__init__()
+        # inherit me and give me my members
+
+    def condition(self, z):
+        self.bn1.condition(z)
+        self.bn2.condition(z)
+
+    def forward(self, x, z=None):
+        out = self.conv1(x)
+        out = self.bn1(out, z)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out, z)
+        out += x
+        return self.relu(out)
+
+
+class ResBlock(ResBlockBase_):
+    def __init__(self, in_ch, out_ch, stride):
+        super(ResBlock, self).__init__()
+        self.conv1 = Conv3x3(in_ch, in_ch)
+        self.bn1 = nn.BatchNorm2d(in_ch)
+        self.relu = nn.ReLU()
+        self.conv2 = Conv3x3(in_ch, out_ch)
+        self.bn2 = nn.BatchNorm2d(out_ch)
+
+
+class ConditionalResBlock(CondResBlockBase_):
+    def __init__(self, in_ch, out_ch, hidden, stride):
+        super(ResBlock, self).__init__()
+        self.conv1 = Conv3x3(in_ch, in_ch)
+        self.bn1 = ConditionalBN2d(in_ch, hidden)
+        self.relu = nn.ReLU()
+        self.conv2 = Conv3x3(in_ch, out_ch)
+        self.bn2 = ConditionalBN2d(out_ch, hidden)
+
+
+class SpadeResBlock(CondResBlockBase_):
+    def __init__(self, in_ch, out_ch, hidden, stride):
+        super(ResBlock, self).__init__()
+        self.conv1 = Conv3x3(in_ch, in_ch)
+        self.bn1 = Spade2d(in_ch, hidden)
+        self.relu = nn.ReLU()
+        self.conv2 = Conv3x3(in_ch, out_ch)
+        self.bn2 = Spade2d(out_ch, hidden)

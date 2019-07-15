@@ -14,3 +14,7 @@ class Debug(nn.Module):
             x.std().item()))
         return x
 
+
+class Dummy(nn.Module):
+    def forward(self, x):
+        return x
