@@ -10,7 +10,9 @@ import torchvision.transforms as TF
 
 import torchelie.nn as tnn
 from torchelie.utils import kaiming, xavier
-from torchelie.models import VggDebug
+from torchelie.models import VggDebug, ResNetDebug
+
+
 
 device = 'cuda'
 
@@ -18,7 +20,10 @@ ds = MNIST('.', download=True, transform=TF.Compose([TF.Resize(32),
     TF.ToTensor()]))
 dl = torch.utils.data.DataLoader(ds, num_workers=4, batch_size=32)
 
-clf = VggDebug(in_ch=1).to(device)
+
+#clf = VggDebug(in_ch=1).to(device)
+clf = ResNetDebug(in_ch=1).to(device)
+
 opt = Adam(clf.parameters())
 
 iters = 0

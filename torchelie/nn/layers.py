@@ -5,9 +5,9 @@ def Conv2d(in_ch, out_ch, ks, stride=1):
 
 
 def Conv3x3(in_ch, out_ch, stride=1):
-    return Conv(in_ch, out_ch, 3, stride=stride)
+    return Conv2d(in_ch, out_ch, 3, stride=stride)
 
 
 def Conv1x1(in_ch, out_ch, stride=1):
-    return Conv(in_ch, out_ch, 1, stride=stride)
+    return Conv2d(in_ch, out_ch, 1, stride=stride)
 
