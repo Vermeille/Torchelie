@@ -1,6 +1,6 @@
-<img src="https://github.com/Vermeille/Torchelie/blob/master/logo.png" height="200"/>
-
 # Torchélie
+
+<img src="https://github.com/Vermeille/Torchelie/blob/master/logo.png" height="200"/>
 
 Torchélie is my personal set of helpers, layers, visualization tools and
 whatnots that I build around PyTorch.

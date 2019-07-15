@@ -117,9 +117,11 @@ class ResBlock(nn.Module):
     def __init__(self, in_ch, out_ch, stride):
         super(ResBlock, self).__init__()
         self.fn = OriginalResBlockFn()
+
         self.conv1 = kaiming(Conv3x3(in_ch, in_ch, stride=stride))
         self.bn1 = nn.BatchNorm2d(in_ch)
         self.relu = nn.ReLU()
+
         self.conv2 = kaiming(Conv3x3(in_ch, out_ch))
         self.bn2 = nn.BatchNorm2d(out_ch)
 
@@ -137,9 +139,11 @@ class PreactResBlock(nn.Module):
     def __init__(self, in_ch, out_ch, stride):
         super(PreactResBlock, self).__init__()
         self.fn = PreactResBlockFn()
+
         self.bn1 = nn.BatchNorm2d(in_ch)
         self.relu = nn.ReLU()
         self.conv1 = kaiming(Conv3x3(in_ch, in_ch, stride=stride))
+
         self.bn2 = nn.BatchNorm2d(in_ch)
         self.conv2 = kaiming(Conv3x3(in_ch, out_ch))
 
