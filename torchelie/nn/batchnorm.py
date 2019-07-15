@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .layers import Conv3x3
+from torchelie.utils import kaiming, xavier
 
 
 __all__ = []
@@ -132,9 +133,9 @@ def make_spade(base, name):
     class Spade2d(base):
         def __init__(self, channels, cond_channels, hidden, size=None, momentum=0.8):
             super(Spade2d, self).__init__(channels, momentum)
-            self.initial = Conv3x3(cond_channels, hidden)
-            self.make_weight = Conv3x3(hidden, channels)
-            self.make_bias = Conv3x3(hidden, channels)
+            self.initial = kaiming(Conv3x3(cond_channels, hidden))
+            self.make_weight = xavier(Conv3x3(hidden, channels))
+            self.make_bias = xavier(Conv3x3(hidden, channels))
             self.size = size
 
         def forward(self, x, z=None):
