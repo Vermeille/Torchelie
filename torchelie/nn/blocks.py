@@ -58,7 +58,7 @@ class ResBlockBase_(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
-        out += x
+        out += getattr(self, 'shortcut', lambda x: x)(x)
         return self.relu(out)
 
 
@@ -91,6 +91,11 @@ class ResBlock(ResBlockBase_):
         self.conv2 = Conv3x3(in_ch, out_ch)
         self.bn2 = nn.BatchNorm2d(out_ch)
 
+        if in_ch != out_ch:
+            self.shortcut = nn.Sequential(
+                    Conv1x1(in_ch, out_ch, stride),
+                    nn.BatchNorm2d(out_ch)
+            )
 
 class ConditionalResBlock(CondResBlockBase_):
     def __init__(self, in_ch, out_ch, hidden, stride):
@@ -101,6 +106,11 @@ class ConditionalResBlock(CondResBlockBase_):
         self.conv2 = Conv3x3(in_ch, out_ch)
         self.bn2 = ConditionalBN2d(out_ch, hidden)
 
+        if in_ch != out_ch:
+            self.shortcut = nn.Sequential(
+                    Conv1x1(in_ch, out_ch, stride),
+                    ConditionalBN2d(out_ch)
+            )
 
 class SpadeResBlock(CondResBlockBase_):
     def __init__(self, in_ch, out_ch, hidden, stride):
@@ -110,3 +120,10 @@ class SpadeResBlock(CondResBlockBase_):
         self.relu = nn.ReLU()
         self.conv2 = Conv3x3(in_ch, out_ch)
         self.bn2 = Spade2d(out_ch, hidden)
+
+        if in_ch != out_ch:
+            self.shortcut = nn.Sequential(
+                    Conv1x1(in_ch, out_ch, stride),
+                    Spade2d(out_ch)
+            )
+
