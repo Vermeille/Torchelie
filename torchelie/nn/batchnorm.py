@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from .layers import Conv3x3
 
 
+__all__ = []
+
 class BatchNorm2dBase_(nn.Module):
     def __init__(self, channels, momentum=0.8):
         super(BatchNorm2dBase_, self).__init__()
@@ -32,68 +34,126 @@ class BatchNorm2dBase_(nn.Module):
             v = self.running_var
         return m, torch.sqrt(v)
 
+__all__.append('BatchNorm2dBase_')
 
-class NoAffineBN2d(BatchNorm2dBase_):
+class MovingAverageBN2dBase_(nn.Module):
     def __init__(self, channels, momentum=0.8):
-        super(NoAffineBN2d, self).__init__(channels, momentum)
+        super(MovingAverageBN2dBase_, self).__init__()
+        self.register_buffer('running_mean', torch.zeros(1, channels, 1, 1))
+        self.register_buffer('running_var', torch.zeros(1, channels, 1, 1))
+        self.register_buffer('step', torch.ones(1))
+        self.momentum = momentum
 
-    def forward(self, x):
-        m, s = self.update_moments(x)
-        return (x - m) / (s + 1e-8)
+    def update_moments(self, x):
+        if self.training:
+            m = x.mean(dim=(0, 2, 3), keepdim=True)
+            v = x.var(dim=(0, 2, 3), keepdim=True)
+
+            m = self.momentum * self.running_mean + (1 - self.momentum) * m
+            self.running_mean.copy_(m.detach())
+            m = m / (1 - self.momentum ** self.step)
+
+            v = self.momentum * self.running_var + (1 - self.momentum) * v
+            self.running_var.copy_(v.detach())
+            v = v / (1 - self.momentum ** self.step)
+
+            self.step += 1
+        else:
+            m = self.running_mean
+            v = self.running_var
+        return m, torch.sqrt(v)
+
+__all__.append('MovingAverageBN2dBase_')
+
+def make_no_affine(base, name):
+    class NoAffineBN(base):
+        def __init__(self, channels, momentum=0.8):
+            super(NoAffineBN, self).__init__(channels, momentum)
+
+        def forward(self, x):
+            m, s = self.update_moments(x)
+            return (x - m) / (s + 1e-8)
+    NoAffineBN.__name__ = name
+    return NoAffineBN
+NoAffineBN2d = make_no_affine(BatchNorm2dBase_, 'NoAffineBN2d')
+NoAffineMABN2d = make_no_affine(MovingAverageBN2dBase_, 'NoAffineMABN2d')
+__all__.append('NoAffineBN2d')
+__all__.append('NoAffineMABN2d')
 
 
-class BatchNorm2d(BatchNorm2dBase_):
-    def __init__(self, channels, momentum=0.8):
-        super(BatchNorm2d, self).__init__(channels, momentum)
-        self.weight = nn.Parameter(torch.zeros(channels, 1, 1))
-        self.bias = nn.Parameter(torch.zeros(channels, 1, 1))
+def make_bn(base, name):
+    class BatchNorm2d(base):
+        def __init__(self, channels, momentum=0.8):
+            super(BatchNorm2d, self).__init__(channels, momentum)
+            self.weight = nn.Parameter(torch.zeros(channels, 1, 1))
+            self.bias = nn.Parameter(torch.zeros(channels, 1, 1))
 
-    def forward(self, x):
-        m, s = self.update_moments(x)
-        weight = (1 + self.weight) / (s + 1e-8)
-        bias = -m * weight + self.bias
-        return weight * x + bias
-
-
-class ConditionalBN2d(BatchNorm2dBase_):
-    def __init__(self, channels, cond_channels, momentum=0.8):
-        super(ConditionalBN2d, self).__init__(channels, momentum)
-        self.make_weight = nn.Linear(cond_channels, channels)
-        self.make_bias = nn.Linear(cond_channels, channels)
-
-    def forward(self, x, z=None):
-        if z is not None:
-            self.condition(z)
-
-        m, v = self.update_moments(x)
-        weight = (1 + self.weight) / (v + 1e-8)
-        bias = -m * weight + self.bias
-        return weight * x + bias
-
-    def condition(self, z):
-        self.weight = self.make_weight(z)[:, :, None, None]
-        self.bias = self.make_bias(z)[:, :, None, None]
+        def forward(self, x):
+            m, s = self.update_moments(x)
+            weight = (1 + self.weight) / (s + 1e-8)
+            bias = -m * weight + self.bias
+            return weight * x + bias
+    BatchNorm2d.__name__ = name
+    return BatchNorm2d
+BatchNorm2d = make_bn(BatchNorm2dBase_, 'BatchNorm2d')
+MovingAverageBN2d = make_bn(MovingAverageBN2dBase_, 'MovingAverageBN2d')
+__all__.append('BatchNorm2d')
+__all__.append('MovingAverageBN2d')
 
 
-class Spade2d(BatchNorm2dBase_):
-    def __init__(self, channels, cond_channels, hidden, momentum=0.8):
-        super(Spade2d, self).__init__(channels, momentum)
-        self.initial = Conv3x3(cond_channels, hidden)
-        self.make_weight = Conv3x3(hidden, channels)
-        self.make_bias = Conv3x3(hidden, channels)
+def make_cbn(base, name):
+    class ConditionalBN2d(base):
+        def __init__(self, channels, cond_channels, momentum=0.8):
+            super(ConditionalBN2d, self).__init__(channels, momentum)
+            self.make_weight = nn.Linear(cond_channels, channels)
+            self.make_bias = nn.Linear(cond_channels, channels)
 
-    def forward(self, x, z=None):
-        if z is not None:
-            self.condition(z, x.shape[2:])
+        def forward(self, x, z=None):
+            if z is not None:
+                self.condition(z)
 
-        m, v = self.update_moments(x)
-        weight = (1 + self.weight) / (v + 1e-8)
-        bias = -m * weight + self.bias
-        return weight * x + bias
+            m, v = self.update_moments(x)
+            weight = (1 + self.weight) / (v + 1e-8)
+            bias = -m * weight + self.bias
+            return weight * x + bias
 
-    def condition(self, z, size):
-        z = F.interpolate(z, size=size, mode='nearest')
-        z = F.relu(self.initial(z), inplace=True)
-        self.weight = self.make_weight(z)
-        self.bias = self.make_bias(z)
+        def condition(self, z):
+            self.weight = self.make_weight(z)[:, :, None, None]
+            self.bias = self.make_bias(z)[:, :, None, None]
+    ConditionalBN2d.__name__ = name
+    return ConditionalBN2d
+ConditionalBN2d = make_cbn(BatchNorm2dBase_, 'ConditionalBN2d')
+ConditionalMABN2d = make_cbn(MovingAverageBN2dBase_, 'ConditionalMABN2d')
+__all__.append('ConditionalBN2d')
+__all__.append('ConditionalMABN2d')
 
+
+def make_spade(base, name):
+    class Spade2d(base):
+        def __init__(self, channels, cond_channels, hidden, size=None, momentum=0.8):
+            super(Spade2d, self).__init__(channels, momentum)
+            self.initial = Conv3x3(cond_channels, hidden)
+            self.make_weight = Conv3x3(hidden, channels)
+            self.make_bias = Conv3x3(hidden, channels)
+            self.size = size
+
+        def forward(self, x, z=None):
+            if z is not None:
+                self.condition(z, x.shape[2:])
+
+            m, v = self.update_moments(x)
+            weight = (1 + self.weight) / (v + 1e-8)
+            bias = -m * weight + self.bias
+            return weight * x + bias
+
+        def condition(self, z, size=None):
+            z = F.interpolate(z, size=self.size or size, mode='nearest')
+            z = F.relu(self.initial(z), inplace=True)
+            self.weight = self.make_weight(z)
+            self.bias = self.make_bias(z)
+    Spade2d.__name__ = name
+    return Spade2d
+Spade2d = make_spade(BatchNorm2dBase_, 'Spade2d')
+SpadeMA2d = make_spade(MovingAverageBN2dBase_, 'SpadeMA2d')
+__all__.append('Spade2d')
+__all__.append('SpadeMA2d')
