@@ -18,6 +18,8 @@ Functions:
 * `entropy(x, dim, reduce)` computes the entropy of `x` along dimension `dim`,
   assuming it represents the unnormalized probabilities of a categorial
   distribution.
+* `kaiming(m)` / `xavier(m)` returns `m` after a kaiming / xavier
+  initialization of `m.weight`
 
 ## `torchelie.nn`
 
