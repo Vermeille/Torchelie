@@ -25,7 +25,7 @@ def kaiming(m, a=0, nonlinearity='relu'):
         else:
             nonlinearity = 'leaky_relu'
 
-    nn.init.kaiming_normal_(m.weight, a=a, nonliearity=nonlinearity)
+    nn.init.kaiming_normal_(m.weight, a=a, nonlinearity=nonlinearity)
     if m.bias is not None:
         nn.init.constant_(m.bias, 0)
     return m

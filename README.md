@@ -58,6 +58,10 @@ Blocks:
 * `ConditionalResBlock` instead uses `ConditionalBN2d`
 * `SpadeResBlock` instead uses `Spade2d`
 
+## `torchelie.models`
+
+* `VggBNBone` is a parameterizable stack of convs vgg style. Look at `VggDebug`
+  for its usage.
 
 ## `torchelie.loss`
 

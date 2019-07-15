@@ -7,10 +7,10 @@ from torchelie.utils import kaiming, xavier
 
 
 def Conv2dNormReLU(in_ch, out_ch, ks, norm, leak=0):
-    layer = [
-            kaiming(Conv2d(in_ch, out_ch, ks)),
-            norm,
-    ]
+    layer = [kaiming(Conv2d(in_ch, out_ch, ks), a=leak)]
+
+    if norm is not None:
+        layer.append(norm)
 
     if leak != 0:
         layer.append(nn.LeakyReLU(leak))
@@ -124,7 +124,7 @@ class ResBlock(nn.Module):
 
         if in_ch != out_ch:
             self.shortcut = nn.Sequential(
-                    kaiming(Conv1x1(in_ch, out_ch, stride),)
+                    kaiming(Conv1x1(in_ch, out_ch, stride)),
                     nn.BatchNorm2d(out_ch)
             )
 
@@ -153,7 +153,7 @@ class ConditionalResBlock(nn.Module):
     def forward(self, x, z=None):
         return self.fn(self, x, z)
 
-class SpadeResBlock(CondResBlockBase_):
+class SpadeResBlock(nn.Module):
     def __init__(self, in_ch, out_ch, cond_channels, hidden, stride,
             blktype=PreactCondResBlock):
         super(SpadeResBlock, self).__init__()
