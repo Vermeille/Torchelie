@@ -18,7 +18,8 @@ device = 'cuda'
 
 ds = MNIST('.', download=True, transform=TF.Compose([TF.Resize(32),
     TF.ToTensor()]))
-dl = torch.utils.data.DataLoader(ds, num_workers=4, batch_size=32)
+dl = torch.utils.data.DataLoader(ds, num_workers=4, batch_size=32,
+        shuffle=True)
 
 
 #clf = VggDebug(in_ch=1).to(device)
