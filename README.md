@@ -1,3 +1,5 @@
+<img src="https://github.com/Vermeille/Torchelie/blob/master/logo.png" height="200"/>
+
 # Torchélie
 
 Torchélie is my personal set of helpers, layers, visualization tools and
