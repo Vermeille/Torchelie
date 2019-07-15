@@ -62,6 +62,8 @@ Blocks:
 
 * `VggBNBone` is a parameterizable stack of convs vgg style. Look at `VggDebug`
   for its usage.
+* `ResNetBone` for resnet style bone.
+* `Classifier` adds two linear layers to a bone for classification.
 
 ## `torchelie.loss`
 
