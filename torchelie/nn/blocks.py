@@ -115,7 +115,7 @@ class ConditionalResBlock(CondResBlockBase_):
 class SpadeResBlock(CondResBlockBase_):
     def __init__(self, in_ch, out_ch, hidden, stride):
         super(ResBlock, self).__init__()
-        self.conv1 = Conv3x3(in_ch, in_ch)
+        self.conv1 = Conv3x3(in_ch, in_ch, stride=stride)
         self.bn1 = Spade2d(in_ch, hidden)
         self.relu = nn.ReLU()
         self.conv2 = Conv3x3(in_ch, out_ch)
@@ -123,7 +123,7 @@ class SpadeResBlock(CondResBlockBase_):
 
         if in_ch != out_ch:
             self.shortcut = nn.Sequential(
-                    Conv1x1(in_ch, out_ch, stride),
+                    Conv1x1(in_ch, out_ch, stride=stride),
                     Spade2d(out_ch)
             )
 
