@@ -10,7 +10,7 @@ import torchvision.transforms as TF
 
 import torchelie.nn as tnn
 from torchelie.utils import kaiming, xavier
-from torchelie.models import VggDebug, ResNetDebug
+from torchelie.models import VggDebug, ResNetDebug, PreactResNetDebug
 
 
 
@@ -23,7 +23,7 @@ dl = torch.utils.data.DataLoader(ds, num_workers=4, batch_size=32,
 
 
 #clf = VggDebug(in_ch=1).to(device)
-clf = ResNetDebug(in_ch=1).to(device)
+clf = PreactResNetDebug(in_ch=1).to(device)
 
 opt = Adam(clf.parameters())
 

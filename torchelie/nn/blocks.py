@@ -45,7 +45,7 @@ class Conv2dCondBNReLU(nn.Module):
         return x
 
 
-class OriginalResBlock:
+class OriginalResBlockFn:
 
     @staticmethod
     def __call__(m, x):
@@ -59,7 +59,7 @@ class OriginalResBlock:
         return m.relu(out)
 
 
-class PreactResBlock:
+class PreactResBlockFn:
 
     @staticmethod
     def __call__(m, x):
@@ -114,9 +114,9 @@ class PreactCondResBlock:
 
 
 class ResBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, stride, blktype=OriginalResBlock):
+    def __init__(self, in_ch, out_ch, stride):
         super(ResBlock, self).__init__()
-        self.fn = blktype()
+        self.fn = OriginalResBlockFn()
         self.conv1 = kaiming(Conv3x3(in_ch, in_ch, stride=stride))
         self.bn1 = nn.BatchNorm2d(in_ch)
         self.relu = nn.ReLU()
@@ -131,6 +131,27 @@ class ResBlock(nn.Module):
 
     def forward(self, x):
         return self.fn(self, x)
+
+
+class PreactResBlock(nn.Module):
+    def __init__(self, in_ch, out_ch, stride):
+        super(PreactResBlock, self).__init__()
+        self.fn = PreactResBlockFn()
+        self.bn1 = nn.BatchNorm2d(in_ch)
+        self.relu = nn.ReLU()
+        self.conv1 = kaiming(Conv3x3(in_ch, in_ch, stride=stride))
+        self.bn2 = nn.BatchNorm2d(in_ch)
+        self.conv2 = kaiming(Conv3x3(in_ch, out_ch))
+
+        if in_ch != out_ch or stride != 1:
+            self.shortcut = nn.Sequential(
+                    kaiming(Conv1x1(in_ch, out_ch, stride)),
+                    nn.BatchNorm2d(out_ch)
+            )
+
+    def forward(self, x):
+        return self.fn(self, x)
+
 
 class ConditionalResBlock(nn.Module):
     def __init__(self, in_ch, out_ch, hidden, stride, blktype=CondResBlock):

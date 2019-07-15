@@ -53,6 +53,7 @@ Modules:
 * `Spade2d` / `MovingAverageSpade2d`, for GauGAN.
 * `Conv2d`, `Conv3x3`, `Conv1x1`, `Conv2dBNReLU`, `Conv2dCondBNReLU`, etc. Many
   different convenience blocks in `torchelie.nn.blocks.py`
+* `ResNetBlock`, `PreactResNetBlock`
 
 Blocks:
 
@@ -66,6 +67,12 @@ Blocks:
   for its usage.
 * `ResNetBone` for resnet style bone.
 * `Classifier` adds two linear layers to a bone for classification.
+
+Debug models:
+
+* `VggDebug`
+* `ResNetDebug`
+* `PreactResNetDebug`
 
 ## `torchelie.loss`
 
