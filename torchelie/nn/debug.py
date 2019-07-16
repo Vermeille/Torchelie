@@ -1,3 +1,5 @@
+import crayons
+
 import torch.nn as nn
 
 
@@ -7,8 +9,8 @@ class Debug(nn.Module):
         self.name = name
 
     def forward(self, x):
-        print(self.name)
-        print('----')
+        print(crayons.yellow(self.name))
+        print(crayons.yellow('----'))
         print('Shape {}'.format(x.shape))
         print("Stats mean {:.2f} {:.2f} var s{:.2f} {:.2f}".format(
             x.mean(dim=[0, 2, 3]).mean().item(),

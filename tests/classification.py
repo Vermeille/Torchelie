@@ -15,6 +15,7 @@ import torchelie.nn as tnn
 from torchelie.utils import kaiming, xavier
 import torchelie.models
 from torchelie.models import VggDebug, ResNetDebug, PreactResNetDebug
+from torchelie.utils import nb_parameters
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--cpu', action='store_true')
@@ -23,6 +24,7 @@ parser.add_argument('--dataset',
                     choices=['mnist', 'cifar10'],
                     default='mnist')
 parser.add_argument('--models', default='all')
+parser.add_argument('--shapes-only', action='store_true')
 opts = parser.parse_args()
 
 device = 'cpu' if opts.cpu else 'cuda'
@@ -41,12 +43,13 @@ if opts.models == 'all':
 else:
     nets = [torchelie.models.__dict__[m] for m in opts.models.split(',')]
 
-for Net in nets:
-    print(crayons.yellow('---------------------------------'))
-    print(crayons.yellow('-- ' + Net.__name__))
-    print(crayons.yellow('---------------------------------'))
+def summary(Net):
+    clf = Net(10, in_ch=1, debug=True).to(device)
+    clf(torch.randn(32, 1, 32, 32).to(device))
+    print('Nb parameters: {}'.format(nb_parameters(clf)))
 
-    clf = Net(in_ch=1).to(device)
+def train_net(Net):
+    clf = Net(10, in_ch=1).to(device)
 
     opt = Adam(clf.parameters())
 
@@ -72,3 +75,13 @@ for Net in nets:
                 print(crayons.red('FAILURE ({})'.format(acc), bold=True))
             break
         iters += 1
+
+for Net in nets:
+    print(crayons.yellow('---------------------------------'))
+    print(crayons.yellow('-- ' + Net.__name__))
+    print(crayons.yellow('---------------------------------'))
+
+    if opts.shapes_only:
+        summary(Net)
+    else:
+        train_net(Net)
