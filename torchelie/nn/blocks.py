@@ -76,7 +76,7 @@ class PreactResBlockFn:
         return out + x
 
 
-class CondResBlock:
+class ConditionalResBlockFn:
     @staticmethod
     def condition(m, z):
         m.bn1.condition(z)
@@ -156,9 +156,9 @@ class PreactResBlock(nn.Module):
 
 
 class ConditionalResBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, hidden, stride, blktype=CondResBlock):
+    def __init__(self, in_ch, out_ch, hidden, stride):
         super(ConditionalResBlock, self).__init__()
-        self.fn = blktype()
+        self.fn = ConditionalResBlockFn()
         self.conv1 = kaiming(Conv3x3(in_ch, in_ch, stride=stride))
         self.bn1 = ConditionalBN2d(in_ch, hidden)
         self.relu = nn.ReLU()
@@ -168,7 +168,7 @@ class ConditionalResBlock(nn.Module):
         if in_ch != out_ch or stride != 1:
             self.shortcut = nn.Sequential(
                 kaiming(Conv1x1(in_ch, out_ch, stride)),
-                ConditionalBN2d(out_ch))
+                nn.BatchNorm2d(out_ch))
 
     def condition(self, z):
         self.fn.condition(self, z)

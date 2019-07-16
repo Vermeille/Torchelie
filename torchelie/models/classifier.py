@@ -16,5 +16,5 @@ class Classifier(nn.Module):
             xavier(nn.Linear(feature_size, num_classes)),
         )
 
-    def forward(self, x):
-        return self.head(self.bone(x))
+    def forward(self, *xs):
+        return self.head(self.bone(*xs))
