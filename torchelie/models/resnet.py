@@ -3,16 +3,7 @@ import torch.nn as nn
 import torchelie.nn as tnn
 
 from .classifier import Classifier
-
-
-class ConditionalSequential(nn.Sequential):
-    def forward(self, x, z=None):
-        for m in self._modules.values():
-            if hasattr(m, 'condition'):
-                x = m(x, z)
-            else:
-                x = m(x)
-        return x
+from .condseq import ConditionalSequential
 
 
 class ClassCondResNetBone(nn.Module):
