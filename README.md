@@ -51,6 +51,8 @@ Modules:
 * `AdaIN2d` is adaptive instancenorm for style transfer and stylegan.
 * `FiLM2d` is affine conditioning `f(z) * x + g(z)`.
 * `Spade2d` / `MovingAverageSpade2d`, for GauGAN.
+* `ConditionalSequential` is an extension of `nn.Sequential` that also applies a
+  second input on the layers having `condition()`
 * `Conv2d`, `Conv3x3`, `Conv1x1`, `Conv2dBNReLU`, `Conv2dCondBNReLU`, etc. Many
   different convenience blocks in `torchelie.nn.blocks.py`
 * `ResNetBlock`, `PreactResNetBlock`
@@ -58,6 +60,7 @@ Modules:
 Blocks:
 
 * `ResBlock` is a classical residual block with batchnorm
+* `ClassConditionalResBlock`
 * `ConditionalResBlock` instead uses `ConditionalBN2d`
 * `SpadeResBlock` instead uses `Spade2d`
 
@@ -115,3 +118,10 @@ Classes:
 * `CurriculumScheduler` takes a lr schedule and an optimizer as argument. Call
   `sched.step()` on each batch. The lr will be interpolated linearly between
   keypoints.
+
+# Testing
+
+* `classification.py` tests bones for classifiers on MNIST or CIFAR10
+* `conditional.py` tests class conditional layers with a conditional
+  classification task `argmin L(f(x, z), y)` where `x` is a MNIST sample, `z` a
+  class label, and `y = 1` if `z` is the correct label for `x`, 0 otherwise.
