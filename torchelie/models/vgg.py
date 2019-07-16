@@ -3,6 +3,7 @@ import torchelie.nn as tnn
 
 from .classifier import Classifier
 
+
 def VggBNBone(arch, in_ch=3, leak=0):
     layers = []
     for layer in arch:
@@ -15,9 +16,8 @@ def VggBNBone(arch, in_ch=3, leak=0):
             in_ch = layer
     return nn.Sequential(*layers)
 
+
 def VggDebug(in_ch=1):
     return Classifier(
         VggBNBone([64, 64, 'M', 128, 'M', 128, 'M', 256, 256], in_ch=in_ch),
-        256, 10
-    )
-
+        256, 10)

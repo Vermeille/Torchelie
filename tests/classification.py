@@ -12,15 +12,15 @@ import torchelie.nn as tnn
 from torchelie.utils import kaiming, xavier
 from torchelie.models import VggDebug, ResNetDebug, PreactResNetDebug
 
-
-
 device = 'cuda'
 
-ds = MNIST('.', download=True, transform=TF.Compose([TF.Resize(32),
-    TF.ToTensor()]))
-dl = torch.utils.data.DataLoader(ds, num_workers=4, batch_size=32,
-        shuffle=True)
-
+ds = MNIST('.',
+           download=True,
+           transform=TF.Compose([TF.Resize(32), TF.ToTensor()]))
+dl = torch.utils.data.DataLoader(ds,
+                                 num_workers=4,
+                                 batch_size=32,
+                                 shuffle=True)
 
 for Net in [VggDebug, ResNetDebug, PreactResNetDebug]:
     print('---------------------------------')
@@ -44,8 +44,8 @@ for Net in [VggDebug, ResNetDebug, PreactResNetDebug]:
 
         if iters % 100 == 0:
             acc = torch.mean((y == pred.argmax(dim=1)).float())
-            print("Iter {}, loss {}, acc {}".format(
-                iters, loss.item(), acc.item()))
+            print("Iter {}, loss {}, acc {}".format(iters, loss.item(),
+                                                    acc.item()))
         if iters == 1500:
             if acc > 0.90:
                 print('PASS ({})'.format(acc))

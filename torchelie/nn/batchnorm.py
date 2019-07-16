@@ -5,8 +5,8 @@ import torch.nn.functional as F
 from .layers import Conv3x3
 from torchelie.utils import kaiming, xavier
 
-
 __all__ = []
+
 
 class BatchNorm2dBase_(nn.Module):
     def __init__(self, channels, momentum=0.8):
@@ -21,13 +21,11 @@ class BatchNorm2dBase_(nn.Module):
             m = x.mean(dim=(0, 2, 3), keepdim=True)
             v = x.var(dim=(0, 2, 3), keepdim=True)
 
-            self.running_mean.copy_((
-                    self.momentum * self.running_mean
-                    + (1 - self.momentum) * m).detach())
+            self.running_mean.copy_((self.momentum * self.running_mean +
+                                     (1 - self.momentum) * m).detach())
 
-            self.running_var.copy_((
-                    self.momentum * self.running_var
-                    + (1 - self.momentum) * v).detach())
+            self.running_var.copy_((self.momentum * self.running_var +
+                                    (1 - self.momentum) * v).detach())
 
             self.step += 1
         else:
@@ -35,7 +33,9 @@ class BatchNorm2dBase_(nn.Module):
             v = self.running_var
         return m, torch.sqrt(v)
 
+
 __all__.append('BatchNorm2dBase_')
+
 
 class MovingAverageBN2dBase_(nn.Module):
     def __init__(self, channels, momentum=0.8):
@@ -52,11 +52,11 @@ class MovingAverageBN2dBase_(nn.Module):
 
             m = self.momentum * self.running_mean + (1 - self.momentum) * m
             self.running_mean.copy_(m.detach())
-            m = m / (1 - self.momentum ** self.step)
+            m = m / (1 - self.momentum**self.step)
 
             v = self.momentum * self.running_var + (1 - self.momentum) * v
             self.running_var.copy_(v.detach())
-            v = v / (1 - self.momentum ** self.step)
+            v = v / (1 - self.momentum**self.step)
 
             self.step += 1
         else:
@@ -64,7 +64,9 @@ class MovingAverageBN2dBase_(nn.Module):
             v = self.running_var
         return m, torch.sqrt(v)
 
+
 __all__.append('MovingAverageBN2dBase_')
+
 
 def make_no_affine(base, name):
     class NoAffineBN(base):
@@ -74,8 +76,11 @@ def make_no_affine(base, name):
         def forward(self, x):
             m, s = self.update_moments(x)
             return (x - m) / (s + 1e-8)
+
     NoAffineBN.__name__ = name
     return NoAffineBN
+
+
 NoAffineBN2d = make_no_affine(BatchNorm2dBase_, 'NoAffineBN2d')
 NoAffineMABN2d = make_no_affine(MovingAverageBN2dBase_, 'NoAffineMABN2d')
 __all__.append('NoAffineBN2d')
@@ -94,8 +99,11 @@ def make_bn(base, name):
             weight = (1 + self.weight) / (s + 1e-8)
             bias = -m * weight + self.bias
             return weight * x + bias
+
     BatchNorm2d.__name__ = name
     return BatchNorm2d
+
+
 BatchNorm2d = make_bn(BatchNorm2dBase_, 'BatchNorm2d')
 MovingAverageBN2d = make_bn(MovingAverageBN2dBase_, 'MovingAverageBN2d')
 __all__.append('BatchNorm2d')
@@ -121,8 +129,11 @@ def make_cbn(base, name):
         def condition(self, z):
             self.weight = self.make_weight(z)[:, :, None, None]
             self.bias = self.make_bias(z)[:, :, None, None]
+
     ConditionalBN2d.__name__ = name
     return ConditionalBN2d
+
+
 ConditionalBN2d = make_cbn(BatchNorm2dBase_, 'ConditionalBN2d')
 ConditionalMABN2d = make_cbn(MovingAverageBN2dBase_, 'ConditionalMABN2d')
 __all__.append('ConditionalBN2d')
@@ -131,7 +142,12 @@ __all__.append('ConditionalMABN2d')
 
 def make_spade(base, name):
     class Spade2d(base):
-        def __init__(self, channels, cond_channels, hidden, size=None, momentum=0.8):
+        def __init__(self,
+                     channels,
+                     cond_channels,
+                     hidden,
+                     size=None,
+                     momentum=0.8):
             super(Spade2d, self).__init__(channels, momentum)
             self.initial = kaiming(Conv3x3(cond_channels, hidden))
             self.make_weight = xavier(Conv3x3(hidden, channels))
@@ -152,8 +168,11 @@ def make_spade(base, name):
             z = F.relu(self.initial(z), inplace=True)
             self.weight = self.make_weight(z)
             self.bias = self.make_bias(z)
+
     Spade2d.__name__ = name
     return Spade2d
+
+
 Spade2d = make_spade(BatchNorm2dBase_, 'Spade2d')
 SpadeMA2d = make_spade(MovingAverageBN2dBase_, 'SpadeMA2d')
 __all__.append('Spade2d')

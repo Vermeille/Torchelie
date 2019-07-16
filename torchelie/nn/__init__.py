@@ -9,4 +9,3 @@ from .batchnorm import *
 from .adain import AdaIN2d, FiLM2d
 from .blocks import *
 from .layers import *
-

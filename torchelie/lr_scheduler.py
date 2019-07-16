@@ -22,7 +22,5 @@ class CurriculumScheduler:
             group['lr'] = the_lr
             group['momentum'] = the_mom
 
-
     def __repr__(self):
         return "CurriculumScheduler({})".format(self.schedule)
-

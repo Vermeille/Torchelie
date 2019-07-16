@@ -21,8 +21,12 @@ def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0):
 
 
 def Conv2dBNReLU(in_ch, out_ch, ks, stride=1, leak=0):
-    return Conv2dNormReLU(in_ch, out_ch, ks, nn.BatchNorm2d(out_ch), leak=leak,
-            stride=stride)
+    return Conv2dNormReLU(in_ch,
+                          out_ch,
+                          ks,
+                          nn.BatchNorm2d(out_ch),
+                          leak=leak,
+                          stride=stride)
 
 
 class Conv2dCondBNReLU(nn.Module):
@@ -46,7 +50,6 @@ class Conv2dCondBNReLU(nn.Module):
 
 
 class OriginalResBlockFn:
-
     @staticmethod
     def __call__(m, x):
         out = m.conv1(x)
@@ -60,7 +63,6 @@ class OriginalResBlockFn:
 
 
 class PreactResBlockFn:
-
     @staticmethod
     def __call__(m, x):
         out = m.bn1(x)
@@ -75,7 +77,6 @@ class PreactResBlockFn:
 
 
 class CondResBlock:
-
     @staticmethod
     def condition(m, z):
         m.bn1.condition(z)
@@ -94,7 +95,6 @@ class CondResBlock:
 
 
 class PreactCondResBlock:
-
     @staticmethod
     def condition(m, z):
         m.bn1.condition(z)
@@ -127,9 +127,8 @@ class ResBlock(nn.Module):
 
         if in_ch != out_ch or stride != 1:
             self.shortcut = nn.Sequential(
-                    kaiming(Conv1x1(in_ch, out_ch, stride)),
-                    nn.BatchNorm2d(out_ch)
-            )
+                kaiming(Conv1x1(in_ch, out_ch, stride)),
+                nn.BatchNorm2d(out_ch))
 
     def forward(self, x):
         return self.fn(self, x)
@@ -149,9 +148,8 @@ class PreactResBlock(nn.Module):
 
         if in_ch != out_ch or stride != 1:
             self.shortcut = nn.Sequential(
-                    kaiming(Conv1x1(in_ch, out_ch, stride)),
-                    nn.BatchNorm2d(out_ch)
-            )
+                kaiming(Conv1x1(in_ch, out_ch, stride)),
+                nn.BatchNorm2d(out_ch))
 
     def forward(self, x):
         return self.fn(self, x)
@@ -169,9 +167,8 @@ class ConditionalResBlock(nn.Module):
 
         if in_ch != out_ch or stride != 1:
             self.shortcut = nn.Sequential(
-                    kaiming(Conv1x1(in_ch, out_ch, stride)),
-                    ConditionalBN2d(out_ch)
-            )
+                kaiming(Conv1x1(in_ch, out_ch, stride)),
+                ConditionalBN2d(out_ch))
 
     def condition(self, z):
         self.fn.condition(self, z)
@@ -179,9 +176,15 @@ class ConditionalResBlock(nn.Module):
     def forward(self, x, z=None):
         return self.fn(self, x, z)
 
+
 class SpadeResBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, cond_channels, hidden, stride,
-            blktype=PreactCondResBlock):
+    def __init__(self,
+                 in_ch,
+                 out_ch,
+                 cond_channels,
+                 hidden,
+                 stride,
+                 blktype=PreactCondResBlock):
         super(SpadeResBlock, self).__init__()
         self.fn = blktype()
         self.conv1 = kaiming(Conv3x3(in_ch, in_ch, stride=stride))
@@ -192,9 +195,8 @@ class SpadeResBlock(nn.Module):
 
         if in_ch != out_ch or stride != 1:
             self.shortcut = nn.Sequential(
-                    kaiming(Conv1x1(in_ch, out_ch, stride=stride)),
-                    Spade2d(out_ch, cond_channels, hidden)
-            )
+                kaiming(Conv1x1(in_ch, out_ch, stride=stride)),
+                Spade2d(out_ch, cond_channels, hidden))
 
     def condition(self, z):
         self.fn.condition(self, z)

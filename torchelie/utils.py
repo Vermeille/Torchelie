@@ -1,12 +1,15 @@
 import torch.nn as nn
 
+
 def freeze(net):
     for p in net.parameters():
         p.requires_grad_(False)
 
+
 def unfreeze(net):
     for p in net.parameters():
         p.requires_grad_(True)
+
 
 def entropy(out, dim, reduce='mean'):
     log_prob = F.log_softmax(out, dim=dim)
@@ -17,6 +20,7 @@ def entropy(out, dim, reduce='mean'):
         return h.mean()
     if reduce == 'sum':
         return h.sum()
+
 
 def kaiming(m, a=0, nonlinearity='relu'):
     if nonlinearity in ['relu', 'leaky_relu']:
@@ -29,6 +33,7 @@ def kaiming(m, a=0, nonlinearity='relu'):
     if m.bias is not None:
         nn.init.constant_(m.bias, 0)
     return m
+
 
 def xavier(m):
     nn.init.xavier_normal_(m.weight)

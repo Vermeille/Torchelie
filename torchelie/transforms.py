@@ -31,5 +31,4 @@ class AdaptPad:
         pd = self.sz[0] - h - pt
 
         return TF.functional.pad(img, (pl, pt, pr, pd),
-                padding_mode=padding_mode)
-
+                                 padding_mode=padding_mode)

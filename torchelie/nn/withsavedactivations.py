@@ -12,8 +12,8 @@ class WithSavedActivations(nn.Module):
 
         for name, layer in self.model.named_children():
             if isinstance(layer, types):
-                layer.register_forward_hook(functools.partial(self._save, name))
-
+                layer.register_forward_hook(functools.partial(
+                    self._save, name))
 
     def _save(self, name, module, input, output):
         if self.detach:

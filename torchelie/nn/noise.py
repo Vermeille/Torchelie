@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class Noise(nn.Module):
     def __init__(self, ch):
         super(Noise, self).__init__()
@@ -8,4 +9,3 @@ class Noise(nn.Module):
 
     def forward(self, x):
         return x + self.a * torch.randn_like(x)
-

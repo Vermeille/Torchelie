@@ -8,9 +8,9 @@ class VectorQuantization(Function):
     @staticmethod
     def compute_indices(inputs_orig, codebook):
         bi = []
-        SZ=10000
+        SZ = 10000
         for i in range(0, inputs_orig.size(0), SZ):
-            inputs = inputs_orig[i:i+SZ]
+            inputs = inputs_orig[i:i + SZ]
             # NxK
             distances_matrix = torch.cdist(inputs, codebook)
             # Nx1
@@ -64,9 +64,9 @@ class VectorQuantization(Function):
 
         code_disp = VectorQuantization.flatten(-diff)
         indices = VectorQuantization.flatten(indices)
-        code_disp = (torch
-                     .zeros_like(codebook)
-                     .index_add_(0, indices.view(-1), code_disp))
+        code_disp = (torch.zeros_like(codebook).index_add_(
+            0, indices.view(-1), code_disp))
         return straight_through + commitment, code_disp, None, None
+
 
 quantize = VectorQuantization.apply

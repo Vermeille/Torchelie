@@ -7,8 +7,13 @@ from .functional import quantize
 
 
 class VQ(nn.Module):
-    def __init__(self, latent_dim, num_tokens, dim=-1,
-                 commitment=0.25, mode='angular', return_indices=True):
+    def __init__(self,
+                 latent_dim,
+                 num_tokens,
+                 dim=-1,
+                 commitment=0.25,
+                 mode='angular',
+                 return_indices=True):
         super(VQ, self).__init__()
         self.embedding = nn.Embedding(num_tokens, latent_dim)
         nn.init.normal_(self.embedding.weight, 0, 0.2)
@@ -39,5 +44,3 @@ class VQ(nn.Module):
             return codes, indices
         else:
             return codes
-
-

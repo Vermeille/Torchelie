@@ -2,9 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class MaskedConv2d(nn.Conv2d):
     def __init__(self, in_chan, out_chan, ks, center):
-        super(MaskedConv2d, self).__init__(in_chan, out_chan, (ks // 2 + 1, ks), padding=0)
+        super(MaskedConv2d, self).__init__(in_chan,
+                                           out_chan, (ks // 2 + 1, ks),
+                                           padding=0)
         self.register_buffer('mask', torch.ones(ks // 2 + 1, ks))
         self.mask[-1, ks // 2 + (1 if center else 0):] = 0
 
@@ -19,4 +22,3 @@ class MaskedConv2d(nn.Conv2d):
 
         self.weight = self.weight_orig
         return res
-

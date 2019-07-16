@@ -40,5 +40,3 @@ class FiLM2d(nn.Module):
     def condition(self, z):
         self.weight = self.make_weight(z)[:, :, None, None]
         self.bias = self.make_bias(z)[:, :, None, None]
-
-
