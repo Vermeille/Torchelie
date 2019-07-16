@@ -1,0 +1,4 @@
+torchvision==0.2.2.post3
+torch==1.1.0
+crayons==0.2.0
+Pillow==6.1.0

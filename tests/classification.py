@@ -1,31 +1,50 @@
 import sys
+import argparse
+
+import crayons
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
 
-from torchvision.datasets import MNIST
+from torchvision.datasets import MNIST, CIFAR10
 import torchvision.transforms as TF
 
 import torchelie.nn as tnn
 from torchelie.utils import kaiming, xavier
+import torchelie.models
 from torchelie.models import VggDebug, ResNetDebug, PreactResNetDebug
 
-device = 'cuda'
+parser = argparse.ArgumentParser()
+parser.add_argument('--cpu', action='store_true')
+parser.add_argument('--dataset',
+                    type=str,
+                    choices=['mnist', 'cifar10'],
+                    default='mnist')
+parser.add_argument('--models', default='all')
+opts = parser.parse_args()
 
-ds = MNIST('.',
-           download=True,
-           transform=TF.Compose([TF.Resize(32), TF.ToTensor()]))
+device = 'cpu' if opts.cpu else 'cuda'
+
+tfms = TF.Compose([TF.Resize(32), TF.ToTensor()])
+if opts.dataset == 'mnist':
+    ds = MNIST('.', download=True, transform=tfms)
+if opts.dataset == 'cifar10':
+    ds = CIFAR10('.', download=True, transform=tfms)
 dl = torch.utils.data.DataLoader(ds,
                                  num_workers=4,
                                  batch_size=32,
                                  shuffle=True)
+if opts.models == 'all':
+    nets = [VggDebug, ResNetDebug, PreactResNetDebug]
+else:
+    nets = [torchelie.models.__dict__[m] for m in opts.models.split(',')]
 
-for Net in [VggDebug, ResNetDebug, PreactResNetDebug]:
-    print('---------------------------------')
-    print('-- ' + Net.__name__)
-    print('---------------------------------')
+for Net in nets:
+    print(crayons.yellow('---------------------------------'))
+    print(crayons.yellow('-- ' + Net.__name__))
+    print(crayons.yellow('---------------------------------'))
 
     clf = Net(in_ch=1).to(device)
 
@@ -48,8 +67,8 @@ for Net in [VggDebug, ResNetDebug, PreactResNetDebug]:
                                                     acc.item()))
         if iters == 1500:
             if acc > 0.90:
-                print('PASS ({})'.format(acc))
+                print(crayons.green('PASS ({})'.format(acc), bold=True))
             else:
-                print('FAILURE ({})'.format(acc))
+                print(crayons.red('FAILURE ({})'.format(acc), bold=True))
             break
         iters += 1
