@@ -27,40 +27,54 @@ Functions:
 
 ## `torchelie.nn`
 
-Modules:
+Debug modules:
 
 * `Dummy` does nothing to its input.
 * `Debug` doesn't modify its input but prints some statistics. Easy to spot
   exploding or vanishing values.
-* `Reshape(*shape)` applies `x.view(x.shape[0], *shape)`.
-* `VQ` is a VectorQuantization layer, embedding the VQ-VAE loss in its backward
-  pass for a great ease of use.
-* `Noise` returns `x + a * z` where `a` is a learnable scalar, and `z` is a
-  gaussian noise of the same shape of `x`
-* `ImageNetInputNorm` for normalizing images like `torchvision.model` wants it.
-* `WithSavedActivations(model, types)` saves all activations of `model` for its
-  layers of instance `types` and returns a dict of activations in the forward
-  pass instead of just the last value. Forward takes a `detach` boolean
-  arguments if the activations must be detached or not.
-* `MaskedConv2d` is a masked convolution for PixelCNN
-* `BatchNorm2d`, `NoAffineBatchNorm2d` should be strictly equivalent to
-  Pytorch's, and `ConditionalBN2d` gets its weight and bias parameter from a
-  linear projection of a `z` vector.
+
+Normalization modules:
+
+* `ImageNetInputNorm` for normalizing images like `torchvision.model` wants
+  them.
 * `MovingAverageBN2d`, `NoAffineMABN2d` and `ConditionalMABN2d` are the same as
   above, except they also use moving average of the statistics at train time
   for greater stability. Useful ie for GANs if you can't use a big ass batch
   size and BN introduces too much noise.
 * `AdaIN2d` is adaptive instancenorm for style transfer and stylegan.
-* `FiLM2d` is affine conditioning `f(z) * x + g(z)`.
 * `Spade2d` / `MovingAverageSpade2d`, for GauGAN.
+* `PixelNorm` from ProGAN and StyleGAN.
+* `BatchNorm2d`, `NoAffineBatchNorm2d` should be strictly equivalent to
+  Pytorch's, and `ConditionalBN2d` gets its weight and bias parameter from a
+  linear projection of a `z` vector.
+
+Misc modules:
+
+* `FiLM2d` is affine conditioning `f(z) * x + g(z)`.
+* `Noise` returns `x + a * z` where `a` is a learnable scalar, and `z` is a
+  gaussian noise of the same shape of `x`
+* `Reshape(*shape)` applies `x.view(x.shape[0], *shape)`.
+* `VQ` is a VectorQuantization layer, embedding the VQ-VAE loss in its backward
+  pass for a great ease of use.
+
+Container modules:
+
 * `ConditionalSequential` is an extension of `nn.Sequential` that also applies a
   second input on the layers having `condition()`
+
+Model manipulation modules:
+
+* `WithSavedActivations(model, types)` saves all activations of `model` for its
+  layers of instance `types` and returns a dict of activations in the forward
+  pass instead of just the last value. Forward takes a `detach` boolean
+  arguments if the activations must be detached or not.
+
+Net Blocks:
+
+* `MaskedConv2d` is a masked convolution for PixelCNN
 * `Conv2d`, `Conv3x3`, `Conv1x1`, `Conv2dBNReLU`, `Conv2dCondBNReLU`, etc. Many
   different convenience blocks in `torchelie.nn.blocks.py`
 * `ResNetBlock`, `PreactResNetBlock`
-
-Blocks:
-
 * `ResBlock` is a classical residual block with batchnorm
 * `ClassConditionalResBlock`
 * `ConditionalResBlock` instead uses `ConditionalBN2d`
