@@ -41,6 +41,12 @@ def xavier(m):
         nn.init.constant_(m.bias, 0)
     return m
 
+def n002(m):
+    nn.init.normal_(m.weight, 0, 0.02)
+    if m.bias is not None:
+        nn.init.constant_(m.bias, 0)
+    return m
+
 
 def nb_parameters(net):
     return sum(p.numel() for p in net.parameters())

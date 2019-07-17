@@ -1,4 +1,5 @@
 from .classifier import Classifier
-from .vgg import VggDebug, VggBNBone
+from .vgg import *
 from .resnet import *
 from .condseq import ConditionalSequential
+from .patchgan import *

@@ -11,4 +11,4 @@ def fake(x):
 
 
 def generated(x):
-    return x.mean()
+    return -x.mean()
