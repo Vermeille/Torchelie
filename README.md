@@ -86,6 +86,8 @@ Net Blocks:
   for its usage.
 * `ResNetBone` for resnet style bone.
 * `Classifier` adds two linear layers to a bone for classification.
+* `Patch16`, `Patch32`, `Patch70`, `Patch286` are Pix2Pix's PatchGAN's
+  discriminators
 
 Debug models:
 
