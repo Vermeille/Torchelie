@@ -22,6 +22,8 @@ Functions:
   distribution.
 * `kaiming(m)` / `xavier(m)` returns `m` after a kaiming / xavier
   initialization of `m.weight`
+* `nb_parameters` returns the number of trainables parameters in a module
+* `layer_by_name` finds a module by its (instance) name in a module
 
 ## `torchelie.nn`
 

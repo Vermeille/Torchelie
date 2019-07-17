@@ -44,3 +44,9 @@ def xavier(m):
 
 def nb_parameters(net):
     return sum(p.numel() for p in net.parameters())
+
+
+def layer_by_name(net, name):
+    for l in net.named_modules():
+        if l[0] == name:
+            return l[1]
