@@ -1,5 +1,4 @@
-from .classifier import Classifier
+from .classifier import Classifier, ProjectionDiscr
 from .vgg import *
 from .resnet import *
-from .condseq import ConditionalSequential
 from .patchgan import *

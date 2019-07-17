@@ -3,15 +3,13 @@ import torch.nn as nn
 import torchelie.nn as tnn
 
 from .classifier import Classifier
-from .condseq import ConditionalSequential
 
 
 class ClassCondResNetBone(nn.Module):
     def __init__(self, arch, head, hidden, num_classes, in_ch=3, debug=False):
         super(ClassCondResNetBone, self).__init__()
         block_ctor = functools.partial(tnn.ConditionalResBlock, hidden=hidden)
-        self.bone = ConditionalSequential(
-            *ResNetBone(arch, tnn.Conv2d, block_ctor, in_ch, debug))
+        self.bone = ResNetBone(arch, tnn.Conv2d, block_ctor, in_ch, debug)
         self.emb = nn.Embedding(num_classes, hidden)
 
     def forward(self, x, y):
@@ -50,26 +48,24 @@ def ResNetBone(arch, head, block, in_ch=3, debug=False):
         if debug:
             layer_name = 'layer_{}_{}'.format(layers[-1].__class__.__name__, i)
             layers.append(tnn.Debug(layer_name))
-    return layers
+    return tnn.CondSeq(*layers)
 
 
 def ResNetDebug(num_classes, in_ch=3, debug=False):
     return Classifier(
-        nn.Sequential(
-            *ResNetBone(
+            ResNetBone(
                 ['64:2', '64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
                 tnn.Conv2dBNReLU,
                 tnn.ResBlock,
                 in_ch=in_ch,
-                debug=debug)), 256, num_classes)
+                debug=debug), 256, num_classes)
 
 
 def PreactResNetDebug(num_classes, in_ch=3, debug=False):
     return Classifier(
-        nn.Sequential(
-            *ResNetBone(
+            ResNetBone(
                 ['64:2', '64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
                 tnn.Conv2d,
                 tnn.PreactResBlock,
                 in_ch=in_ch,
-                debug=debug)), 256, num_classes)
+                debug=debug), 256, num_classes)

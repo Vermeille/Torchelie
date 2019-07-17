@@ -10,3 +10,4 @@ from .adain import AdaIN2d, FiLM2d
 from .pixelnorm import PixelNorm
 from .blocks import *
 from .layers import *
+from .condseq import CondSeq

@@ -1,7 +1,12 @@
 import torch.nn as nn
 
 
-class ConditionalSequential(nn.Sequential):
+class CondSeq(nn.Sequential):
+    def condition(self, z):
+        for m in self._modules.values():
+            if hasattr(m, 'condition'):
+                m.condition(z)
+
     def forward(self, x, z=None):
         for m in self._modules.values():
             if hasattr(m, 'condition'):

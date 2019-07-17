@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from .layers import Conv2d, Conv3x3, Conv1x1
 from .batchnorm import ConditionalBN2d, Spade2d
+from .condseq import CondSeq
 from torchelie.utils import kaiming, xavier
 
 
@@ -17,7 +18,7 @@ def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0):
     else:
         layer.append(nn.ReLU())
 
-    return nn.Sequential(*layer)
+    return CondSeq(*layer)
 
 
 def Conv2dBNReLU(in_ch, out_ch, ks, stride=1, leak=0):
