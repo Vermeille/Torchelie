@@ -127,7 +127,10 @@ Torchvision-like transforms:
   instead of torchvision that resize the smallest side. The image is then
   _smaller_ than the given size and needs padding for batching.
 * `AdaptPad` pads an image so that it fits the target size.
-
+* `Canny` runs canny edge detector (requires OpenCV)
+* `MultiBranch` allows different transformations branches in order to transform
+  the same image in different ways. Useful for self supervision tasks for
+  instance.
 
 ## `torchelie.lr_scheduler`
 

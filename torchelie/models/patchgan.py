@@ -32,7 +32,7 @@ def base_patch_discr(arch, in_ch=3, out_ch=1, norm=None):
 
 
 def patch_discr(arch, in_ch=3, out_ch=1, norm=None):
-    return Classifier(base_patch_dicr(arch, in_ch=in_ch, out_ch=out_ch, norm=norm),
+    return Classifier(base_patch_discr(arch, in_ch=in_ch, out_ch=out_ch, norm=norm),
                       arch[-1], out_ch)
 
 

@@ -1,6 +1,15 @@
 import torch.nn as nn
 
 
+class Lambda(nn.Module):
+    def __init__(self, lam):
+        super(Lambda, self).__init__()
+        self.lam = lam
+
+    def forward(self, x):
+        return self.lam(x)
+
+
 class Reshape(nn.Module):
     def __init__(self, *shape):
         super(Reshape, self).__init__()

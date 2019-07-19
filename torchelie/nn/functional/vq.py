@@ -31,19 +31,11 @@ class VectorQuantization(Function):
 
     @staticmethod
     def forward(ctx, inputs, codebook, commitment=0.25, dim=1):
-        needs_transpose = dim != -1 or dim != x.dim() - 1
-        if needs_transpose:
-            inputs = inputs.transpose(-1, dim).contiguous()
-
         inputs_flat = VectorQuantization.flatten(inputs)
         indices = VectorQuantization.compute_indices(inputs_flat, codebook)
         codes = codebook[indices.view(-1), :]
         codes, indices = VectorQuantization.restore_shapes(
             codes, indices, inputs.shape)
-
-        if needs_transpose:
-            codes = codes.transpose(-1, dim)
-            indices = indices.transpose(-1, dim)
 
         ctx.save_for_backward(codes, inputs, torch.FloatTensor([commitment]),
                               codebook, indices)

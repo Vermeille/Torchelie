@@ -10,7 +10,7 @@ class WithSavedActivations(nn.Module):
         self.activations = {}
         self.detach = True
 
-        for name, layer in self.model.named_children():
+        for name, layer in self.model.named_modules():
             if isinstance(layer, types):
                 layer.register_forward_hook(functools.partial(
                     self._save, name))
@@ -24,7 +24,7 @@ class WithSavedActivations(nn.Module):
     def forward(self, input, detach):
         self.detach = detach
         self.activations = {}
-        self.model(input)
+        out = self.model(input)
         acts = self.activations
         self.activations = {}
-        return acts
+        return out, acts

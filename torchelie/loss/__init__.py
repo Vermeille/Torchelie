@@ -2,6 +2,7 @@ import torchelie.loss.gan
 
 from .perceptualloss import PerceptualLoss
 
+import torch
 
 def ortho(w):
     cosine = torch.mm(w, w.t())
