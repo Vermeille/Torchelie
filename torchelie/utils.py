@@ -56,3 +56,12 @@ def layer_by_name(net, name):
     for l in net.named_modules():
         if l[0] == name:
             return l[1]
+
+def forever(iterable):
+    it = iter(iterable)
+    while True:
+        try:
+            yield next(it)
+        except Exception as e:
+            print(e)
+            it = iter(iterable)

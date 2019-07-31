@@ -9,6 +9,10 @@ class Classifier(nn.Module):
     def __init__(self, feat_extractor, feature_size, num_classes):
         super(Classifier, self).__init__()
         self.bone = feat_extractor
+
+        if num_classes == 2:
+            num_classes = 1
+
         self.head = nn.Sequential(
             nn.AdaptiveMaxPool2d(1),
             tnn.Reshape(feature_size),

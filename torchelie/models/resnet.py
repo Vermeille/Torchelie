@@ -5,6 +5,20 @@ import torchelie.nn as tnn
 from .classifier import Classifier
 
 
+def VectorCondResNetBone(arch, head, hidden, in_ch=3, debug=False):
+    block_ctor = functools.partial(tnn.ConditionalResBlock, hidden=hidden)
+    return ResNetBone(arch, head, block_ctor, in_ch, debug)
+
+
+def VectorCondResNetDebug(vector_size, in_ch=3, debug=False):
+    return VectorCondResNetBone(
+            ['64:2', '64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
+            tnn.Conv2d,
+            vector_size,
+            in_ch=in_ch,
+            debug=debug)
+
+
 class ClassCondResNetBone(nn.Module):
     def __init__(self, arch, head, hidden, num_classes, in_ch=3, debug=False):
         super(ClassCondResNetBone, self).__init__()
