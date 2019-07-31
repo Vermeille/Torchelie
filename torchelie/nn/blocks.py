@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from .layers import Conv2d, Conv3x3, Conv1x1
 from .batchnorm import ConditionalBN2d, Spade2d
 from .condseq import CondSeq
+from .maskedconv import MaskedConv2d
 from torchelie.utils import kaiming, xavier
 
 
@@ -19,6 +20,18 @@ def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0):
         layer.append(nn.ReLU())
 
     return CondSeq(*layer)
+
+
+def MConvNormReLU(in_ch, out_ch, ks, norm, center=True):
+    return CondSeq(
+            MaskedConv2d(in_ch, out_ch, ks, center=center),
+            norm(out_ch),
+            nn.ReLU(inplace=True)
+        )
+
+
+def MConvBNrelu(in_ch, out_ch, ks, center=True):
+    return MConvNormReLU(in_ch, out_ch, ks, nn.BatchNorm2d, center=center)
 
 
 def Conv2dBNReLU(in_ch, out_ch, ks, stride=1, leak=0):
