@@ -21,4 +21,5 @@ class MaskedConv2d(nn.Conv2d):
         res = super(MaskedConv2d, self).forward(x)
 
         self.weight = self.weight_orig
+        del self.weight_orig
         return res

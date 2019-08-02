@@ -45,8 +45,6 @@ class PixCNNBase(nn.Module):
 
 
         self.lout = nn.Sequential(
-            nn.ReLU(inplace=True),
-            nn.BatchNorm2d(hid),
             tnn.MaskedConv2d(hid, out_ch, 3, center=True)
         )
 
@@ -72,17 +70,61 @@ class PixCNNBase(nn.Module):
         return self.lout(x6)
 
 
+class SimplePixCNN(nn.Module):
+    def __init__(self, in_ch, hid, out_ch, sz):
+        super(SimplePixCNN, self).__init__()
+        self.sz = sz
+        self.lin = tnn.CondSeq(
+                tnn.MaskedConv2d(in_ch, hid, 5, center=False),
+                nn.ReLU(inplace=True),
+        )
+        self.bias = nn.Parameter(torch.zeros(hid, *sz))
+        self.body = tnn.CondSeq(
+                #nn.Dropout(),
+                tnn.MaskedConv2d(hid, hid, 5, center=True),
+                nn.BatchNorm2d(hid),
+                nn.ReLU(inplace=True),
+                #nn.Dropout(),
+                tnn.MaskedConv2d(hid, hid, 5, center=True),
+                nn.BatchNorm2d(hid),
+                nn.ReLU(inplace=True),
+                tnn.MaskedConv2d(hid, hid, 5, center=True),
+                #nn.Dropout(),
+                nn.BatchNorm2d(hid),
+                nn.ReLU(inplace=True),
+            )
+        self.lout = nn.Sequential(
+            tnn.MaskedConv2d(hid, out_ch, 5, center=True)
+        )
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.xavier_uniform_(m.weight)
+                m.weight.data *= 2
+                nn.init.constant_(m.bias, 0)
+            if isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+    def forward(self, x):
+        x = self.lin(x) + self.bias
+
+        x = self.body(x)
+        return self.lout(x)
+
+
 class PixelCNN(PixCNNBase):
-    def __init__(self, hid, sz):
-        super(PixelCNN, self).__init__(3, hid, 256 * 3, sz)
+    def __init__(self, hid, sz, channels=3):
+        super(PixelCNN, self).__init__(channels, hid, 256 * channels, sz)
+        self.channels = channels
 
     def forward(self, x):
         log_probs = super().forward(x)
         B, C, H, W = log_probs.shape
-        return log_probs.view(B, 256, 3, H, W)
+        return log_probs.view(B, 256, self.channels, H, W)
 
     def sample(self, temp, N):
-        img = torch.zeros(N, 3, *self.sz, device=self.bias.device).uniform_(0, 1)
+        img = torch.zeros(N, self.channels, *self.sz, device=self.bias.device).uniform_(0, 1)
         return self.sample_(img, temp)
 
 
@@ -101,8 +143,10 @@ class PixelCNN(PixCNNBase):
                 for c in range(self.sz[0]):
                     log_prob = self(img * 2 - 1)[:, :, :, l, c] / temp
                     for i in range(img.shape[0]):
-                        logits = F.log_softmax(log_prob[i].transpose(0, 1), dim=1)
-                        x = torch.distributions.Categorical(logits=logits).sample((1,))
+                        logits = (log_prob[i].transpose(0, 1))
+                        x = torch.distributions.Categorical(logits=logits, validate_args=True).sample((1,))
                         img[i, :, l, c] = x.float() / 255
+
+        print(img[0])
         return img
 
