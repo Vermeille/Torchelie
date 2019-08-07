@@ -146,3 +146,8 @@ Classes:
 * `conditional.py` tests class conditional layers with a conditional
   classification task `argmin L(f(x, z), y)` where `x` is a MNIST sample, `z` a
   class label, and `y = 1` if `z` is the correct label for `x`, 0 otherwise.
+
+## `torchelie.datasets.debug`
+
+* `ColoredColumns` / `ColoredRows` are datasets of precedurally generated
+  images of rows / columns randomly colorized.
