@@ -151,3 +151,10 @@ Classes:
 
 * `ColoredColumns` / `ColoredRows` are datasets of precedurally generated
   images of rows / columns randomly colorized.
+
+## `torchelie.metrics`
+
+* `WindowAvg`: averages measures over a k-long sequence
+* `ExponentialAvg`: applies an exponential averaging method over measures
+* `RunningAvg`: accumulates total number of items and sum to provide an
+  accurate average estimation
