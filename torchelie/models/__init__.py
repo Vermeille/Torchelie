@@ -3,3 +3,4 @@ from .vgg import *
 from .resnet import *
 from .patchgan import *
 from .pixcnn import *
+from .perceptualnet import *

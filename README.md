@@ -88,6 +88,8 @@ Net Blocks:
 * `Classifier` adds two linear layers to a bone for classification.
 * `Patch16`, `Patch32`, `Patch70`, `Patch286` are Pix2Pix's PatchGAN's
   discriminators
+* `PerceptualNet` is a VGG16 with correctly named layers for more convenient
+  use with `WithSavedActivations`
 
 Debug models:
 

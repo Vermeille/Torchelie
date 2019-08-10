@@ -1,25 +1,19 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision.models as M
 
 from torchelie.nn import WithSavedActivations
 from torchelie.nn import ImageNetInputNorm
-
-
-def PerceptualNet(l):
-    m = M.vgg16(pretrained=True).eval()
-    m = m.features[:l]
-    m = WithSavedActivations(m)
-    return m
+from torchelie.models import PerceptualNet
 
 
 class PerceptualLoss(nn.Module):
-    def __init__(self, l, rescale=False):
+    def __init__(self, l, rescale=False, loss=F.mse_loss):
         super(PerceptualLoss, self).__init__()
-        self.m = PerceptualNet(l)
+        self.m = WithSavedActivations(PerceptualNet(l))
         self.norm = ImageNetInputNorm()
         self.rescale = rescale
+        self.loss = loss
 
     def forward(self, x, y):
         if self.rescale:
@@ -30,5 +24,5 @@ class PerceptualLoss(nn.Module):
         acts = self.m(self.norm(x), detach=False)
         loss = 0
         for k in acts.keys():
-            loss += torch.nn.functional.mse_loss(acts[k], ref[k])
+            loss += self.loss(acts[k], ref[k])
         return loss
