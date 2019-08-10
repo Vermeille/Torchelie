@@ -111,6 +111,7 @@ Functions:
 
 * `ortho(x)` applies an orthogonal regularizer as in _Brock et al (2018)_
   (BigGAN)
+* `total_variation(x)` applies a spatial L1 loss on 2D tensors
 
 ### `torchelie.loss.gan`
 
