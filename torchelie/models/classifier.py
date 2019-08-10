@@ -22,7 +22,10 @@ class Classifier(nn.Module):
         )
 
     def forward(self, *xs):
-        return self.head(self.bone(*xs))
+        out = self.head(self.bone(*xs))
+        if out.shape[1] == 1:
+            out = out.squeeze(1)
+        return out
 
 
 class ProjectionDiscr(nn.Module):

@@ -57,3 +57,5 @@ class Canny:
         img = np.array(img)
         img = cv2.Canny(img, self.thresh_low, self.thresh_high)
         return Image.fromarray(img)
+
+

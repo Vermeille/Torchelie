@@ -70,12 +70,12 @@ def train_net(Net):
 
         opt.zero_grad()
         pred = clf(x, z)
-        loss = F.cross_entropy(pred, y)
+        loss = F.binary_cross_entropy_with_logits(pred, y.float())
         loss.backward()
         opt.step()
 
         if iters % 100 == 0:
-            acc = torch.mean((y == pred.argmax(dim=1)).float())
+            acc = torch.mean((y.byte() == (pred > 0)).float())
             print("Iter {}, loss {}, acc {}".format(iters, loss.item(),
                                                     acc.item()))
         if iters == 1500:
