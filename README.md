@@ -163,3 +163,11 @@ Classes:
 * `ExponentialAvg`: applies an exponential averaging method over measures
 * `RunningAvg`: accumulates total number of items and sum to provide an
   accurate average estimation
+
+## `torchelie.feature_vis`
+
+* `PixelImage` an image to be optimized.
+* `SpectralImage` an image Fourier-parameterized to ease optimization.
+* `CorrelateColors` assumes the input is an image with decorrelated color
+  components. It correlates back the color using some ImageNet precomputed
+  correlation statistics to ease optimization.

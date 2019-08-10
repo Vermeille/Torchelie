@@ -58,6 +58,7 @@ def layer_by_name(net, name):
         if l[0] == name:
             return l[1]
 
+
 def forever(iterable):
     it = iter(iterable)
     while True:
