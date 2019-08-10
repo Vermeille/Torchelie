@@ -12,7 +12,7 @@ def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0):
     layer = [kaiming(Conv2d(in_ch, out_ch, ks, stride=stride), a=leak)]
 
     if norm is not None:
-        layer.append(norm)
+        layer.append(norm(out_ch))
 
     if leak != 0:
         layer.append(nn.LeakyReLU(leak))
@@ -25,7 +25,7 @@ def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0):
 def MConvNormReLU(in_ch, out_ch, ks, norm, center=True):
     return CondSeq(
             MaskedConv2d(in_ch, out_ch, ks, center=center),
-            norm(out_ch),
+            *([norm(out_ch)] if norm is not None else []),
             nn.ReLU(inplace=True)
         )
 
@@ -38,7 +38,7 @@ def Conv2dBNReLU(in_ch, out_ch, ks, stride=1, leak=0):
     return Conv2dNormReLU(in_ch,
                           out_ch,
                           ks,
-                          nn.BatchNorm2d(out_ch),
+                          nn.BatchNorm2d,
                           leak=leak,
                           stride=stride)
 
