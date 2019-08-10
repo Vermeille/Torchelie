@@ -22,8 +22,8 @@ class WithSavedActivations(nn.Module):
                     layer.register_forward_hook(functools.partial(
                         self._save, name))
         else:
-            for n in names:
-                layer = layer_by_name(self.model)
+            for name in names:
+                layer = layer_by_name(self.model, name)
                 layer.register_forward_hook(functools.partial(
                     self._save, name))
 
