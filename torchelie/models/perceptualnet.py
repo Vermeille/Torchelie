@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 import torch.nn as nn
 import torchvision.models as M
+from torchelie.nn import WithSavedActivations
 
 
 def PerceptualNet(layers):

@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torchelie.nn import WithSavedActivations
 from torchelie.nn import ImageNetInputNorm
 from torchelie.models import PerceptualNet
 
