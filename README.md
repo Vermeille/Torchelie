@@ -24,6 +24,7 @@ Functions:
   initialization of `m.weight`
 * `nb_parameters` returns the number of trainables parameters in a module
 * `layer_by_name` finds a module by its (instance) name in a module
+* `gram` / `bgram` compute gram and batched gam matrices.
 
 ## `torchelie.nn`
 
@@ -104,6 +105,7 @@ Modules:
 * `PerceptualLoss(l)` is a vgg16 based perceptual loss up to layer number `l`.
   Sum of L1 distances between `x`'s and `y`'s activations in vgg. Only `x` is
   backproped.
+* `NeuralStyleLoss`
 
 Functions:
 

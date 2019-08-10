@@ -65,3 +65,18 @@ def forever(iterable):
         except Exception as e:
             print(e)
             it = iter(iterable)
+
+
+def gram(m):
+    m1 = m
+    m2 = m.t()
+    g = torch.mm(m1, m2) / m.shape[1]
+    return g
+
+
+def bgram(m):
+    m = m.view(m.shape[0], m.shape[1], -1)
+    m1 = m
+    m2 = m.permute(0, 2, 1)
+    g = torch.bmm(m1, m2) / (m.shape[1] * m.shape[2])
+    return g

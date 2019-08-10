@@ -10,7 +10,7 @@ from torchelie.models import PerceptualNet
 class PerceptualLoss(nn.Module):
     def __init__(self, l, rescale=False, loss=F.mse_loss):
         super(PerceptualLoss, self).__init__()
-        self.m = WithSavedActivations(PerceptualNet(l))
+        self.m = PerceptualNet(l)
         self.norm = ImageNetInputNorm()
         self.rescale = rescale
         self.loss = loss
@@ -20,8 +20,8 @@ class PerceptualLoss(nn.Module):
             y = F.interpolate(y, size=(224, 224), mode='nearest')
             x = F.interpolate(x, size=(224, 224), mode='nearest')
 
-        ref = self.m(self.norm(y), detach=True)
-        acts = self.m(self.norm(x), detach=False)
+        _, ref = self.m(self.norm(y), detach=True)
+        _, acts = self.m(self.norm(x), detach=False)
         loss = 0
         for k in acts.keys():
             loss += self.loss(acts[k], ref[k])

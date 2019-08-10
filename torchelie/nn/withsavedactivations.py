@@ -12,6 +12,10 @@ class WithSavedActivations(nn.Module):
         self.activations = {}
         self.detach = True
 
+        self.set_keep_layers(types, names)
+
+
+    def set_keep_layers(self, types=(nn.Conv2d, nn.Linear), names=None):
         if names is None:
             for name, layer in self.model.named_modules():
                 if isinstance(layer, types):
@@ -19,7 +23,7 @@ class WithSavedActivations(nn.Module):
                         self._save, name))
         else:
             for n in names:
-                layer = layer_by_name(model)
+                layer = layer_by_name(self.model)
                 layer.register_forward_hook(functools.partial(
                     self._save, name))
 

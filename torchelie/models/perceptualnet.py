@@ -4,7 +4,7 @@ import torch.nn as nn
 import torchvision.models as M
 
 
-def PerceptualNet(l):
+def PerceptualNet(layers):
     layer_names = [
         'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'maxpool1',
         'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'maxpool2',
@@ -20,5 +20,6 @@ def PerceptualNet(l):
     m = nn.Sequential(OrderedDict(
         [(l_name, l) for l_name, l in zip(layer_names, m)]
     ))
-    return m[:l]
+    m = WithSavedActivations(m, names=layers)
+    return m
 

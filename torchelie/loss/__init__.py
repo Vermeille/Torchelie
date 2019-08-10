@@ -1,6 +1,7 @@
 import torchelie.loss.gan
 
 from .perceptualloss import PerceptualLoss
+from .neuralstyleloss import NeuralStyleLoss
 
 import torch
 
