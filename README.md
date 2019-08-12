@@ -164,7 +164,11 @@ Classes:
 * `RunningAvg`: accumulates total number of items and sum to provide an
   accurate average estimation
 
-## `torchelie.feature_vis`
+## `torchelie.data_learning`
+
+Data parameterization for optimization, like neural style or feature viz.
+
+Modules:
 
 * `PixelImage` an image to be optimized.
 * `SpectralImage` an image Fourier-parameterized to ease optimization.
