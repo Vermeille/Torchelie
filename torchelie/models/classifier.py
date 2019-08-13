@@ -10,9 +10,6 @@ class Classifier(nn.Module):
         super(Classifier, self).__init__()
         self.bone = feat_extractor
 
-        if num_classes == 2:
-            num_classes = 1
-
         self.head = nn.Sequential(
             nn.AdaptiveMaxPool2d(1),
             tnn.Reshape(feature_size),
@@ -23,8 +20,6 @@ class Classifier(nn.Module):
 
     def forward(self, *xs):
         out = self.head(self.bone(*xs))
-        if out.shape[1] == 1:
-            out = out.squeeze(1)
         return out
 
 

@@ -45,7 +45,7 @@ else:
 
 
 def summary(Net):
-    clf = Net(2, 10, in_ch=1, debug=True).to(device)
+    clf = Net(1, 10, in_ch=1, debug=True).to(device)
     data = torch.randn(32, 1, 32, 32).to(device)
     labels = torch.randint(0, 10, (32, )).to(device)
     clf(data, labels)
@@ -53,7 +53,7 @@ def summary(Net):
 
 
 def train_net(Net):
-    clf = Net(2, 10, in_ch=1).to(device)
+    clf = Net(1, 10, in_ch=1).to(device)
 
     opt = Adam(clf.parameters())
 

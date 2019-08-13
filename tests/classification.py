@@ -12,7 +12,6 @@ from torchvision.datasets import MNIST, CIFAR10
 import torchvision.transforms as TF
 
 import torchelie.nn as tnn
-from torchelie.utils import kaiming, xavier
 import torchelie.models
 from torchelie.models import VggDebug, ResNetDebug, PreactResNetDebug
 from torchelie.utils import nb_parameters
