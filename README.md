@@ -11,6 +11,12 @@ it if I don't think the value I get is not worth the maintenance cost. This is
 my own set of helpers that I share, not a PyTorch library that tries to fit
 everyone's use.
 
+## `torchelie.recipes`
+
+Classes implementing full algorithms, from training to usage
+
+* `NeuralStyleRecipe`
+
 ## `torchelie.utils`
 
 Functions:
