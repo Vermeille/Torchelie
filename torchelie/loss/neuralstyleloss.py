@@ -37,7 +37,8 @@ class NeuralStyleLoss(nn.Module):
 
         if style_layers is not None:
             self.style_layers = style_layers
-            self.net.set_keep_layers(self.style_layers + self.content_layers)
+            self.net.set_keep_layers(names=self.style_layers +
+                                     self.content_layers)
 
         with torch.no_grad():
             activations = self.get_style_content_(style_img[None],
@@ -53,7 +54,8 @@ class NeuralStyleLoss(nn.Module):
     def set_content(self, content_img, content_layers=None):
         if content_layers is not None:
             self.content_layers = content_layers
-            self.net.set_keep_layers(self.style_layers + self.content_layers)
+            self.net.set_keep_layers(names=self.style_layers +
+                                     self.content_layers)
 
         with torch.no_grad():
             acts = self.get_style_content_(content_img[None], detach=True)[1]

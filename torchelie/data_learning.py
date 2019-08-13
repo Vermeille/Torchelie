@@ -80,7 +80,7 @@ class ParameterizedImg(nn.Module):
         super(ParameterizedImg, self).__init__()
         assert space in ['spectral', 'pixel']
         if space == 'spectral':
-            self.img = SpectralImage(shape)
+            self.img = SpectralImage(shape, decay_power=0.7)
         else:
             self.img = PixelImage(shape)
 
