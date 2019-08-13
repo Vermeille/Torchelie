@@ -16,7 +16,7 @@ class PixelImage(nn.Module):
         self.pixels = torch.nn.Parameter(sd * torch.randn(1, ch, h, w))
 
     def forward(self):
-        return self.pixels
+        return (self.pixels + 0.5).clamp(0, 1)
 
 
 class SpectralImage(nn.Module):
@@ -72,4 +72,22 @@ class CorrelateColors(torch.nn.Module):
         if self.sigmoid:
             return torch.sigmoid(t)
         else:
-            return (t + 0.5).clamp(min=0, max=1)
+            return (t + 0.5).clamp(0, 1)
+
+
+class ParameterizedImg(nn.Module):
+    def __init__(self, *shape, space='spectral', colors='uncorr'):
+        super(ParameterizedImg, self).__init__()
+        assert space in ['spectral', 'pixel']
+        if space == 'spectral':
+            self.img = SpectralImage(shape)
+        else:
+            self.img = PixelImage(shape)
+
+        assert colors in ['uncorr', 'corr']
+        self.corr = lambda x: x
+        if colors == 'uncorr':
+            self.corr = CorrelateColors()
+
+    def forward(self):
+        return self.corr(self.img())
