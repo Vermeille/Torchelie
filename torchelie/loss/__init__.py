@@ -14,6 +14,6 @@ def ortho(w):
 
 
 def total_variation(i):
-    v = F.l1_loss(i[:, :, 1:, :] - i[:, :, :-1, :])
-    h = F.l1_loss(i[:, :, :, 1:] - i[:, :, :, :-1])
+    v = F.l1_loss(i[:, :, 1:, :], i[:, :, :-1, :])
+    h = F.l1_loss(i[:, :, :, 1:], i[:, :, :, :-1])
     return v + h

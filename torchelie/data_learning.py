@@ -85,3 +85,6 @@ class ParameterizedImg(nn.Module):
     def forward(self):
         t = self.corr(self.img())
         return torch.sigmoid(t)
+
+    def render(self):
+        return self.forward().cpu().detach()[0]

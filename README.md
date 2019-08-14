@@ -17,6 +17,11 @@ Classes implementing full algorithms, from training to usage
 
 * `NeuralStyleRecipe` implements Gatys' Neural Artistic Style. Also directly
   usable with commandline with `python3 -m torchelie.recipes.neural_style`
+* `FeatureVisRecipe` implements feature visualization through backprop. The
+  image is implemented in Fourier space which makes it powerful (see
+  [this](https://distill.pub/2018/differentiable-parameterizations/) and
+  [that](https://distill.pub/2017/feature-visualization/) ). Usable as
+  commandline as well with `python -m torchelie.recipes.feature_vis`.
 
 ## `torchelie.utils`
 

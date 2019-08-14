@@ -48,7 +48,7 @@ class NeuralStyleRecipe:
 
             loss = opt.step(make_loss).item()
 
-        return t2pil(canvas().detach().cpu()[0])
+        return t2pil(canvas.render())
 
 if __name__ == '__main__':
     import argparse
