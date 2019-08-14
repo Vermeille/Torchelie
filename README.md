@@ -157,13 +157,6 @@ Classes:
   `sched.step()` on each batch. The lr will be interpolated linearly between
   keypoints.
 
-# Testing
-
-* `classification.py` tests bones for classifiers on MNIST or CIFAR10
-* `conditional.py` tests class conditional layers with a conditional
-  classification task `argmin L(f(x, z), y)` where `x` is a MNIST sample, `z` a
-  class label, and `y = 1` if `z` is the correct label for `x`, 0 otherwise.
-
 ## `torchelie.datasets.debug`
 
 * `ColoredColumns` / `ColoredRows` are datasets of precedurally generated
@@ -187,3 +180,11 @@ Modules:
 * `CorrelateColors` assumes the input is an image with decorrelated color
   components. It correlates back the color using some ImageNet precomputed
   correlation statistics to ease optimization.
+
+# Testing
+
+* `classification.py` tests bones for classifiers on MNIST or CIFAR10
+* `conditional.py` tests class conditional layers with a conditional
+  classification task `argmin L(f(x, z), y)` where `x` is a MNIST sample, `z` a
+  class label, and `y = 1` if `z` is the correct label for `x`, 0 otherwise.
+
