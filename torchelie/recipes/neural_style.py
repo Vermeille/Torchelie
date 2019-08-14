@@ -37,7 +37,6 @@ class NeuralStyleRecipe:
     def optimize_img(self, canvas):
         opt = torch.optim.LBFGS(canvas.parameters(), lr=0.01, history_size=50)
 
-        prev_loss = None
         for i in range(100):
 
             def make_loss():
@@ -48,9 +47,6 @@ class NeuralStyleRecipe:
                 return loss
 
             loss = opt.step(make_loss).item()
-            if prev_loss is not None and loss > prev_loss * 0.95:
-                break
-            prev_loss = loss
 
         return t2pil(canvas().detach().cpu()[0])
 

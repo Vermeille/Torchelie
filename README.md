@@ -15,7 +15,8 @@ everyone's use.
 
 Classes implementing full algorithms, from training to usage
 
-* `NeuralStyleRecipe`
+* `NeuralStyleRecipe` implements Gatys' Neural Artistic Style. Also directly
+  usable with commandline with `python3 -m torchelie.recipes.neural_style`
 
 ## `torchelie.utils`
 
