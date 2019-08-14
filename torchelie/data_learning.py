@@ -32,28 +32,25 @@ class SpectralImage(nn.Module):
         spectrum_var = torch.nn.Parameter(init_val)
         self.spectrum_var = spectrum_var
 
-        spertum_scale = 1.0 / np.maximum(freqs[..., None],
+        spertum_scale = 1.0 / np.maximum(freqs,
                                          1.0 / max(h, w))**self.decay_power
         spertum_scale *= np.sqrt(w * h)
-        spertum_scale = torch.FloatTensor(spertum_scale)
+        spertum_scale = torch.FloatTensor(spertum_scale).unsqueeze(-1)
         self.register_buffer('spertum_scale', spertum_scale)
 
     def forward(self):
         ch, h, w = self.shape
 
         scaled_spectrum = self.spectrum_var * self.spertum_scale
-
-        img = torch.irfft(scaled_spectrum, 3, onesided=True)
+        img = torch.irfft(scaled_spectrum, 2, onesided=True, normalized=False)
 
         img = img[:ch, :h, :w]
         return img.unsqueeze(0) / 4.
 
 
 class CorrelateColors(torch.nn.Module):
-    def __init__(self, jitter=0.01, sigmoid=False):
+    def __init__(self):
         super(CorrelateColors, self).__init__()
-        self.jitter = jitter
-        self.sigmoid = sigmoid
         color_correlation_svd_sqrt = torch.FloatTensor([[0.26, 0.09, 0.02],
                                                         [0.27, 0.00, -0.05],
                                                         [0.27, -0.09, 0.03]])
@@ -66,13 +63,9 @@ class CorrelateColors(torch.nn.Module):
 
     def forward(self, t):
         t_flat = t.view(t.shape[0], 3, -1).transpose(2, 1)
-        t_flat = torch.matmul(t_flat, self.color_correlation.transpose(1, 0))
+        t_flat = torch.matmul(t_flat, self.color_correlation.t())
         t = t_flat.transpose(2, 1).view(t.shape)
-        t += torch.randn_like(t) * self.jitter
-        if self.sigmoid:
-            return torch.sigmoid(t)
-        else:
-            return (t + 0.5).clamp(0, 1)
+        return t
 
 
 class ParameterizedImg(nn.Module):
@@ -80,7 +73,7 @@ class ParameterizedImg(nn.Module):
         super(ParameterizedImg, self).__init__()
         assert space in ['spectral', 'pixel']
         if space == 'spectral':
-            self.img = SpectralImage(shape, decay_power=0.7)
+            self.img = SpectralImage(shape, decay_power=1)
         else:
             self.img = PixelImage(shape)
 
@@ -90,4 +83,5 @@ class ParameterizedImg(nn.Module):
             self.corr = CorrelateColors()
 
     def forward(self):
-        return self.corr(self.img())
+        t = self.corr(self.img())
+        return torch.sigmoid(t)

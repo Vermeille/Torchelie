@@ -35,7 +35,7 @@ class NeuralStyleRecipe:
         return self.optimize_img(canvas)
 
     def optimize_img(self, canvas):
-        opt = torch.optim.LBFGS(canvas.parameters(), lr=0.2, history_size=20)
+        opt = torch.optim.LBFGS(canvas.parameters(), lr=0.01, history_size=50)
 
         prev_loss = None
         for i in range(100):
