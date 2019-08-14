@@ -53,3 +53,37 @@ class NeuralStyleRecipe:
             prev_loss = loss
 
         return t2pil(canvas().detach().cpu()[0])
+
+if __name__ == '__main__':
+    import argparse
+    import sys
+    from PIL import Image
+    parser = argparse.ArgumentParser(
+            description="Implementation of Neural Artistic Style by Gatys")
+    parser.add_argument('--content', required=True)
+    parser.add_argument('--style', required=True)
+    parser.add_argument('--out', required=True)
+    parser.add_argument('--size', type=int)
+    parser.add_argument('--scale', type=float, default=1)
+    parser.add_argument('--ratio', default=1, type=float)
+    parser.add_argument('--device', default='cuda')
+    parser.add_argument('--content_layers', default=None,
+            type=lambda x: x and x.split(','))
+    args = parser.parse_args(sys.argv[1:])
+
+    stylizer = NeuralStyleRecipe(device=args.device)
+
+    content = Image.open(args.content)
+    content.thumbnail((args.size, args.size))
+
+    style_img = Image.open(args.style)
+    if args.scale != 1.0:
+        new_style_size = (
+                int(style_img.width * args.scale),
+                int(style_img.height * args.scale)
+        )
+        style_img = style_img.resize(new_style_size, Image.BICUBIC)
+
+    result = stylizer(content, style_img, args.ratio, args.content_layers)
+
+    result.save(args.out)
