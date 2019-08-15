@@ -3,6 +3,7 @@ from torchvision.transforms import ToTensor, ToPILImage
 
 from torchelie.loss import NeuralStyleLoss
 from torchelie.data_learning import ParameterizedImg
+from torchelie.recipes.recipebase import RecipeBase
 
 
 def t2pil(t):
@@ -13,8 +14,9 @@ def pil2t(pil):
     return ToTensor()(pil)
 
 
-class NeuralStyleRecipe:
-    def __init__(self, device="cpu"):
+class NeuralStyleRecipe(RecipeBase):
+    def __init__(self, device="cpu", **kwargs):
+        super(NeuralStyleRecipe, self).__init__(log_every=1, **kwargs)
         self.loss = NeuralStyleLoss().to(device)
         self.device = device
 
@@ -37,8 +39,8 @@ class NeuralStyleRecipe:
     def optimize_img(self, canvas):
         opt = torch.optim.LBFGS(canvas.parameters(), lr=0.01, history_size=50)
 
+        self.iters = 0
         for i in range(100):
-
             def make_loss():
                 opt.zero_grad()
                 input_img = canvas()
@@ -47,6 +49,9 @@ class NeuralStyleRecipe:
                 return loss
 
             loss = opt.step(make_loss).item()
+
+            self.log({'loss': loss, 'img': canvas.render()})
+            self.iters += 1
 
         return t2pil(canvas.render())
 
@@ -63,11 +68,12 @@ if __name__ == '__main__':
     parser.add_argument('--scale', type=float, default=1)
     parser.add_argument('--ratio', default=1, type=float)
     parser.add_argument('--device', default='cuda')
-    parser.add_argument('--content_layers', default=None,
+    parser.add_argument('--content-layers', default=None,
             type=lambda x: x and x.split(','))
+    parser.add_argument('--visdom-env')
     args = parser.parse_args(sys.argv[1:])
 
-    stylizer = NeuralStyleRecipe(device=args.device)
+    stylizer = NeuralStyleRecipe(device=args.device, visdom_env=args.visdom_env)
 
     content = Image.open(args.content)
     content.thumbnail((args.size, args.size))

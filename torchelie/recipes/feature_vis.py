@@ -2,11 +2,13 @@ import torch
 import torchvision.transforms as TF
 
 import torchelie.nn as tnn
+from torchelie.recipes.recipebase import RecipeBase
 from torchelie.data_learning import ParameterizedImg
 
 
-class FeatureVisRecipe:
-    def __init__(self, model, layer, input_size, device='cpu'):
+class FeatureVisRecipe(RecipeBase):
+    def __init__(self, model, layer, input_size, device='cpu', **kwargs):
+        super(FeatureVisRecipe, self).__init__(**kwargs)
         self.device = device
         self.model = tnn.WithSavedActivations(model, names=[layer]).to(device)
         self.model.eval()
@@ -15,8 +17,10 @@ class FeatureVisRecipe:
         self.norm = tnn.ImageNetInputNorm().to(device)
 
     def __call__(self, channel, nb_iters=500):
-        canvas = ParameterizedImg(3, self.input_size + 10,
-                                  self.input_size + 10).to(self.device)
+        canvas = ParameterizedImg(3,
+                                  self.input_size + 10,
+                                  self.input_size + 10,
+                                  init_sd=1).to(self.device)
 
         opt = torch.optim.Adam(canvas.parameters(),
                                lr=1e-1,
@@ -24,6 +28,7 @@ class FeatureVisRecipe:
                                eps=1e-1)
 
         for iters in range(nb_iters):
+            self.iters = iters
             opt.zero_grad()
             cim = canvas()
             im = cim[:, :, iters % 10:, iters % 10:]
@@ -36,6 +41,8 @@ class FeatureVisRecipe:
             loss = -fmap[0, channel].mean()
             loss.backward()
             opt.step()
+
+            self.log({'loss': loss, 'img': canvas.render()})
 
         return canvas.render()
 
@@ -50,7 +57,7 @@ if __name__ == '__main__':
             'sz': 224
         },
         'resnet': {
-            'ctor': tvmodels.resnet101,
+            'ctor': tvmodels.resnet18,
             'sz': 224
         },
         'inception': {
@@ -63,11 +70,16 @@ if __name__ == '__main__':
     parser.add_argument('--layer', required=True)
     parser.add_argument('--neuron', required=True, type=int)
     parser.add_argument('--out', default='features.png')
+    parser.add_argument('--visdom-env')
     args = parser.parse_args()
 
     choice = models[args.model]
     model = choice['ctor'](pretrained=True)
     print(model)
-    fv = FeatureVisRecipe(model, args.layer, choice['sz'], 'cuda')
+    fv = FeatureVisRecipe(model,
+                          args.layer,
+                          choice['sz'],
+                          'cuda',
+                          visdom_env=args.visdom_env)
     out = fv(args.neuron, 4000)
     TF.ToPILImage()(out).save(args.out)

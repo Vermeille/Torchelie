@@ -69,13 +69,13 @@ class CorrelateColors(torch.nn.Module):
 
 
 class ParameterizedImg(nn.Module):
-    def __init__(self, *shape, space='spectral', colors='uncorr'):
+    def __init__(self, *shape, init_sd=0.06, space='spectral', colors='uncorr'):
         super(ParameterizedImg, self).__init__()
         assert space in ['spectral', 'pixel']
         if space == 'spectral':
-            self.img = SpectralImage(shape, decay_power=1)
+            self.img = SpectralImage(shape, sd=init_sd)
         else:
-            self.img = PixelImage(shape)
+            self.img = PixelImage(shape, sd=init_sd)
 
         assert colors in ['uncorr', 'corr']
         self.corr = lambda x: x
