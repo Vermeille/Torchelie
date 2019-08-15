@@ -22,6 +22,8 @@ Classes implementing full algorithms, from training to usage
   [this](https://distill.pub/2018/differentiable-parameterizations/) and
   [that](https://distill.pub/2017/feature-visualization/) ). Usable as
   commandline as well with `python -m torchelie.recipes.feature_vis`.
+* `DeepDreamRecipe` implements something close to Deep Dream.
+  `python -m torchelie.recipes.deepdream` works.
 
 ## `torchelie.utils`
 
