@@ -12,7 +12,7 @@ class RecipeBase:
             self.vis = Visdom(env=visdom_env)
             self.vis.close()
 
-    def log(self, xs):
+    def log(self, xs, store_history=[]):
         if self.vis is None or self.iters % self.log_every != 0:
             return
 
@@ -33,9 +33,11 @@ class RecipeBase:
                 elif x.dim() == 2:
                     self.vis.heatmap(x, win=name, opts=dict(title=name))
                 elif x.dim() == 3:
-                    self.vis.image(x, win=name, opts=dict(title=name))
+                    self.vis.image(x, win=name, opts=dict(title=name,
+                        store_history=name in store_history))
                 elif x.dim() == 4:
-                    self.vis.images(x, win=name, opts=dict(title=name))
+                    self.vis.images(x, win=name, opts=dict(title=name,
+                        store_history=name in store_history))
                 else:
                     assert False, "incorrect tensor dim"
             else:
