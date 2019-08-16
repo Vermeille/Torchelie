@@ -1,5 +1,5 @@
 from .reshape import Reshape, Lambda
-from .debug import Debug
+from .debug import Debug, Dummy
 from .noise import Noise
 from .vq import VQ
 from .imagenetinputnorm import ImageNetInputNorm
