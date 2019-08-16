@@ -1,19 +1,18 @@
 import torch
-import torch.nn.functional as F
+import torch.nn as nn
 
 import torchelie.loss.gan
+import torchelie.loss.functional as tlf
 
 from .perceptualloss import PerceptualLoss
 from .neuralstyleloss import NeuralStyleLoss
 
 
-def ortho(w):
-    cosine = torch.mm(w, w.t())
-    no_diag = (1 - torch.eye(w.shape[0], device=w.device))
-    return (cosine * no_diag).pow(2).sum(dim=1).mean()
+class OrthoLoss(nn.Module):
+    def forward(self, w):
+        return tlf.ortho(w)
 
 
-def total_variation(i):
-    v = F.l1_loss(i[:, :, 1:, :], i[:, :, :-1, :])
-    h = F.l1_loss(i[:, :, :, 1:], i[:, :, :, :-1])
-    return v + h
+class TotalVariationLoss(nn.Module):
+    def forward(self, x):
+        return tlf.total_variation(x)
