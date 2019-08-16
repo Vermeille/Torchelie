@@ -71,6 +71,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Feature visualization")
     parser.add_argument('--model', required=True, choices=models.keys())
     parser.add_argument('--layer', required=True)
+    parser.add_argument('--input-size')
     parser.add_argument('--neuron', required=True, type=int)
     parser.add_argument('--out', default='features.png')
     parser.add_argument('--visdom-env')
@@ -81,7 +82,7 @@ if __name__ == '__main__':
     print(model)
     fv = FeatureVisRecipe(model,
                           args.layer,
-                          choice['sz'],
+                          args.input_size or choice['sz'],
                           'cuda',
                           visdom_env=args.visdom_env)
     out = fv(args.neuron, 4000)
