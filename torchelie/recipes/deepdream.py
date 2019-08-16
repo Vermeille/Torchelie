@@ -22,32 +22,29 @@ class DeepDreamRecipe(RecipeBase):
     However, this is good enough for now.
     """
 
-    def __init__(self,
-                 content_layer,
-                 dream_layer,
-                 ratio,
-                 device='cpu',
-                 **kwargs):
+    def __init__(self, model, dream_layer, device='cpu', **kwargs):
         super(DeepDreamRecipe, self).__init__(**kwargs)
         self.device = device
-        self.loss = DeepDreamLoss(content_layer, dream_layer, ratio).to(device)
+        self.loss = DeepDreamLoss(model, dream_layer).to(device)
+        self.norm = tnn.ImageNetInputNorm().to(device)
 
     def __call__(self, ref, nb_iters=500):
-        canvas = ParameterizedImg(3, ref.height, ref.width).to(self.device)
+        ref_tensor = TF.ToTensor()(ref)
+        canvas = ParameterizedImg(3,
+                                  ref_tensor.shape[1],
+                                  ref_tensor.shape[2],
+                                  init_img=ref_tensor,
+                                  space='spectral',
+                                  colors='uncorr').to(self.device)
 
-        opt = torch.optim.Adam(canvas.parameters(),
-                               lr=1e-1,
-                               betas=(0.99, 0.999),
-                               eps=1e-1)
-
-        self.loss.set_content(TF.ToTensor()(ref).to(self.device))
         for iters in range(nb_iters):
             self.iters = iters
-            opt.zero_grad()
             cim = canvas()
-            loss = self.loss(cim)
+            loss = self.loss(self.norm(cim[:, :, iters % 10:, iters % 10:]))
             loss.backward()
-            opt.step()
+            for p in canvas.parameters():
+                p.data -= 3e-4 * p.grad.data / p.grad.abs().mean()
+                p.grad.data.zero_()
 
             self.log({'loss': loss, 'img': canvas.render()})
 
@@ -58,20 +55,41 @@ if __name__ == '__main__':
     import argparse
     import torchvision.models as tvmodels
 
+    models = {
+        'vgg': {
+            'ctor': tvmodels.vgg19,
+            'layer': 'features.28'
+        },
+        'inception': {
+            'ctor': tvmodels.inception_v3,
+            'layer': 'Mixed_6c'
+        },
+        'googlenet': {
+            'ctor': tvmodels.googlenet,
+            'layer': 'inception4c'
+        },
+        'resnet': {
+            'ctor': tvmodels.resnet18,
+            'layer': 'layer3'
+        }
+    }
     parser = argparse.ArgumentParser(description="DeepDream")
     parser.add_argument('--input', required=True)
     parser.add_argument('--out', required=True)
     parser.add_argument('--device', default='cuda')
-    parser.add_argument('--ratio', type=float)
-    parser.add_argument('--content-layer', default='conv4_2')
-    parser.add_argument('--dream-layer', default='conv3_2')
+    parser.add_argument('--model', default='googlenet', choices=models.keys())
+    parser.add_argument('--dream-layer')
     parser.add_argument('--visdom-env')
     args = parser.parse_args()
 
-    dd = DeepDreamRecipe(args.content_layer,
-                         args.dream_layer,
-                         args.ratio,
+    model = models[args.model]['ctor'](pretrained=True)
+
+    print(model)
+    dd = DeepDreamRecipe(model,
+                         args.dream_layer or models[args.model]['layer'],
                          device=args.device,
                          visdom_env=args.visdom_env)
-    out = dd(Image.open(args.input), 4000)
+    img = Image.open(args.input)
+    out = dd(img, 4000)
+
     TF.ToPILImage()(out).save(args.out)
