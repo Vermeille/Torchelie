@@ -1,6 +1,7 @@
 import torch
 import torchvision.transforms as TF
 
+import torchelie
 import torchelie.nn as tnn
 from torchelie.recipes.recipebase import RecipeBase
 from torchelie.data_learning import ParameterizedImg
@@ -19,28 +20,26 @@ class FeatureVisRecipe(RecipeBase):
     def __call__(self, channel, nb_iters=500):
         canvas = ParameterizedImg(3,
                                   self.input_size + 10,
-                                  self.input_size + 10,
-                                  init_sd=1).to(self.device)
-
-        opt = torch.optim.Adam(canvas.parameters(),
-                               lr=1e-1,
-                               betas=(0.99, 0.999),
-                               eps=1e-1)
+                                  self.input_size + 10).to(self.device)
 
         for iters in range(nb_iters):
             self.iters = iters
-            opt.zero_grad()
-            cim = canvas()
-            im = cim[:, :, iters % 10:, iters % 10:]
-            im = torch.nn.functional.interpolate(im,
-                                                 size=(self.input_size,
-                                                       self.input_size),
-                                                 mode='bilinear')
-            _, acts = self.model(self.norm(im), detach=False)
-            fmap = acts[self.layer]
-            loss = -fmap[0, channel].mean()
-            loss.backward()
-            opt.step()
+            def step():
+                cim = canvas()
+                im = cim[:, :, iters % 10:, iters % 10:]
+                im = torch.nn.functional.interpolate(im,
+                                                     size=(self.input_size,
+                                                           self.input_size),
+                                                     mode='bilinear')
+                _, acts = self.model(self.norm(im), detach=False)
+                fmap = acts[self.layer]
+                loss = -fmap[0, channel].sum()
+                loss.backward()
+                return loss
+            loss = step()
+            for p in canvas.parameters():
+                p.data -= 1e-3 * p.grad.data / p.grad.abs().mean()
+                p.grad.data.zero_()
 
             self.log({'loss': loss, 'img': canvas.render()})
 
@@ -59,6 +58,10 @@ if __name__ == '__main__':
         'resnet': {
             'ctor': tvmodels.resnet18,
             'sz': 224
+        },
+        'googlenet': {
+            'ctor': tvmodels.googlenet,
+            'sz': 299
         },
         'inception': {
             'ctor': tvmodels.inception_v3,
