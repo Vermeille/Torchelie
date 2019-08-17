@@ -183,6 +183,12 @@ Modules:
   components. It correlates back the color using some ImageNet precomputed
   correlation statistics to ease optimization.
 
+## `torchelie.industry`
+
+* `ONNXModel` wraps the boilerplate code to load an ONNX model and run it.
+* `TorchONNXModel` wraps an `ONNXModel` and transforms inputs and outputs from
+  numpy to torch.
+
 # Testing
 
 * `classification.py` tests bones for classifiers on MNIST or CIFAR10
