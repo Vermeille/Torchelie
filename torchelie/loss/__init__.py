@@ -6,6 +6,7 @@ import torchelie.loss.functional as tlf
 
 from .perceptualloss import PerceptualLoss
 from .neuralstyleloss import NeuralStyleLoss
+from .focal import FocalLoss
 
 
 class OrthoLoss(nn.Module):
