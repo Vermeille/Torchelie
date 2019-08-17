@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torchelie.loss.functional as tlf
+from .functional import focal_loss
 
 
 class FocalLoss(nn.Module):
@@ -9,4 +9,4 @@ class FocalLoss(nn.Module):
         self.gamma = gamma
 
     def forward(self, input, target):
-        return tlf.focal_loss(input, target, self.gamma)
+        return focal_loss(input, target, self.gamma)
