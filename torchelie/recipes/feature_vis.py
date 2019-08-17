@@ -3,13 +3,12 @@ import torchvision.transforms as TF
 
 import torchelie
 import torchelie.nn as tnn
+from torchelie.optim import DeepDreamOptim
 from torchelie.recipes.recipebase import RecipeBase
 from torchelie.data_learning import ParameterizedImg
 
 """
 FIXME: Make a base class for image learning
-FIXME: Make a customizable Optimizer from which we can derive Deep Dream's
-optimizer. Use it for Deep Dream as well.
 """
 
 class FeatureVisRecipe(RecipeBase):
@@ -27,24 +26,22 @@ class FeatureVisRecipe(RecipeBase):
                                   self.input_size + 10,
                                   self.input_size + 10).to(self.device)
 
+        opt = DeepDreamOptim(canvas.parameters(), lr=1e-3, weight_decay=0)
         for iters in range(nb_iters):
             self.iters = iters
-            def step():
-                cim = canvas()
-                im = cim[:, :, iters % 10:, iters % 10:]
-                im = torch.nn.functional.interpolate(im,
-                                                     size=(self.input_size,
-                                                           self.input_size),
-                                                     mode='bilinear')
-                _, acts = self.model(self.norm(im), detach=False)
-                fmap = acts[self.layer]
-                loss = -fmap[0, channel].sum()
-                loss.backward()
-                return loss
-            loss = step()
-            for p in canvas.parameters():
-                p.data -= 1e-3 * p.grad.data / p.grad.abs().mean()
-                p.grad.data.zero_()
+            opt.zero_grad()
+
+            cim = canvas()
+            im = cim[:, :, iters % 10:, iters % 10:]
+            im = torch.nn.functional.interpolate(im,
+                                                 size=(self.input_size,
+                                                       self.input_size),
+                                                 mode='bilinear')
+            _, acts = self.model(self.norm(im), detach=False)
+            fmap = acts[self.layer]
+            loss = -fmap[0, channel].sum()
+            loss.backward()
+            opt.step()
 
             self.log({'loss': loss, 'img': canvas.render()})
 

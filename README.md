@@ -179,6 +179,10 @@ Classes:
 * `RunningAvg`: accumulates total number of items and sum to provide an
   accurate average estimation
 
+## `torchelie.opt`
+
+* `DeepDreamOptim` is the optimizer used by DeepDream
+
 ## `torchelie.data_learning`
 
 Data parameterization for optimization, like neural style or feature viz.
