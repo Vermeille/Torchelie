@@ -10,18 +10,6 @@ from PIL import Image
 
 
 class DeepDreamRecipe(RecipeBase):
-    """
-    FIXME: this deep dream implementation differs significantly from the
-    official one:
-        - it doesn't use tiling (but does octaves)
-        - it uses standard backprop with Adam instead of DeepDream's SGD +
-          gradient scaling
-        - it does not use the pictue as an initial state but as a content loss,
-          similar to artistic style.
-        - it uses vgg instead of inception
-    However, this is good enough for now.
-    """
-
     def __init__(self, model, dream_layer, device='cpu', **kwargs):
         super(DeepDreamRecipe, self).__init__(**kwargs)
         self.device = device
