@@ -6,6 +6,11 @@ import torchelie.nn as tnn
 from torchelie.recipes.recipebase import RecipeBase
 from torchelie.data_learning import ParameterizedImg
 
+"""
+FIXME: Make a base class for image learning
+FIXME: Make a customizable Optimizer from which we can derive Deep Dream's
+optimizer. Use it for Deep Dream as well.
+"""
 
 class FeatureVisRecipe(RecipeBase):
     def __init__(self, model, layer, input_size, device='cpu', **kwargs):
