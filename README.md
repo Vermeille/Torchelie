@@ -159,6 +159,14 @@ Classes:
   `sched.step()` on each batch. The lr will be interpolated linearly between
   keypoints.
 
+## `torchelie.datasets`
+
+* `HorizontalConcatDataset` concatenates multiple datasets. However, while
+  torchvision's ConcatDataset just concatenates samples, torchelie's also
+  relabels classes. While a vertical concat like torchvision's is useful to add
+  more examples per class, an horizontal concat merges datasets to more
+  classes.
+
 ## `torchelie.datasets.debug`
 
 * `ColoredColumns` / `ColoredRows` are datasets of precedurally generated
