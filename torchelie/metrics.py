@@ -3,8 +3,8 @@ class RunningAvg:
         self.count = 0
         self.val = 0
 
-    def log(self, x):
-        self.count += 1
+    def log(self, x, total=1):
+        self.count += total
         self.val += x
 
     def get(self):

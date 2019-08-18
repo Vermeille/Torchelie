@@ -12,9 +12,10 @@ class RecipeBase:
             self.vis = Visdom(env=visdom_env)
             self.vis.close()
 
-    def log(self, xs, store_history=[]):
-        if self.vis is None or self.iters % self.log_every != 0:
-            return
+    def log(self, xs, store_history=[], force=False):
+        if not force:
+            if self.vis is None or self.iters % self.log_every != 0:
+                return
 
         for name, x in xs.items():
             if isinstance(x, (float, int)):
