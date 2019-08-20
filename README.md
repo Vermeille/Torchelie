@@ -2,14 +2,15 @@
 
 <img src="https://github.com/Vermeille/Torchelie/blob/master/logo.png" height="200"/>
 
-Torchélie is my personal set of helpers, layers, visualization tools and
-whatnots that I build around PyTorch.
+Torchelie is currently very API unstable. Test at your own risks, and you
+should expect to update often and have many breaking changes, especially in
+high level features.
 
-Feel free to use this code or just even copy paste the bits you need. If you
-want to submit a PR, you're welcome, but talk to me first as I may not accept
-it if I don't think the value I get is not worth the maintenance cost. This is
-my own set of helpers that I share, not a PyTorch library that tries to fit
-everyone's use.
+Feedback is absolutely welcome.
+
+# Installation
+
+`pip install git+https://github.com/vermeille/Torchelie`
 
 ## `torchelie.recipes`
 
