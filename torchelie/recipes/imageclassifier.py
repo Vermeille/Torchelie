@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 import torchvision.models as tvmodels
 
-from torchelie.metrics import WindowAvg, RunningAvg
+import torchelie.metrics.callbacks as cb
 from torchelie.recipes.recipebase import RecipeBase
 
 
@@ -11,6 +11,10 @@ class ImageClassifier(RecipeBase):
                  train_loader,
                  test_loader,
                  test_every=1000,
+                 train_callbacks=[cb.WindowedLossAvg(),
+                                  cb.AccAvg()],
+                 test_callbacks=[cb.EpochLossAvg(False),
+                                 cb.AccAvg(False)],
                  device='cpu',
                  **kwargs):
         super(ImageClassifier, self).__init__(**kwargs)
@@ -21,6 +25,10 @@ class ImageClassifier(RecipeBase):
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.test_every = test_every
+        self.state = {'metrics': {}}
+        self.test_state = {'metrics': {}}
+        self.train_callbacks = train_callbacks
+        self.test_callbacks = test_callbacks
 
     def forward(self, x, y):
         self.opt.zero_grad()
@@ -30,57 +38,66 @@ class ImageClassifier(RecipeBase):
         self.opt.step()
         return loss, pred
 
+    def _run_train_cbs(self, trigger):
+        for cb in self.train_callbacks:
+            if hasattr(cb, trigger):
+                getattr(cb, trigger)(self.state)
+
+    def _run_test_cbs(self, trigger):
+        for cb in self.test_callbacks:
+            if hasattr(cb, trigger):
+                getattr(cb, trigger)(self.test_state)
+
     def evaluate(self):
-        loss_avg = RunningAvg()
-        acc_avg = RunningAvg()
+        self._run_test_cbs('on_epoch_start')
         for x_cpu, y_cpu in self.test_loader:
+            self.test_state['batch'] = (x_cpu, y_cpu)
+            self._run_test_cbs('on_batch_start')
+
             x = x_cpu.to(self.device, non_blocking=True)
             y = y_cpu.to(self.device, non_blocking=True)
 
             loss, pred = self.forward(x, y)
-            loss = loss.cpu()
-            pred = pred.cpu()
-            correct = pred.detach().argmax(1).eq(y_cpu).float().sum()
+            loss = loss.cpu().detach()
+            pred = pred.cpu().detach()
+            self.test_state['loss'] = loss
+            self.test_state['pred'] = pred
 
-            loss_avg.log(loss.item())
-            acc_avg.log(correct, pred.shape[0])
+            self._run_test_cbs('on_batch_end')
 
-        self.log(
-            {
-                'test_x': x_cpu,
-                'test_loss': loss_avg.get(),
-                'test_accuracy': acc_avg.get()
-            },
-            force=True)
+        self._run_test_cbs('on_epoch_end')
+        self.log({
+            'test_x': x_cpu,
+        }, force=True)
+        self.log({'test_' + k: v for k, v in self.test_state['metrics'].items()}, force=True)
 
     def __call__(self, epochs=5):
         self.iters = 0
-        loss_avg = WindowAvg(k=self.log_every * 2)
         for epoch in range(epochs):
-            acc_avg = RunningAvg()
+            self._run_train_cbs('on_epoch_start')
             for x_cpu, y_cpu in self.train_loader:
+                self.state['batch'] = (x_cpu, y_cpu)
+                self._run_test_cbs('on_batch_start')
                 x = x_cpu.to(self.device, non_blocking=True)
                 y = y_cpu.to(self.device, non_blocking=True)
 
                 loss, pred = self.forward(x, y)
-                loss = loss.cpu()
-                pred = pred.cpu()
-                correct = pred.detach().argmax(1).eq(y_cpu).float().sum()
+                loss = loss.cpu().detach()
+                pred = pred.cpu().detach()
+                self.state['loss'] = loss
+                self.state['pred'] = pred
 
-                loss_avg.log(loss.item())
-                acc_avg.log(correct, pred.shape[0])
-
-                self.log({
-                    'train_x': x_cpu,
-                    'train_loss': loss_avg.get(),
-                    'train_accuracy': acc_avg.get()
-                })
+                self.log({ 'train_x': x_cpu })
+                self.log(self.state['metrics'])
+                self._run_train_cbs('on_batch_end')
 
                 if self.iters % self.test_every == 0:
                     self.model.eval()
                     self.evaluate()
                     self.model.train()
                 self.iters += 1
+            self._run_train_cbs('on_epoch_end')
+            self.log(self.state['metrics'], force=True)
 
         self.model.eval()
         return self.model
@@ -98,8 +115,10 @@ if __name__ == '__main__':
     trainset = FashionMNIST('../tests/', transform=tfm)
     testset = FashionMNIST('../tests/', train=False, transform=tfm)
 
-    trainloader = DataLoader(trainset, 32, num_workers=4, pin_memory=True)
-    testloader = DataLoader(testset, 32, num_workers=4, pin_memory=True)
+    trainloader = DataLoader(trainset, 32, num_workers=4, pin_memory=True,
+            shuffle=True)
+    testloader = DataLoader(testset, 32, num_workers=4, pin_memory=True,
+            shuffle=True)
     clf_recipe = ImageClassifier(trainloader,
                                  testloader,
                                  device='cuda',
