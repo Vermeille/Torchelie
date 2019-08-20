@@ -11,11 +11,12 @@ from PIL import Image
 
 
 class DeepDreamRecipe(RecipeBase):
-    def __init__(self, model, dream_layer, device='cpu', **kwargs):
+    def __init__(self, model, dream_layer, lr=3e-4, device='cpu', **kwargs):
         super(DeepDreamRecipe, self).__init__(**kwargs)
         self.device = device
         self.loss = DeepDreamLoss(model, dream_layer).to(device)
         self.norm = tnn.ImageNetInputNorm().to(device)
+        self.lr = lr
 
     def __call__(self, ref, nb_iters=500):
         ref_tensor = TF.ToTensor()(ref)
@@ -26,7 +27,7 @@ class DeepDreamRecipe(RecipeBase):
                                   space='spectral',
                                   colors='uncorr').to(self.device)
 
-        opt = DeepDreamOptim(canvas.parameters(), lr=1e-3, weight_decay=0)
+        opt = DeepDreamOptim(canvas.parameters(), lr=self.lr, weight_decay=0)
         for iters in range(nb_iters):
             self.iters = iters
 
@@ -68,6 +69,7 @@ if __name__ == '__main__':
     parser.add_argument('--out', required=True)
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--model', default='googlenet', choices=models.keys())
+    parser.add_argument('--lr', default=3e-4, type=float)
     parser.add_argument('--dream-layer')
     parser.add_argument('--visdom-env')
     args = parser.parse_args()
@@ -77,6 +79,7 @@ if __name__ == '__main__':
     print(model)
     dd = DeepDreamRecipe(model,
                          args.dream_layer or models[args.model]['layer'],
+                         lr=args.lr,
                          device=args.device,
                          visdom_env=args.visdom_env)
     img = Image.open(args.input)
