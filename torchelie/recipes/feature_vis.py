@@ -3,17 +3,28 @@ import torchvision.transforms as TF
 
 import torchelie
 import torchelie.nn as tnn
+import torchelie.metrics.callbacks as cb
 from torchelie.optim import DeepDreamOptim
-from torchelie.recipes.recipebase import RecipeBase
+from torchelie.recipes.recipebase import ImageOptimizationBaseRecipe
 from torchelie.data_learning import ParameterizedImg
-
 """
 FIXME: Make a base class for image learning
 """
 
-class FeatureVisRecipe(RecipeBase):
-    def __init__(self, model, layer, input_size, device='cpu', **kwargs):
-        super(FeatureVisRecipe, self).__init__(**kwargs)
+
+class FeatureVisRecipe(ImageOptimizationBaseRecipe):
+    def __init__(self,
+                 model,
+                 layer,
+                 input_size,
+                 device='cpu',
+                 visdom_env='feature_vis'):
+        super(FeatureVisRecipe, self).__init__(callbacks=[
+            cb.WindowedLossAvg(),
+            cb.LogInput(),
+            cb.VisdomLogger(visdom_env, log_every=10),
+            cb.StdoutLogger(log_every=10),
+        ])
         self.device = device
         self.model = tnn.WithSavedActivations(model, names=[layer]).to(device)
         self.model.eval()
@@ -21,31 +32,32 @@ class FeatureVisRecipe(RecipeBase):
         self.input_size = input_size
         self.norm = tnn.ImageNetInputNorm().to(device)
 
-    def __call__(self, channel, nb_iters=500):
-        canvas = ParameterizedImg(3,
-                                  self.input_size + 10,
-                                  self.input_size + 10).to(self.device)
+    def init(self, channel):
+        self.channel = channel
+        self.canvas = ParameterizedImg(3, self.input_size + 10,
+                                       self.input_size + 10).to(self.device)
 
-        opt = DeepDreamOptim(canvas.parameters(), lr=1e-3, weight_decay=0)
-        for iters in range(nb_iters):
-            self.iters = iters
-            opt.zero_grad()
+        self.opt = DeepDreamOptim(self.canvas.parameters(), lr=1e-3)
 
-            cim = canvas()
-            im = cim[:, :, iters % 10:, iters % 10:]
-            im = torch.nn.functional.interpolate(im,
-                                                 size=(self.input_size,
-                                                       self.input_size),
-                                                 mode='bilinear')
-            _, acts = self.model(self.norm(im), detach=False)
-            fmap = acts[self.layer]
-            loss = -fmap[0, channel].sum()
-            loss.backward()
-            opt.step()
+    def forward(self):
+        self.opt.zero_grad()
 
-            self.log({'loss': loss, 'img': canvas.render()})
+        cim = self.canvas()
+        im = cim[:, :, self.iters % 10:, self.iters % 10:]
+        im = torch.nn.functional.interpolate(im,
+                                             size=(self.input_size,
+                                                   self.input_size),
+                                             mode='bilinear')
+        _, acts = self.model(self.norm(im), detach=False)
+        fmap = acts[self.layer]
+        loss = -fmap[0][self.channel].sum()
+        loss.backward()
+        self.opt.step()
 
-        return canvas.render()
+        return {'loss': loss, 'x': self.canvas.render()}
+
+    def result(self):
+        return self.canvas.render()
 
 
 if __name__ == '__main__':
@@ -87,5 +99,5 @@ if __name__ == '__main__':
                           args.input_size or choice['sz'],
                           'cuda',
                           visdom_env=args.visdom_env)
-    out = fv(args.neuron, 4000)
+    out = fv(4000, args.neuron)
     TF.ToPILImage()(out).save(args.out)

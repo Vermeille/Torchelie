@@ -4,7 +4,7 @@ from torch.optim import Optimizer
 
 
 class DeepDreamOptim(Optimizer):
-    def __init__(self, params, lr=1e-3, eps=1e-8, weight_decay=1e-2):
+    def __init__(self, params, lr=1e-3, eps=1e-8, weight_decay=0):
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
         if not 0.0 <= eps:

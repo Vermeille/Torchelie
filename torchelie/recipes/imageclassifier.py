@@ -3,21 +3,27 @@ import torch.optim as optim
 import torchvision.models as tvmodels
 
 import torchelie.metrics.callbacks as cb
-from torchelie.recipes.recipebase import RecipeBase
 
 
-class ImageClassifier(RecipeBase):
+class ImageClassifier:
     def __init__(self,
                  train_loader,
                  test_loader,
                  test_every=1000,
-                 train_callbacks=[cb.WindowedLossAvg(),
-                                  cb.AccAvg()],
-                 test_callbacks=[cb.EpochLossAvg(False),
-                                 cb.AccAvg(False)],
+                 train_callbacks=[
+                     cb.WindowedLossAvg(),
+                     cb.AccAvg(),
+                     cb.LogInput(),
+                     cb.VisdomLogger(visdom_env='main', log_every=100)
+                 ],
+                 test_callbacks=[
+                     cb.EpochLossAvg(False),
+                     cb.AccAvg(False),
+                     cb.VisdomLogger(visdom_env='main', log_every=-1,
+                     prefix='test_')
+                 ],
                  device='cpu',
                  **kwargs):
-        super(ImageClassifier, self).__init__(**kwargs)
         self.device = device
         num_classes = len(train_loader.dataset.classes)
         self.model = tvmodels.vgg11_bn(num_classes=num_classes).to(device)
@@ -66,10 +72,6 @@ class ImageClassifier(RecipeBase):
             self._run_test_cbs('on_batch_end')
 
         self._run_test_cbs('on_epoch_end')
-        self.log({
-            'test_x': x_cpu,
-        }, force=True)
-        self.log({'test_' + k: v for k, v in self.test_state['metrics'].items()}, force=True)
 
     def __call__(self, epochs=5):
         self.iters = 0
@@ -87,8 +89,6 @@ class ImageClassifier(RecipeBase):
                 self.state['loss'] = loss
                 self.state['pred'] = pred
 
-                self.log({ 'train_x': x_cpu })
-                self.log(self.state['metrics'])
                 self._run_train_cbs('on_batch_end')
 
                 if self.iters % self.test_every == 0:
@@ -97,7 +97,6 @@ class ImageClassifier(RecipeBase):
                     self.model.train()
                 self.iters += 1
             self._run_train_cbs('on_epoch_end')
-            self.log(self.state['metrics'], force=True)
 
         self.model.eval()
         return self.model
@@ -115,10 +114,16 @@ if __name__ == '__main__':
     trainset = FashionMNIST('../tests/', transform=tfm)
     testset = FashionMNIST('../tests/', train=False, transform=tfm)
 
-    trainloader = DataLoader(trainset, 32, num_workers=4, pin_memory=True,
-            shuffle=True)
-    testloader = DataLoader(testset, 32, num_workers=4, pin_memory=True,
-            shuffle=True)
+    trainloader = DataLoader(trainset,
+                             32,
+                             num_workers=4,
+                             pin_memory=True,
+                             shuffle=True)
+    testloader = DataLoader(testset,
+                            32,
+                            num_workers=4,
+                            pin_memory=True,
+                            shuffle=True)
     clf_recipe = ImageClassifier(trainloader,
                                  testloader,
                                  device='cuda',

@@ -2,44 +2,55 @@ import torch
 import torchvision.transforms as TF
 
 import torchelie.nn as tnn
-from torchelie.recipes.recipebase import RecipeBase
+import torchelie.metrics.callbacks as cb
 from torchelie.data_learning import ParameterizedImg
 from torchelie.loss.deepdreamloss import DeepDreamLoss
 from torchelie.optim import DeepDreamOptim
+from torchelie.recipes.recipebase import ImageOptimizationBaseRecipe
 
 from PIL import Image
 
 
-class DeepDreamRecipe(RecipeBase):
-    def __init__(self, model, dream_layer, lr=3e-4, device='cpu', **kwargs):
-        super(DeepDreamRecipe, self).__init__(**kwargs)
+class DeepDreamRecipe(ImageOptimizationBaseRecipe):
+    def __init__(self,
+                 model,
+                 dream_layer,
+                 lr=3e-4,
+                 device='cpu',
+                 visdom_env='deepdream'):
+        super(DeepDreamRecipe, self).__init__(callbacks=[
+            cb.WindowedLossAvg(),
+            cb.LogInput(),
+            cb.VisdomLogger(visdom_env, log_every=10),
+            cb.StdoutLogger(log_every=10),
+        ])
         self.device = device
         self.loss = DeepDreamLoss(model, dream_layer).to(device)
         self.norm = tnn.ImageNetInputNorm().to(device)
         self.lr = lr
 
-    def __call__(self, ref, nb_iters=500):
+    def init(self, ref):
         ref_tensor = TF.ToTensor()(ref)
-        canvas = ParameterizedImg(3,
-                                  ref_tensor.shape[1],
-                                  ref_tensor.shape[2],
-                                  init_img=ref_tensor,
-                                  space='spectral',
-                                  colors='uncorr').to(self.device)
+        self.canvas = ParameterizedImg(3,
+                                       ref_tensor.shape[1],
+                                       ref_tensor.shape[2],
+                                       init_img=ref_tensor,
+                                       space='spectral',
+                                       colors='uncorr').to(self.device)
 
-        opt = DeepDreamOptim(canvas.parameters(), lr=self.lr, weight_decay=0)
-        for iters in range(nb_iters):
-            self.iters = iters
+        self.opt = DeepDreamOptim(self.canvas.parameters(), lr=self.lr)
 
-            opt.zero_grad()
-            cim = canvas()
-            loss = self.loss(self.norm(cim[:, :, iters % 10:, iters % 10:]))
-            loss.backward()
-            opt.step()
+    def forward(self):
+        self.opt.zero_grad()
+        cim = self.canvas()
+        loss = self.loss(
+            self.norm(cim[:, :, self.iters % 10:, self.iters % 10:]))
+        loss.backward()
+        self.opt.step()
+        return {'loss': loss, 'x': self.canvas.render()}
 
-            self.log({'loss': loss, 'img': canvas.render()})
-
-        return canvas.render()
+    def result(self):
+        return self.canvas.render()
 
 
 if __name__ == '__main__':
@@ -83,6 +94,6 @@ if __name__ == '__main__':
                          device=args.device,
                          visdom_env=args.visdom_env)
     img = Image.open(args.input)
-    out = dd(img, 4000)
+    out = dd(4000, img)
 
     TF.ToPILImage()(out).save(args.out)

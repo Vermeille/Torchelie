@@ -3,7 +3,8 @@ from torchvision.transforms import ToTensor, ToPILImage
 
 from torchelie.loss import NeuralStyleLoss
 from torchelie.data_learning import ParameterizedImg
-from torchelie.recipes.recipebase import RecipeBase
+from torchelie.recipes.recipebase import ImageOptimizationBaseRecipe
+import torchelie.metrics.callbacks as cb
 
 
 def t2pil(t):
@@ -14,50 +15,44 @@ def pil2t(pil):
     return ToTensor()(pil)
 
 
-class NeuralStyleRecipe(RecipeBase):
-    def __init__(self, device="cpu", **kwargs):
-        super(NeuralStyleRecipe, self).__init__(log_every=1, **kwargs)
+class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
+    def __init__(self, device="cpu", visdom_env='style'):
+        super(NeuralStyleRecipe, self).__init__(callbacks=[
+            cb.WindowedLossAvg(),
+            cb.LogInput(),
+            cb.VisdomLogger(visdom_env, log_every=1),
+            cb.StdoutLogger(log_every=1),
+        ])
+
         self.loss = NeuralStyleLoss().to(device)
         self.device = device
 
-    def build_ref_acts(self, content_img, style_img, style_ratio,
-                       content_layers):
-        self.loss.set_style(style_img.to(self.device), style_ratio)
-        self.loss.set_content(content_img.to(self.device), content_layers)
+    def init(self, content_img, style_img, style_ratio, content_layers=None):
+        self.loss.set_style(pil2t(style_img).to(self.device), style_ratio)
+        self.loss.set_content(
+            pil2t(content_img).to(self.device), content_layers)
 
-    def __call__(self,
-                 content_img,
-                 style_img,
-                 style_ratio,
-                 content_layers=None):
-        self.build_ref_acts(pil2t(content_img), pil2t(style_img), style_ratio,
-                            content_layers)
-        canvas = ParameterizedImg(3, content_img.height,
-                                  content_img.width).to(self.device)
-        return self.optimize_img(canvas)
+        self.canvas = ParameterizedImg(3, content_img.height,
+                                       content_img.width).to(self.device)
 
-    def optimize_img(self, canvas):
-        opt = torch.optim.LBFGS(canvas.parameters(), lr=0.01, history_size=50)
+        self.opt = torch.optim.LBFGS(self.canvas.parameters(),
+                                     lr=0.01,
+                                     history_size=50)
 
-        self.iters = 0
-        for i in range(100):
-            def make_loss():
-                opt.zero_grad()
-                input_img = canvas()
-                loss = self.loss(input_img)
-                loss.backward()
-                return loss
+    def forward(self):
+        def make_loss():
+            self.opt.zero_grad()
+            input_img = self.canvas()
+            loss = self.loss(input_img)
+            loss.backward()
+            return loss
 
-            loss = opt.step(make_loss).item()
+        loss = self.opt.step(make_loss).item()
 
-            self.log({
-                'loss': loss,
-                'img': canvas.render()
-            },
-                     store_history=['img'])
-            self.iters += 1
+        return {'loss': loss, 'x': self.canvas.render()}
 
-        return t2pil(canvas.render())
+    def result(self):
+        return t2pil(self.canvas.render())
 
 
 if __name__ == '__main__':
@@ -91,6 +86,6 @@ if __name__ == '__main__':
                           int(style_img.height * args.scale))
         style_img = style_img.resize(new_style_size, Image.BICUBIC)
 
-    result = stylizer(content, style_img, args.ratio, args.content_layers)
+    result = stylizer(100, content, style_img, args.ratio, args.content_layers)
 
     result.save(args.out)
