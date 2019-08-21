@@ -18,7 +18,9 @@ def pil2t(pil):
 class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
     def __init__(self, device="cpu", visdom_env='style'):
         super(NeuralStyleRecipe, self).__init__(callbacks=[
-            cb.WindowedLossAvg(),
+            cb.WindowedMetricAvg('loss'),
+            cb.WindowedMetricAvg('content_loss'),
+            cb.WindowedMetricAvg('style_loss'),
             cb.LogInput(),
             cb.VisdomLogger(visdom_env, log_every=1),
             cb.StdoutLogger(log_every=1),
@@ -40,16 +42,24 @@ class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
                                      history_size=50)
 
     def forward(self):
+        losses = None
+
         def make_loss():
+            nonlocal losses
             self.opt.zero_grad()
             input_img = self.canvas()
-            loss = self.loss(input_img)
+            loss, losses = self.loss(input_img)
             loss.backward()
             return loss
 
         loss = self.opt.step(make_loss).item()
 
-        return {'loss': loss, 'x': self.canvas.render()}
+        return {
+            'loss': loss,
+            'x': self.canvas.render(),
+            'content_loss': losses['content_loss'],
+            'style_loss': losses['style_loss']
+        }
 
     def result(self):
         return t2pil(self.canvas.render())

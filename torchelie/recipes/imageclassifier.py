@@ -11,16 +11,18 @@ class ImageClassifier:
                  test_loader,
                  test_every=1000,
                  train_callbacks=[
-                     cb.WindowedLossAvg(),
+                     cb.WindowedMetricAvg('loss'),
                      cb.AccAvg(),
                      cb.LogInput(),
-                     cb.VisdomLogger(visdom_env='main', log_every=100)
+                     cb.VisdomLogger(visdom_env='main', log_every=100),
+                     cb.StdoutLogger(log_every=100),
                  ],
                  test_callbacks=[
-                     cb.EpochLossAvg(False),
+                     cb.EpochMetricAvg('loss', False),
                      cb.AccAvg(False),
                      cb.VisdomLogger(visdom_env='main', log_every=-1,
-                     prefix='test_')
+                     prefix='test_'),
+                     cb.StdoutLogger(log_every=100, prefix='Test'),
                  ],
                  device='cpu',
                  **kwargs):
@@ -79,6 +81,7 @@ class ImageClassifier:
             self._run_train_cbs('on_epoch_start')
             for x_cpu, y_cpu in self.train_loader:
                 self.state['batch'] = (x_cpu, y_cpu)
+                self.state['x'] = x_cpu
                 self._run_test_cbs('on_batch_start')
                 x = x_cpu.to(self.device, non_blocking=True)
                 y = y_cpu.to(self.device, non_blocking=True)

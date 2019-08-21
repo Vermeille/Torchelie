@@ -20,7 +20,7 @@ class FeatureVisRecipe(ImageOptimizationBaseRecipe):
                  device='cpu',
                  visdom_env='feature_vis'):
         super(FeatureVisRecipe, self).__init__(callbacks=[
-            cb.WindowedLossAvg(),
+            cb.WindowedMetricAvg('loss'),
             cb.LogInput(),
             cb.VisdomLogger(visdom_env, log_every=10),
             cb.StdoutLogger(log_every=10),

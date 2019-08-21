@@ -78,4 +78,7 @@ class NeuralStyleLoss(nn.Module):
             content_loss += F.mse_loss(content_acts[j],
                                        self.photo_activations[j])
 
-        return content_loss + self.ratio * style_loss
+        return content_loss + self.ratio * style_loss, {
+            'content_loss': content_loss.item(),
+            'style_loss': style_loss.item()
+        }

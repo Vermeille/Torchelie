@@ -4,40 +4,42 @@ from visdom import Visdom
 from .avg import *
 
 
-class WindowedLossAvg:
-    def __init__(self, post_each_batch=True):
+class WindowedMetricAvg:
+    def __init__(self, name, post_each_batch=True):
+        self.name = name
         self.avg = WindowAvg(k=100)
         self.post_each_batch = post_each_batch
 
     def on_epoch_start(self, state):
-        if 'loss' in state['metrics']:
-            del state['metrics']['loss']
+        if self.name in state['metrics']:
+            del state['metrics'][self.name]
 
     def on_batch_end(self, state):
-        self.avg.log(state['loss'])
+        self.avg.log(state[self.name])
         if self.post_each_batch:
-            state['metrics']['loss'] = self.avg.get()
+            state['metrics'][self.name] = self.avg.get()
 
     def on_epoch_end(self, state):
-        state['metrics']['loss'] = self.avg.get()
+        state['metrics'][self.name] = self.avg.get()
 
 
-class EpochLossAvg:
-    def __init__(self, post_each_batch=True):
+class EpochMetricAvg:
+    def __init__(self, name, post_each_batch=True):
+        self.name = name
         self.post_each_batch = post_each_batch
 
     def on_epoch_start(self, state):
         self.avg = RunningAvg()
-        if 'loss' in state['metrics']:
-            del state['metrics']['loss']
+        if self.name in state['metrics']:
+            del state['metrics'][self.name]
 
     def on_batch_end(self, state):
-        self.avg.log(state['loss'])
+        self.avg.log(state[self.name])
         if self.post_each_batch:
-            state['metrics']['loss'] = self.avg.get()
+            state['metrics'][self.name] = self.avg.get()
 
     def on_epoch_end(self, state):
-        state['metrics']['loss'] = self.avg.get()
+        state['metrics'][self.name] = self.avg.get()
 
 
 class AccAvg:
