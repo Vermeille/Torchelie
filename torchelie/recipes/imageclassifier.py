@@ -23,6 +23,7 @@ class ImageClassifier:
                      cb.VisdomLogger(visdom_env='main', log_every=-1,
                      prefix='test_'),
                      cb.StdoutLogger(log_every=100, prefix='Test'),
+                     cb.Checkpoint('models/clf', ['model', 'opt', 'metrics'])
                  ],
                  device='cpu',
                  **kwargs):
@@ -35,6 +36,10 @@ class ImageClassifier:
         self.test_every = test_every
         self.state = {'metrics': {}}
         self.test_state = {'metrics': {}}
+        self.state['model'] = self.model
+        self.state['opt'] = self.opt
+        self.test_state['model'] = self.model
+        self.test_state['opt'] = self.opt
         self.train_callbacks = train_callbacks
         self.test_callbacks = test_callbacks
 

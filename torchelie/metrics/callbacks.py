@@ -1,6 +1,8 @@
 import torch
 from visdom import Visdom
 
+from torchelie.utils import dict_by_key
+
 from .avg import *
 
 
@@ -163,3 +165,43 @@ class StdoutLogger:
 class LogInput:
     def on_batch_end(self, state):
         state['metrics']['x'] = state['x']
+
+
+class Checkpoint:
+    """WIP"""
+    def __init__(self, filename_base, keys):
+        self.filename_base = filename_base
+        self.keys = keys
+        self.nb_saved = 0
+
+    def save(self, state):
+        saved = {}
+        for k in self.keys:
+            m = state[k]
+            if hasattr(m, 'state_dict'):
+                saved[k] = m.state_dict()
+            else:
+                saved[k] = m
+        torch.save(saved, self.filename())
+        self.nb_saved += 1
+
+    def filename(self):
+        return self.filename_base + '_' + str(self.nb_saved) + '.pth'
+
+    def load(self, state):
+        while True:
+            try:
+                loaded = torch.load(self.filename())
+            except:
+                pass
+            self.nb_saved += 1
+
+        for k in self.keys:
+            m = state[k]
+            if hasattr(m, 'load_state_dict'):
+                m.load_state_dict(loaded[k])
+            else:
+                state[k] = loaded[k]
+
+    def on_epoch_end(self, state):
+        self.save(state)

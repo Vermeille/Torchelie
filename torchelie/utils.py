@@ -42,6 +42,7 @@ def xavier(m):
         nn.init.constant_(m.bias, 0)
     return m
 
+
 def n002(m):
     nn.init.normal_(m.weight, 0, 0.02)
     if m.bias is not None:
@@ -82,3 +83,14 @@ def bgram(m):
     m2 = m.permute(0, 2, 1)
     g = torch.bmm(m1, m2) / (m.shape[1] * m.shape[2])
     return g
+
+
+def dict_by_key(d, k):
+    k = k.split('.')
+    while len(k) != 1:
+        if isinstance(d, dict):
+            d = d[k[0]]
+        else:
+            d = d[int(k[0])]
+        k = k[1:]
+    return d[k]
