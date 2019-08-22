@@ -168,7 +168,7 @@ class LogInput:
 
 
 class Checkpoint:
-    """WIP"""
+    """FIXME: WIP"""
     def __init__(self, filename_base, keys):
         self.filename_base = filename_base
         self.keys = keys

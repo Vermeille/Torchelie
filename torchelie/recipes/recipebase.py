@@ -19,6 +19,7 @@ class ImageOptimizationBaseRecipe:
             self._run_cbs('on_batch_start')
             out = self.forward()
             self.state.update(out)
+            self.state['metrics']['img'] = self.result()
             self._run_cbs('on_batch_end')
             self.iters += 1
         self._run_cbs('on_epoch_end')

@@ -20,8 +20,9 @@ class ImageClassifier:
                  test_callbacks=[
                      cb.EpochMetricAvg('loss', False),
                      cb.AccAvg(False),
-                     cb.VisdomLogger(visdom_env='main', log_every=-1,
-                     prefix='test_'),
+                     cb.VisdomLogger(visdom_env='main',
+                                     log_every=-1,
+                                     prefix='test_'),
                      cb.StdoutLogger(log_every=100, prefix='Test'),
                      cb.Checkpoint('models/clf', ['model', 'opt', 'metrics'])
                  ],

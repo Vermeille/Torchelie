@@ -20,7 +20,6 @@ class DeepDreamRecipe(ImageOptimizationBaseRecipe):
                  visdom_env='deepdream'):
         super(DeepDreamRecipe, self).__init__(callbacks=[
             cb.WindowedMetricAvg('loss'),
-            cb.LogInput(),
             cb.VisdomLogger(visdom_env, log_every=10),
             cb.StdoutLogger(log_every=10),
         ])
@@ -47,7 +46,7 @@ class DeepDreamRecipe(ImageOptimizationBaseRecipe):
             self.norm(cim[:, :, self.iters % 10:, self.iters % 10:]))
         loss.backward()
         self.opt.step()
-        return {'loss': loss, 'x': self.canvas.render()}
+        return {'loss': loss}
 
     def result(self):
         return self.canvas.render()

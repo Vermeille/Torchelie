@@ -21,7 +21,6 @@ class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
             cb.WindowedMetricAvg('loss'),
             cb.WindowedMetricAvg('content_loss'),
             cb.WindowedMetricAvg('style_loss'),
-            cb.LogInput(),
             cb.VisdomLogger(visdom_env, log_every=1),
             cb.StdoutLogger(log_every=1),
         ])
@@ -56,13 +55,12 @@ class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
 
         return {
             'loss': loss,
-            'x': self.canvas.render(),
             'content_loss': losses['content_loss'],
             'style_loss': losses['style_loss']
         }
 
     def result(self):
-        return t2pil(self.canvas.render())
+        return self.canvas.render()
 
 
 if __name__ == '__main__':
@@ -97,5 +95,6 @@ if __name__ == '__main__':
         style_img = style_img.resize(new_style_size, Image.BICUBIC)
 
     result = stylizer(100, content, style_img, args.ratio, args.content_layers)
+    result = t2pil(result)
 
     result.save(args.out)
