@@ -18,11 +18,7 @@ class DeepDreamRecipe(ImageOptimizationBaseRecipe):
                  lr=3e-4,
                  device='cpu',
                  visdom_env='deepdream'):
-        super(DeepDreamRecipe, self).__init__(callbacks=[
-            cb.WindowedMetricAvg('loss'),
-            cb.VisdomLogger(visdom_env, log_every=10),
-            cb.StdoutLogger(log_every=10),
-        ])
+        super(DeepDreamRecipe, self).__init__(visdom_env=visdom_env)
         self.device = device
         self.loss = DeepDreamLoss(model, dream_layer).to(device)
         self.norm = tnn.ImageNetInputNorm().to(device)

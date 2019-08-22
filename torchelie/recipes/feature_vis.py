@@ -19,11 +19,7 @@ class FeatureVisRecipe(ImageOptimizationBaseRecipe):
                  input_size,
                  device='cpu',
                  visdom_env='feature_vis'):
-        super(FeatureVisRecipe, self).__init__(callbacks=[
-            cb.WindowedMetricAvg('loss'),
-            cb.VisdomLogger(visdom_env, log_every=10),
-            cb.StdoutLogger(log_every=10),
-        ])
+        super(FeatureVisRecipe, self).__init__(visdom_env=visdom_env)
         self.device = device
         self.model = tnn.WithSavedActivations(model, names=[layer]).to(device)
         self.model.eval()

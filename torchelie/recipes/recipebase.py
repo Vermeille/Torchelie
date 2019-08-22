@@ -1,7 +1,14 @@
+import torchelie.metrics.callbacks as cb
+
+
 class ImageOptimizationBaseRecipe:
-    def __init__(self, callbacks):
+    def __init__(self, visdom_env=None, log_every=10, callbacks=[]):
         self.state = {'metrics': {}}
-        self.callbacks = callbacks
+        self.callbacks = callbacks + [
+            cb.WindowedMetricAvg('loss'),
+            cb.VisdomLogger(visdom_env, log_every=10),
+            cb.StdoutLogger(log_every=10),
+        ]
 
     def forward(self):
         raise NotImplemented

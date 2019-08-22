@@ -18,12 +18,9 @@ def pil2t(pil):
 class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
     def __init__(self, device="cpu", visdom_env='style'):
         super(NeuralStyleRecipe, self).__init__(callbacks=[
-            cb.WindowedMetricAvg('loss'),
             cb.WindowedMetricAvg('content_loss'),
             cb.WindowedMetricAvg('style_loss'),
-            cb.VisdomLogger(visdom_env, log_every=1),
-            cb.StdoutLogger(log_every=1),
-        ])
+        ], visdom_env=visdom_env, log_every=1)
 
         self.loss = NeuralStyleLoss().to(device)
         self.device = device

@@ -162,11 +162,6 @@ class StdoutLogger:
               show)
 
 
-class LogInput:
-    def on_batch_end(self, state):
-        state['metrics']['x'] = state['x']
-
-
 class Checkpoint:
     """FIXME: WIP"""
     def __init__(self, filename_base, keys):

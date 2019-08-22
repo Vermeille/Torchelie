@@ -13,7 +13,6 @@ class ImageClassifier:
                  train_callbacks=[
                      cb.WindowedMetricAvg('loss'),
                      cb.AccAvg(),
-                     cb.LogInput(),
                      cb.VisdomLogger(visdom_env='main', log_every=100),
                      cb.StdoutLogger(log_every=100),
                  ],
@@ -26,8 +25,7 @@ class ImageClassifier:
                      cb.StdoutLogger(log_every=100, prefix='Test'),
                      cb.Checkpoint('models/clf', ['model', 'opt', 'metrics'])
                  ],
-                 device='cpu',
-                 **kwargs):
+                 device='cpu'):
         self.device = device
         num_classes = len(train_loader.dataset.classes)
         self.model = tvmodels.vgg11_bn(num_classes=num_classes).to(device)
@@ -95,8 +93,6 @@ class ImageClassifier:
                 loss, pred = self.forward(x, y)
                 loss = loss.cpu().detach()
                 pred = pred.cpu().detach()
-                self.state['loss'] = loss
-                self.state['pred'] = pred
 
                 self._run_train_cbs('on_batch_end')
 
