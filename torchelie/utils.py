@@ -94,3 +94,21 @@ def dict_by_key(d, k):
             d = d[int(k[0])]
         k = k[1:]
     return d[k]
+
+
+def send_to_device(x, device, non_blocking=False):
+    if isinstance(x, torch.Tensor):
+        return x.to(device, non_blocking=non_blocking)
+    elif isinstance(x, list):
+        return [
+            send_to_device(xx, device, non_blocking=non_blocking) for xx in x
+        ]
+    elif isinstance(x, tuple):
+        return tuple(
+            send_to_device(xx, device, non_blocking=non_blocking) for xx in x)
+    elif isinstance(x, dict):
+        return {
+            k: send_to_device(v, device, non_blocking=non_blocking)
+            for k, v in x.items()
+        }
+    return x

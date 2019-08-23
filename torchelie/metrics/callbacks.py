@@ -200,3 +200,12 @@ class Checkpoint:
 
     def on_epoch_end(self, state):
         self.save(state)
+
+def CallbacksRunner:
+    def __init__(cbs):
+        self.cbs = cbs
+
+    def __call__(self, name, *args, **args):
+        for cb in self.cbs:
+            if hasattr(cb, name):
+                getattr(cb, name)(*args, **args)
