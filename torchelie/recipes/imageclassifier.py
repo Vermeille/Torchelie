@@ -3,105 +3,97 @@ import torch.optim as optim
 import torchvision.models as tvmodels
 
 import torchelie.metrics.callbacks as cb
+import torchelie.utils as tu
 
 
 class ImageClassifier:
     def __init__(self,
-                 train_loader,
-                 test_loader,
+                 model,
+                 visdom_env=None,
                  test_every=1000,
-                 train_callbacks=[
-                     cb.WindowedMetricAvg('loss'),
-                     cb.AccAvg(),
-                     cb.VisdomLogger(visdom_env='main', log_every=100),
-                     cb.StdoutLogger(log_every=100),
-                 ],
-                 test_callbacks=[
-                     cb.EpochMetricAvg('loss', False),
-                     cb.AccAvg(False),
-                     cb.VisdomLogger(visdom_env='main',
-                                     log_every=-1,
-                                     prefix='test_'),
-                     cb.StdoutLogger(log_every=100, prefix='Test'),
-                     cb.Checkpoint('models/clf', ['model', 'opt', 'metrics'])
-                 ],
+                 train_callbacks=[],
+                 test_callbacks=[],
                  device='cpu'):
         self.device = device
-        num_classes = len(train_loader.dataset.classes)
-        self.model = tvmodels.vgg11_bn(num_classes=num_classes).to(device)
+        self.model = model.to(device)
         self.opt = optim.Adam(self.model.parameters(), lr=3e-5)
-        self.train_loader = train_loader
-        self.test_loader = test_loader
         self.test_every = test_every
         self.state = {'metrics': {}}
         self.test_state = {'metrics': {}}
-        self.state['model'] = self.model
-        self.state['opt'] = self.opt
-        self.test_state['model'] = self.model
-        self.test_state['opt'] = self.opt
-        self.train_callbacks = train_callbacks
-        self.test_callbacks = test_callbacks
+        self.train_callbacks = cb.CallbacksRunner(train_callbacks + [
+            cb.WindowedMetricAvg('loss'),
+            cb.AccAvg(),
+            cb.VisdomLogger(visdom_env=visdom_env, log_every=100),
+            cb.StdoutLogger(log_every=100),
+        ])
+        self.test_callbacks = cb.CallbacksRunner(test_callbacks + [
+            cb.EpochMetricAvg('loss', False),
+            cb.AccAvg(post_each_batch=False),
+            cb.VisdomLogger(
+                visdom_env=visdom_env, log_every=-1, prefix='test_'),
+            cb.StdoutLogger(log_every=-1, prefix='Test'),
+            cb.Checkpoint(
+                'models/clf', {
+                    'model': self.model,
+                    'opt': self.opt,
+                    'metrics': self.state['metrics'],
+                    #'test_metrics': self.test_state['metrics']
+                })
+        ])
 
-    def forward(self, x, y):
+    def forward(self, batch):
+        x, y = batch
         self.opt.zero_grad()
         pred = self.model(x)
         loss = torch.nn.functional.cross_entropy(pred, y)
         loss.backward()
         self.opt.step()
-        return loss, pred
+        return {'loss': loss, 'pred': pred}
 
-    def _run_train_cbs(self, trigger):
-        for cb in self.train_callbacks:
-            if hasattr(cb, trigger):
-                getattr(cb, trigger)(self.state)
+    def evaluate(self, test_loader):
+        self.test_state = self.state
+        self.test_callbacks('on_epoch_start', self.test_state)
+        for batch in test_loader:
+            self.test_state['batch'] = batch
+            batch = tu.send_to_device(batch, self.device, non_blocking=True)
+            self.test_state['batch_gpu'] = batch
 
-    def _run_test_cbs(self, trigger):
-        for cb in self.test_callbacks:
-            if hasattr(cb, trigger):
-                getattr(cb, trigger)(self.test_state)
+            self.test_callbacks('on_batch_start', self.test_state)
+            out = self.forward(batch)
+            out = tu.send_to_device(out, 'cpu', non_blocking=True)
+            self.test_state.update(out)
+            self.test_callbacks('on_batch_end', self.test_state)
 
-    def evaluate(self):
-        self._run_test_cbs('on_epoch_start')
-        for x_cpu, y_cpu in self.test_loader:
-            self.test_state['batch'] = (x_cpu, y_cpu)
-            self._run_test_cbs('on_batch_start')
+        self.test_callbacks('on_epoch_end', self.test_state)
+        return self.test_state.get('acc', None)
 
-            x = x_cpu.to(self.device, non_blocking=True)
-            y = y_cpu.to(self.device, non_blocking=True)
-
-            loss, pred = self.forward(x, y)
-            loss = loss.cpu().detach()
-            pred = pred.cpu().detach()
-            self.test_state['loss'] = loss
-            self.test_state['pred'] = pred
-
-            self._run_test_cbs('on_batch_end')
-
-        self._run_test_cbs('on_epoch_end')
-
-    def __call__(self, epochs=5):
-        self.iters = 0
+    def __call__(self, train_loader, test_loader, epochs=5):
+        self.state['iters'] = 0
         for epoch in range(epochs):
-            self._run_train_cbs('on_epoch_start')
-            for x_cpu, y_cpu in self.train_loader:
-                self.state['batch'] = (x_cpu, y_cpu)
-                self.state['x'] = x_cpu
-                self._run_test_cbs('on_batch_start')
-                x = x_cpu.to(self.device, non_blocking=True)
-                y = y_cpu.to(self.device, non_blocking=True)
+            self.state['epoch'] = epoch
+            self.train_callbacks('on_epoch_start', self.state)
+            for i, batch in enumerate(train_loader):
+                self.state['epoch_batch'] = i
+                self.state['batch'] = batch
+                batch = tu.send_to_device(batch,
+                                          self.device,
+                                          non_blocking=True)
+                self.state['batch_gpu'] = batch
 
-                loss, pred = self.forward(x, y)
-                loss = loss.cpu().detach()
-                pred = pred.cpu().detach()
+                self.train_callbacks('on_batch_start', self.state)
 
-                self._run_train_cbs('on_batch_end')
+                out = self.forward(batch)
+                out = tu.send_to_device(out, 'cpu', non_blocking=True)
+                self.state.update(out)
 
-                if self.iters % self.test_every == 0:
+                self.train_callbacks('on_batch_end', self.state)
+
+                if self.state['iters'] % self.test_every == 0:
                     self.model.eval()
-                    self.evaluate()
+                    self.evaluate(test_loader)
                     self.model.train()
-                self.iters += 1
-            self._run_train_cbs('on_epoch_end')
+                self.state['iters'] += 1
+            self.train_callbacks('on_epoch_end', self.state)
 
         self.model.eval()
         return self.model
@@ -129,8 +121,8 @@ if __name__ == '__main__':
                             num_workers=4,
                             pin_memory=True,
                             shuffle=True)
-    clf_recipe = ImageClassifier(trainloader,
-                                 testloader,
-                                 device='cuda',
-                                 visdom_env='clf')
-    clf_recipe()
+
+    model = tvmodels.vgg11_bn(num_classes=10)
+
+    clf_recipe = ImageClassifier(model, device='cuda', visdom_env='clf')
+    clf_recipe(trainloader, testloader, 4)

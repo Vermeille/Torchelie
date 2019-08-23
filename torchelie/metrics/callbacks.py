@@ -68,9 +68,6 @@ class AccAvg:
 class VisdomLogger:
     def __init__(self, visdom_env='main', log_every=10, prefix=''):
         self.vis = None
-        self.iters = 0
-        self.epoch = 0
-        self.epoch_iters = 0
         self.log_every = log_every
         self.prefix = prefix
         if visdom_env is not None:
@@ -78,28 +75,25 @@ class VisdomLogger:
             self.vis.close()
 
     def on_batch_end(self, state):
-        if self.log_every != -1 and self.iters % self.log_every == 0:
-            self.log(state['metrics'])
-        self.iters += 1
-        self.epoch_iters += 1
+        iters = state['iters']
+        if self.log_every != -1 and iters % self.log_every == 0:
+            self.log(iters, state['metrics'])
 
     def on_epoch_end(self, state):
-        self.log(state['metrics'])
-        self.epoch += 1
-        self.epoch_iters = 0
+        self.log(state['iters'], state['metrics'])
 
-    def log(self, xs, store_history=[]):
+    def log(self, iters, xs, store_history=[]):
         for name, x in xs.items():
             name = self.prefix + name
             if isinstance(x, (float, int)):
-                self.vis.line(X=[self.iters],
+                self.vis.line(X=[iters],
                               Y=[x],
                               update='append',
                               win=name,
                               opts=dict(title=name))
             elif isinstance(x, torch.Tensor):
                 if x.numel() == 1:
-                    self.vis.line(X=[self.iters],
+                    self.vis.line(X=[iters],
                                   Y=[x.item()],
                                   update='append',
                                   win=name,
@@ -127,24 +121,18 @@ class VisdomLogger:
 class StdoutLogger:
     def __init__(self, log_every=10, prefix=''):
         self.vis = None
-        self.iters = 0
-        self.epoch = 0
-        self.epoch_iters = 0
         self.log_every = log_every
         self.prefix = prefix
 
     def on_batch_end(self, state):
-        if self.log_every != -1 and self.iters % self.log_every == 0:
-            self.log(state['metrics'])
-        self.iters += 1
-        self.epoch_iters += 1
+        iters = state['iters']
+        if self.log_every != -1 and iters % self.log_every == 0:
+            self.log(state['metrics'], state['epoch'], state['epoch_batch'])
 
     def on_epoch_end(self, state):
-        self.log(state['metrics'])
-        self.epoch += 1
-        self.epoch_iters = 0
+        self.log(state['metrics'], state['epoch'], state['epoch_batch'])
 
-    def log(self, xs, store_history=[]):
+    def log(self, xs, epoch, epoch_batch, store_history=[]):
         show = {}
         for name, x in xs.items():
             if isinstance(x, (float, int)):
@@ -158,21 +146,19 @@ class StdoutLogger:
                     assert False, "incorrect tensor dim"
             else:
                 assert False, "incorrect tensor dim"
-        print(self.prefix, '| Ep.', self.epoch, 'It', self.epoch_iters, '|',
-              show)
+        print(self.prefix, '| Ep.', epoch, 'It', epoch_batch, '|', show)
 
 
 class Checkpoint:
     """FIXME: WIP"""
-    def __init__(self, filename_base, keys):
+    def __init__(self, filename_base, objects):
         self.filename_base = filename_base
-        self.keys = keys
+        self.objects = objects
         self.nb_saved = 0
 
     def save(self, state):
         saved = {}
-        for k in self.keys:
-            m = state[k]
+        for k, m in self.objects.items():
             if hasattr(m, 'state_dict'):
                 saved[k] = m.state_dict()
             else:
@@ -201,11 +187,11 @@ class Checkpoint:
     def on_epoch_end(self, state):
         self.save(state)
 
-def CallbacksRunner:
-    def __init__(cbs):
+class CallbacksRunner:
+    def __init__(self, cbs):
         self.cbs = cbs
 
-    def __call__(self, name, *args, **args):
+    def __call__(self, name, *args, **kwargs):
         for cb in self.cbs:
             if hasattr(cb, name):
-                getattr(cb, name)(*args, **args)
+                getattr(cb, name)(*args, **kwargs)
