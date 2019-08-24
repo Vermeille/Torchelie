@@ -165,7 +165,9 @@ def make_spade(base, name):
 
         def condition(self, z, size=None):
             size = self.size or size
-            z = F.interpolate(z, size=(size[0] * 2, size[1] * 2), mode='nearest')
+            z = F.interpolate(z,
+                              size=(size[0] * 2, size[1] * 2),
+                              mode='nearest')
             z = F.relu(self.initial(z), inplace=True)
             self.weight = self.make_weight(z)
             self.bias = self.make_bias(z)
@@ -178,3 +180,40 @@ Spade2d = make_spade(BatchNorm2dBase_, 'Spade2d')
 SpadeMA2d = make_spade(MovingAverageBN2dBase_, 'SpadeMA2d')
 __all__.append('Spade2d')
 __all__.append('SpadeMA2d')
+
+
+class AttenNorm2d(nn.BatchNorm2d):
+    """
+    From https://arxiv.org/abs/1908.01259
+    """
+    def __init__(self,
+                 num_features,
+                 num_weights,
+                 eps,
+                 momentum=0.8,
+                 track_running_stats=True):
+        super(AttenNorm2d, self).__init__(num_features,
+                                        eps=eps,
+                                        momentum=momentum,
+                                        affine=False,
+                                        track_running_stats=running)
+        self.gamma = nn.Parameter(torch.ones(num_weights, num_features))
+        self.beta = nn.Parameter(torch.zeros(num_weights, num_features))
+
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(num_features, num_weights)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        output = super(AttenNorm, self).forward(x)
+        size = output.size()
+        b, c, _, _ = x.size()
+        y = self.avgpool(x).view(b, c)
+        y = self.fc(y)
+        y = self.sigmoid(y)
+        gamma = torch.mm(y, self.gamma)
+        beta = torch.mm(y, self.beta)
+        gamma = weight.unsqueeze(-1).unsqueeze(-1).expand(size)
+        beta = bias.unsqueeze(-1).unsqueeze(-1).expand(size)
+        return gamma * output + beta
+__all__.append('AttenNorm2d')

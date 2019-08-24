@@ -70,6 +70,7 @@ Normalization modules:
 * `BatchNorm2d`, `NoAffineBatchNorm2d` should be strictly equivalent to
   Pytorch's, and `ConditionalBN2d` gets its weight and bias parameter from a
   linear projection of a `z` vector.
+* `AttenNorm2d` BN with attention (Attentive Normalization, Li et al, 2019)
 
 Misc modules:
 
