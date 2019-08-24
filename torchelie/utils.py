@@ -112,3 +112,28 @@ def send_to_device(x, device, non_blocking=False):
             for k, v in x.items()
         }
     return x
+
+
+class FrozenModule(nn.Module):
+    def __init__(self, m):
+        self.m = freeze(m).eval()
+
+    def eval(self):
+        return self
+
+    def train(self, mode=True):
+        return self
+
+    def __getattr__(self, name):
+        return getattr(self.m, name)
+
+
+class DetachedModule:
+    def __init__(self, m):
+        self.m = freeze(m).eval()
+
+    def __call__(self, *args, **kwargs):
+        return self.m(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self.m, name)

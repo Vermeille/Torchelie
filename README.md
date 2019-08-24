@@ -43,6 +43,10 @@ Functions:
 * `nb_parameters` returns the number of trainables parameters in a module
 * `layer_by_name` finds a module by its (instance) name in a module
 * `gram` / `bgram` compute gram and batched gam matrices.
+* `DetachedModule` wraps a module so that it's not detected by recursive module
+  functions.
+* `FrozenModule` wraps a module, freezes it and sets it to eval mode. All calls
+  to `.train()` (even those made from enclosing modules) will be ignored.
 
 ## `torchelie.nn`
 
