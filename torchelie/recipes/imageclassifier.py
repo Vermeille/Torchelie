@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import torch.optim as optim
 import torchvision.models as tvmodels
@@ -47,7 +49,9 @@ class ImageClassifier:
             self.test_callbacks('on_epoch_start', self.test_state)
             for batch in test_loader:
                 self.test_state['batch'] = batch
-                batch = tu.send_to_device(batch, self.device, non_blocking=True)
+                batch = tu.send_to_device(batch,
+                                          self.device,
+                                          non_blocking=True)
                 self.test_state['batch_gpu'] = batch
 
                 self.test_callbacks('on_batch_start', self.test_state)
@@ -57,7 +61,7 @@ class ImageClassifier:
                 self.test_callbacks('on_batch_end', self.test_state)
 
             self.test_callbacks('on_epoch_end', self.test_state)
-            return self.test_state.get('acc', None)
+            return copy.deepcopy(self.test_state['metrics'])
 
     def __call__(self, train_loader, test_loader, epochs=5):
         self.state['iters'] = 0
@@ -82,19 +86,21 @@ class ImageClassifier:
 
                 if self.state['iters'] % self.test_every == 0:
                     self.model.eval()
-                    self.evaluate(test_loader)
+                    metrics = self.evaluate(test_loader)
+                    self.state['test_metrics'] = metrics
                     self.model.train()
                 self.state['iters'] += 1
             self.train_callbacks('on_epoch_end', self.state)
 
         self.model.eval()
-        return self.model
+        return self.model, self.state['test_metrics']
 
 
 class ImageClassifierDebug(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, model, lr=3e-5):
         super(ImageClassifierDebug, self).__init__()
-        self.model = tvmodels.vgg11_bn(num_classes=10)
+        self.model = model
+        self.lr = lr
 
     def forward(self, x):
         return self.model(x)
@@ -115,7 +121,7 @@ class ImageClassifierDebug(torch.nn.Module):
         return {'loss': loss, 'pred': pred}
 
     def make_optimizer(self):
-        return optim.Adam(self.model.parameters(), lr=3e-5)
+        return optim.Adam(self.model.parameters(), lr=self.lr)
 
 
 if __name__ == '__main__':
@@ -141,5 +147,9 @@ if __name__ == '__main__':
                             pin_memory=True,
                             shuffle=True)
 
-    clf_recipe = ImageClassifier(ImageClassifierDebug(), device='cuda', visdom_env='clf')
+    model = tvmodels.vgg11_bn(num_classes=10)
+
+    clf_recipe = ImageClassifier(ImageClassifierDebug(model),
+                                 device='cuda',
+                                 visdom_env='clf')
     clf_recipe(trainloader, testloader, 4)

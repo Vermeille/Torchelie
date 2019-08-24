@@ -92,6 +92,9 @@ class VisdomLogger:
         self.log(state['iters'], state['metrics'])
 
     def log(self, iters, xs, store_history=[]):
+        if self.vis is None:
+            return
+
         for name, x in xs.items():
             name = self.prefix + name
             if isinstance(x, (float, int)):
