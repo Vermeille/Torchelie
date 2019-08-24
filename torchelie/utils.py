@@ -87,13 +87,13 @@ def bgram(m):
 
 def dict_by_key(d, k):
     k = k.split('.')
-    while len(k) != 1:
+    while len(k) != 0:
         if isinstance(d, dict):
             d = d[k[0]]
         else:
             d = d[int(k[0])]
         k = k[1:]
-    return d[k]
+    return d
 
 
 def send_to_device(x, device, non_blocking=False):

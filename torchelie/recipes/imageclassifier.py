@@ -16,7 +16,7 @@ class ImageClassifier:
                  device='cpu'):
         self.device = device
         self.model = model.to(device)
-        self.opt = optim.Adam(self.model.parameters(), lr=3e-5)
+        self.opt = model.make_optimizer()
         self.test_every = test_every
         self.state = {'metrics': {}}
         self.test_state = {'metrics': {}}
@@ -41,24 +41,6 @@ class ImageClassifier:
                 })
         ])
 
-    def train_step(self, batch):
-        x, y = batch
-        self.opt.zero_grad()
-        pred = self.forward(x)
-        loss = torch.nn.functional.cross_entropy(pred, y)
-        loss.backward()
-        self.opt.step()
-        return {'loss': loss, 'pred': pred}
-
-    def validation_step(self, batch):
-        x, y = batch
-        pred = self.forward(x)
-        loss = torch.nn.functional.cross_entropy(pred, y)
-        return {'loss': loss, 'pred': pred}
-
-    def forward(self, x):
-        return self.model(x)
-
     def evaluate(self, test_loader):
         with torch.no_grad():
             self.test_state = self.state
@@ -69,7 +51,7 @@ class ImageClassifier:
                 self.test_state['batch_gpu'] = batch
 
                 self.test_callbacks('on_batch_start', self.test_state)
-                out = self.validation_step(batch)
+                out = self.model.validation_step(batch)
                 out = tu.send_to_device(out, 'cpu', non_blocking=True)
                 self.test_state.update(out)
                 self.test_callbacks('on_batch_end', self.test_state)
@@ -92,7 +74,7 @@ class ImageClassifier:
 
                 self.train_callbacks('on_batch_start', self.state)
 
-                out = self.train_step(batch)
+                out = self.model.train_step(batch, self.opt)
                 out = tu.send_to_device(out, 'cpu', non_blocking=True)
                 self.state.update(out)
 
@@ -107,6 +89,33 @@ class ImageClassifier:
 
         self.model.eval()
         return self.model
+
+
+class ImageClassifierDebug(torch.nn.Module):
+    def __init__(self):
+        super(ImageClassifierDebug, self).__init__()
+        self.model = tvmodels.vgg11_bn(num_classes=10)
+
+    def forward(self, x):
+        return self.model(x)
+
+    def train_step(self, batch, opt):
+        x, y = batch
+        opt.zero_grad()
+        pred = self.forward(x)
+        loss = torch.nn.functional.cross_entropy(pred, y)
+        loss.backward()
+        opt.step()
+        return {'loss': loss, 'pred': pred}
+
+    def validation_step(self, batch):
+        x, y = batch
+        pred = self.forward(x)
+        loss = torch.nn.functional.cross_entropy(pred, y)
+        return {'loss': loss, 'pred': pred}
+
+    def make_optimizer(self):
+        return optim.Adam(self.model.parameters(), lr=3e-5)
 
 
 if __name__ == '__main__':
@@ -132,7 +141,5 @@ if __name__ == '__main__':
                             pin_memory=True,
                             shuffle=True)
 
-    model = tvmodels.vgg11_bn(num_classes=10)
-
-    clf_recipe = ImageClassifier(model, device='cuda', visdom_env='clf')
+    clf_recipe = ImageClassifier(ImageClassifierDebug(), device='cuda', visdom_env='clf')
     clf_recipe(trainloader, testloader, 4)

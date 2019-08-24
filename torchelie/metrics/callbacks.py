@@ -65,6 +65,15 @@ class AccAvg:
         state['metrics']['acc'] = self.avg.get()
 
 
+class Log:
+    def __init__(self, from_k, to):
+        self.from_k = from_k
+        self.to = to
+
+    def on_batch_end(self, state):
+        state['metrics'][self.to] = dict_by_key(state, self.from_k)
+
+
 class VisdomLogger:
     def __init__(self, visdom_env='main', log_every=10, prefix=''):
         self.vis = None
