@@ -19,3 +19,7 @@ def focal_loss(input, target, gamma=0):
     p = torch.exp(-logp)
     loss = (1 - p)**gamma * logp
     return loss.mean()
+
+
+def continuous_cross_entropy(pred, soft_targets):
+    return torch.mean(torch.sum(-soft_targets * F.log_softmax(pred), 1))
