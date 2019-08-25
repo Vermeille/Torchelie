@@ -129,12 +129,17 @@ Modules:
   Sum of L1 distances between `x`'s and `y`'s activations in vgg. Only `x` is
   backproped.
 * `NeuralStyleLoss`
+* `OrthoLoss` orthogonal loss.
+* `TotalVariationLoss` TV prior on 2D images.
+* `ContinuousCEWithLogits` is a Cross Entropy loss that allows non categorical
+  targets.
 
-Functions:
+Functions (`torchelie.loss.functional`):
 
 * `ortho(x)` applies an orthogonal regularizer as in _Brock et al (2018)_
   (BigGAN)
 * `total_variation(x)` applies a spatial L1 loss on 2D tensors
+* `continuous_cross_entropy`
 
 ### `torchelie.loss.gan`
 
@@ -159,6 +164,11 @@ Torchvision-like transforms:
 * `MultiBranch` allows different transformations branches in order to transform
   the same image in different ways. Useful for self supervision tasks for
   instance.
+
+### `torchelie.transforms.differentiable`
+
+Contains some transforms that can be backpropagated through. Its API is
+unstable now.
 
 ## `torchelie.lr_scheduler`
 
