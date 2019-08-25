@@ -175,6 +175,10 @@ Classes:
   relabels classes. While a vertical concat like torchvision's is useful to add
   more examples per class, an horizontal concat merges datasets to more
   classes.
+* `PairedDataset` takes to datasets and returns the cartesian products of its
+  samples.
+* `MixMatchDataset` takes a dataset, sample all pairs and interpolates samples
+  and labels with a random mixing value.
 
 ## `torchelie.datasets.debug`
 
