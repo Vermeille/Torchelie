@@ -23,17 +23,17 @@ class PairedDataset(torch.utils.data.Dataset):
         return len(self.dataset1) * len(self.dataset2)
 
 
-class MixMatchDataset(PairedDataset):
+class MixUpDataset(PairedDataset):
     """
     https://arxiv.org/abs/1905.02249
     """
     def __init__(self, dataset, alpha=0.4):
-        super(MixMatchDataset, self).__init__(dataset, dataset)
+        super(MixUpDataset, self).__init__(dataset, dataset)
         alpha = torch.tensor([alpha])
         self.mixer = torch.distributions.Beta(alpha, alpha)
 
     def __getitem__(self, i):
-        (x1, x2), (y1, y2) = super(MixMatchDataset, self).__getitem__(i)
+        (x1, x2), (y1, y2) = super(MixUpDataset, self).__getitem__(i)
 
         y1 = torch.nn.functional.one_hot(torch.tensor(y1),
                                          num_classes=len(

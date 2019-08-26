@@ -187,7 +187,7 @@ Classes:
   classes.
 * `PairedDataset` takes to datasets and returns the cartesian products of its
   samples.
-* `MixMatchDataset` takes a dataset, sample all pairs and interpolates samples
+* `MixUpDataset` takes a dataset, sample all pairs and interpolates samples
   and labels with a random mixing value.
 
 ## `torchelie.datasets.debug`
