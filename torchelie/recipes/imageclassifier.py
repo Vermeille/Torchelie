@@ -46,6 +46,7 @@ class ImageClassifier:
     def evaluate(self, test_loader):
         with torch.no_grad():
             self.test_state = self.state
+            self.test_state['metrics'] = {}
             self.test_callbacks('on_epoch_start', self.test_state)
             for batch in test_loader:
                 self.test_state['batch'] = batch

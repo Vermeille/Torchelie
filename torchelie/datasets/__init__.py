@@ -23,10 +23,26 @@ class PairedDataset(torch.utils.data.Dataset):
         return len(self.dataset1) * len(self.dataset2)
 
 
+def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
+    if mixer is None:
+        alpha = torch.tensor([alpha])
+        mixer = torch.distributions.Beta(alpha, alpha)
+
+    lam = mixer.sample(y1.shape).to(y1.device)
+    y1 = torch.nn.functional.one_hot(
+        torch.tensor(y1), num_classes=num_classes).float().to(y1.device)
+    y2 = torch.nn.functional.one_hot(
+        torch.tensor(y2), num_classes=num_classes).float().to(y1.device)
+
+
+    return (lam * x1 + (1 - lam) * x2), (lam * y1 + (1 - lam) * y2)
+
+
 class MixUpDataset(PairedDataset):
     """
     https://arxiv.org/abs/1905.02249
     """
+
     def __init__(self, dataset, alpha=0.4):
         super(MixUpDataset, self).__init__(dataset, dataset)
         alpha = torch.tensor([alpha])
@@ -35,12 +51,5 @@ class MixUpDataset(PairedDataset):
     def __getitem__(self, i):
         (x1, x2), (y1, y2) = super(MixUpDataset, self).__getitem__(i)
 
-        y1 = torch.nn.functional.one_hot(torch.tensor(y1),
-                                         num_classes=len(
-                                             self.dataset1.classes)).float()
-        y2 = torch.nn.functional.one_hot(torch.tensor(y2),
-                                         num_classes=len(
-                                             self.dataset2.classes)).float()
-        lam = self.mixer.sample()
-
-        return (lam * x1 + (1 - lam) * x2), (lam * y1 + (1 - lam) * y2)
+        mixer = torch.distributions.Beta(alpha, alpha)
+        return mixup(x1, x2, y1, y2, len(self.dataset1.classes), mixer)

@@ -118,9 +118,6 @@ class FrozenModule(nn.Module):
     def __init__(self, m):
         self.m = freeze(m).eval()
 
-    def eval(self):
-        return self
-
     def train(self, mode=True):
         return self
 
