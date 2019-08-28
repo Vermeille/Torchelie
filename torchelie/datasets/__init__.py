@@ -34,7 +34,6 @@ def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
     y2 = torch.nn.functional.one_hot(
         torch.tensor(y2), num_classes=num_classes).float().to(y1.device)
 
-
     return (lam * x1 + (1 - lam) * x2), (lam * y1 + (1 - lam) * y2)
 
 
@@ -53,3 +52,21 @@ class MixUpDataset(PairedDataset):
 
         mixer = torch.distributions.Beta(alpha, alpha)
         return mixup(x1, x2, y1, y2, len(self.dataset1.classes), mixer)
+
+
+class NoexceptDataset:
+    def __init__(self, ds):
+        self.ds = ds
+
+    def __len__(self):
+        return len(self.ds)
+
+    def __getitem__(self, i):
+        try:
+            return self.ds[i]
+        except Exception as e:
+            print(e)
+            if i < len(self):
+                return self[i + 1]
+            else:
+                return self[0]

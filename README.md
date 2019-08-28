@@ -189,6 +189,9 @@ Classes:
   samples.
 * `MixUpDataset` takes a dataset, sample all pairs and interpolates samples
   and labels with a random mixing value.
+* `NoexceptDataset` wraps a dataset and suppresses the exceptions raised while
+  loading samples. Useful in case of a big downloaded dataset with corrupted
+  samples for instance.
 
 ## `torchelie.datasets.debug`
 
