@@ -205,6 +205,7 @@ Classes:
 ## `torchelie.opt`
 
 * `DeepDreamOptim` is the optimizer used by DeepDream
+* `AddSign` from _Neural Optimiser search with Reinforcment learning_
 
 ## `torchelie.data_learning`
 
