@@ -61,4 +61,9 @@ class VectorQuantization(Function):
         return straight_through + commitment, code_disp, None, None
 
 
-quantize = VectorQuantization.apply
+try:
+    # Sphinx doesn't import Function, so apply ain't defined
+    quantize = VectorQuantization.apply
+except Exception as e:
+    print(str(e))
+    quantize = lambda x:x

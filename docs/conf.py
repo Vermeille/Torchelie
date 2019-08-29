@@ -12,8 +12,11 @@
 #
 import os
 import sys
+sys.path.insert(0, os.path.abspath(__file__) + '/..')
+sys.path.insert(0, os.path.abspath(__file__))
+sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('..'))
-autodoc_mock_imports = ["torch"]
+autodoc_mock_imports = ["torch", "crayons", 'torchvision', 'numpy', 'caffe2']
 
 
 # -- Project information -----------------------------------------------------
