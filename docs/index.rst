@@ -21,3 +21,5 @@ Indices and tables
 
 .. automodule:: torchelie.optim
    :members:
+.. automodule:: torchelie.data_learning
+   :members:
