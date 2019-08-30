@@ -10,6 +10,17 @@ from torchelie.models import PerceptualNet
 
 
 class DeepDreamLoss(nn.Module):
+    """
+    The Deep Dream loss
+
+    Args:
+        model (nn.Module): a pretrained network on which to compute the
+            activations
+        dream_layer (str): the name of the layer on which the activations are
+            to be maximized
+        max_reduction (int): the maximum factor of reduction of the image, for
+            multiscale generation
+    """
     def __init__(self, model, dream_layer, max_reduction=3):
         super(DeepDreamLoss, self).__init__()
         self.dream_layer = dream_layer
@@ -25,6 +36,9 @@ class DeepDreamLoss(nn.Module):
         return activations[self.dream_layer]
 
     def forward(self, input_img):
+        """
+        Compute the Deep Dream loss on `input_img`
+        """
         dream = self.get_acts_(input_img, detach=False)
         self.i += 1
 

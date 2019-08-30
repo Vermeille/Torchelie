@@ -7,6 +7,16 @@ from torchelie.models import PerceptualNet
 
 
 class PerceptualLoss(nn.Module):
+    """
+    Perceptual loss: the distance between a two images deep representation
+
+    Args:
+        l (str): the layer on which to compare the representation
+        rescale (bool): whether to scale images to 224x224 as expected by the
+            underlying vgg net
+        loss (distance function): a distance function to compare the
+            representations, like mse_loss or l1_loss
+    """
     def __init__(self, l, rescale=False, loss=F.mse_loss):
         super(PerceptualLoss, self).__init__()
         self.m = PerceptualNet(l)

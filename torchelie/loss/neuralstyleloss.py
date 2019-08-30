@@ -9,6 +9,13 @@ from torchelie.models import PerceptualNet
 
 
 class NeuralStyleLoss(nn.Module):
+    """
+    Style Transfer loss by Leon Gatys
+
+    https://arxiv.org/abs/1508.06576
+
+    set the style and content before performing a forward pass.
+    """
     def __init__(self):
         super(NeuralStyleLoss, self).__init__()
         self.style_layers = [
@@ -33,6 +40,16 @@ class NeuralStyleLoss(nn.Module):
         return style, content
 
     def set_style(self, style_img, style_ratio, style_layers=None):
+        """
+        Set the style.
+
+        Args:
+            style_img (3xHxW tensor): an image tensor
+            style_ratio (float): a multiplier for the style loss to make it
+                greater or smaller than the content loss
+            style_layer (list of str, optional): the layers on which to compute
+                the style, or `None` to keep them unchanged
+        """
         self.ratio = style_ratio
 
         if style_layers is not None:
@@ -52,6 +69,14 @@ class NeuralStyleLoss(nn.Module):
         self.style_grams = grams
 
     def set_content(self, content_img, content_layers=None):
+        """
+        Set the content.
+
+        Args:
+            content_img (3xHxW tensor): an image tensor
+            content_layer (str, optional): the layer on which to compute the
+                content representation, or `None` to keep it unchanged
+        """
         if content_layers is not None:
             self.content_layers = content_layers
             self.net.set_keep_layers(names=self.style_layers +
@@ -62,6 +87,9 @@ class NeuralStyleLoss(nn.Module):
         self.photo_activations = acts
 
     def forward(self, input_img):
+        """
+        Actually compute the loss
+        """
         style_acts, content_acts = self.get_style_content_(input_img,
                                                            detach=False)
 
