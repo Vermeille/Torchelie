@@ -1,4 +1,14 @@
 class CurriculumScheduler:
+    """
+    Allow to pre-specify learning rate and momentum changes
+
+    Args:
+        optimizer (torch.optim.Optimizer): the optimizer to schedule
+        schedule (list): a schedule. It's a list of keypoints where each
+            element is a 3-tuple like (iteration number, lr, mom). Values are
+            interpolated linearly between neighboring keypoints
+        last_iter (int): starting iteration
+    """
     def __init__(self, optimizer, schedule, last_iter=-1):
         print(type(schedule), schedule)
         self.optimizer = optimizer
@@ -6,6 +16,9 @@ class CurriculumScheduler:
         self.last_iter = last_iter
 
     def step(self, *unused):
+        """
+        Step the scheduler to another iteration
+        """
         self.last_iter += 1
         the_lr = self.schedule[-1][1]
         the_mom = self.schedule[-1][2]

@@ -23,3 +23,7 @@ Indices and tables
    :members:
 .. automodule:: torchelie.data_learning
    :members:
+.. automodule:: torchelie.lr_scheduler
+   :members:
+.. automodule:: torchelie.utils
+   :members:
