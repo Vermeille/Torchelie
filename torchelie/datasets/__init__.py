@@ -5,6 +5,13 @@ import torch
 
 
 class PairedDataset(torch.utils.data.Dataset):
+    """
+    A dataset that returns all possible pairs of samples of two datasets
+
+    Args:
+        dataset1 (Dataset): a dataset
+        dataset2 (Dataset): another dataset
+    """
     def __init__(self, dataset1, dataset2):
         super(PairedDataset, self).__init__()
         self.dataset1 = dataset1
@@ -39,9 +46,16 @@ def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
 
 class MixUpDataset(PairedDataset):
     """
-    https://arxiv.org/abs/1905.02249
-    """
+    Linearly mixes two samples and labels from a dataset according to the MixUp
+    algorithm
 
+    https://arxiv.org/abs/1905.02249
+
+    Args:
+        dataset (Dataset): the dataset
+        alpha (float): the alpha that parameterizes the beta distribution from
+            which the blending factor is sampled
+    """
     def __init__(self, dataset, alpha=0.4):
         super(MixUpDataset, self).__init__(dataset, dataset)
         alpha = torch.tensor([alpha])
@@ -55,6 +69,13 @@ class MixUpDataset(PairedDataset):
 
 
 class NoexceptDataset:
+    """
+    Wrap a dataset and absorbs the exceptions it raises.  Useful in case of a
+    big downloaded dataset with corrupted samples for instance.
+
+    Args:
+        ds (Dataset): a dataset
+    """
     def __init__(self, ds):
         self.ds = ds
 

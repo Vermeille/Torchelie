@@ -3,6 +3,14 @@ import torchvision.transforms as TF
 
 
 class ColoredColumns(torch.utils.data.Dataset):
+    """
+    A dataset of precedurally generated images of columns randomly colorized.
+
+    Args:
+        *size (int): size of images
+        transform (transforms or None): the image transforms to apply to the
+            generated pictures
+    """
     def __init__(self, *size, transform=None):
         super(ColoredColumns, self).__init__()
         self.size = size
@@ -19,6 +27,14 @@ class ColoredColumns(torch.utils.data.Dataset):
 
 
 class ColoredRows(torch.utils.data.Dataset):
+    """
+    A dataset of precedurally generated images of rows randomly colorized.
+
+    Args:
+        *size (int): size of images
+        transform (transforms or None): the image transforms to apply to the
+            generated pictures
+    """
     def __init__(self, *size, transform=None):
         super(ColoredRows, self).__init__()
         self.size = size

@@ -27,3 +27,5 @@ Indices and tables
    :members:
 .. automodule:: torchelie.utils
    :members:
+.. automodule:: torchelie.datasets
+   :members:

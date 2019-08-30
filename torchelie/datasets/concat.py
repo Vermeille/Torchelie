@@ -37,6 +37,15 @@ class CatedLists:
 
 
 class HorizontalConcatDataset(torch.utils.data.Dataset):
+    """
+    Concatenates multiple datasets. However, while torchvision's ConcatDataset
+    just concatenates samples, torchelie's also relabels classes. While a
+    vertical concat like torchvision's is useful to add more examples per
+    class, an horizontal concat merges datasets to more classes.
+
+    Args:
+        datasets (list of Dataset): the datasets to concatenate
+    """
     def __init__(self, datasets):
         self.datasets = datasets
 
