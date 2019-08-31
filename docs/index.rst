@@ -1,14 +1,11 @@
-.. Torchélie documentation master file, created by
-   sphinx-quickstart on Tue Aug 27 15:58:29 2019.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to Torchélie's documentation!
 =====================================
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
+   optimizers
 
 Torchélie aims to provide new utilities, layers, tools to pytorch users,
 as an extension library. It aims for minimal codependence between components,
@@ -30,28 +27,10 @@ providing training loops with automatic logging, averaging, checkpointing, and
 visualisation. Unlike those however, instead of providing a "one size fits all"
 training loop, Torchélie aims to make writing them easy.
 
-Indices and tables
-==================
-
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
 
-
-Optimizers
-----------
-
-.. autoclass:: torchelie.optim.DeepDreamOptim
-   :members:
-
-.. autoclass:: torchelie.optim.AddSign
-   :members:
-
-LR Schedulers
--------------
-
-.. automodule:: torchelie.lr_scheduler
-   :members:
 
 Utils
 -----
