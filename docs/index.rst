@@ -37,15 +37,68 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
-.. automodule:: torchelie.optim
+
+Optimizers
+----------
+
+.. autoclass:: torchelie.optim.DeepDreamOptim
    :members:
-.. automodule:: torchelie.data_learning
+
+.. autoclass:: torchelie.optim.AddSign
    :members:
+
+LR Schedulers
+-------------
+
 .. automodule:: torchelie.lr_scheduler
    :members:
+
+Utils
+-----
+
 .. automodule:: torchelie.utils
    :members:
-.. automodule:: torchelie.datasets
+
+Data Learning
+-------------
+
+.. automodule:: torchelie.data_learning
    :members:
-.. automodule:: torchelie.loss
+
+Datasets
+--------
+
+.. autoclass:: torchelie.datasets.HorizontalConcatDataset
+   :members:
+.. autoclass:: torchelie.datasets.PairedDataset
+   :members:
+.. autoclass:: torchelie.datasets.MixUpDataset
+   :members:
+.. autofunction:: torchelie.datasets.mixup
+   :members:
+.. autoclass:: torchelie.datasets.NoexceptDataset
+   :members:
+
+Loss
+----
+
+.. autoclass:: torchelie.loss.OrthoLoss
+   :members:
+.. autofunction:: torchelie.loss.ortho
+   :members:
+.. autoclass:: torchelie.loss.TotalVariationLoss
+   :members:
+.. autofunction:: torchelie.loss.total_variation
+   :members:
+.. autoclass:: torchelie.loss.ContinuousCEWithLogits
+   :members:
+.. autofunction:: torchelie.loss.continuous_cross_entropy
+   :members:
+.. autoclass:: torchelie.loss.FocalLoss
+   :members:
+.. autofunction:: torchelie.loss.focal_loss
+   :members:
+.. autoclass:: torchelie.loss.PerceptualLoss
+   :members:
+.. autoclass:: torchelie.loss.NeuralStyleLoss
    :members:

@@ -3,6 +3,7 @@ import torch.nn as nn
 
 import torchelie.loss.gan
 from .functional import ortho, total_variation, continuous_cross_entropy
+from .functional import focal_loss
 
 from .perceptualloss import PerceptualLoss
 from .neuralstyleloss import NeuralStyleLoss
