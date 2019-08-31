@@ -75,7 +75,6 @@ Datasets
 .. autoclass:: torchelie.datasets.MixUpDataset
    :members:
 .. autofunction:: torchelie.datasets.mixup
-   :members:
 .. autoclass:: torchelie.datasets.NoexceptDataset
    :members:
 
@@ -85,19 +84,15 @@ Loss
 .. autoclass:: torchelie.loss.OrthoLoss
    :members:
 .. autofunction:: torchelie.loss.ortho
-   :members:
 .. autoclass:: torchelie.loss.TotalVariationLoss
    :members:
 .. autofunction:: torchelie.loss.total_variation
-   :members:
 .. autoclass:: torchelie.loss.ContinuousCEWithLogits
    :members:
 .. autofunction:: torchelie.loss.continuous_cross_entropy
-   :members:
 .. autoclass:: torchelie.loss.FocalLoss
    :members:
 .. autofunction:: torchelie.loss.focal_loss
-   :members:
 .. autoclass:: torchelie.loss.PerceptualLoss
    :members:
 .. autoclass:: torchelie.loss.NeuralStyleLoss
