@@ -7,24 +7,30 @@ from torchelie.models import PerceptualNet
 
 
 class PerceptualLoss(nn.Module):
-    """
+    r"""
     Perceptual loss: the distance between a two images deep representation
 
+    :math:`\text{Percept}(\text{input}, \text{target})=\sum_l^{layers}
+    \text{loss_fn}(\text{Vgg}(\text{input})_l, \text{Vgg}(\text{target})_l)`
+
     Args:
-        l (str): the layer on which to compare the representation
+        l (list of str): the layers on which to compare the representations
         rescale (bool): whether to scale images to 224x224 as expected by the
             underlying vgg net
-        loss (distance function): a distance function to compare the
+        loss_fn (distance function): a distance function to compare the
             representations, like mse_loss or l1_loss
     """
-    def __init__(self, l, rescale=False, loss=F.mse_loss):
+    def __init__(self, l, rescale=False, loss_fn=F.mse_loss):
         super(PerceptualLoss, self).__init__()
         self.m = PerceptualNet(l)
         self.norm = ImageNetInputNorm()
         self.rescale = rescale
-        self.loss = loss
+        self.loss_fn = loss_fn
 
     def forward(self, x, y):
+        """
+        Return the perceptual loss between batch of images `x` and `y`
+        """
         if self.rescale:
             y = F.interpolate(y, size=(224, 224), mode='nearest')
             x = F.interpolate(x, size=(224, 224), mode='nearest')
@@ -33,5 +39,5 @@ class PerceptualLoss(nn.Module):
         _, acts = self.m(self.norm(x), detach=False)
         loss = 0
         for k in acts.keys():
-            loss += self.loss(acts[k], ref[k])
+            loss += self.loss_fn(acts[k], ref[k])
         return loss

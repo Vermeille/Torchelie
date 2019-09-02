@@ -121,14 +121,33 @@ class PixCNNBase(nn.Module):
 
 
 class PixelCNN(PixCNNBase):
+    """
+    A PixelCNN model with 6 blocks
+
+    Args:
+        hid (int): the number of hidden channels in the blocks
+        sz ((int, int)): the size of the images to learn. Must be square
+        channels (int): number of channels in the data. 3 for RGB images
+    """
     def __init__(self, hid, sz, channels=3):
         super(PixelCNN, self).__init__(channels, hid, channels, 256, sz)
         self.channels = channels
 
     def forward(self, x):
+        """A forward pass for training"""
         return super().forward(x)
 
     def sample(self, temp, N):
+        """
+        Sample a batch of images
+
+        Args:
+            temp (float): the sampling temperature
+            N (int): number of images to generate in the batch
+
+        Returns:
+            A batch of images
+        """
         img = torch.zeros(N, self.channels, *self.sz,
                 device=self.lin[0].weight.device).uniform_(0, 1)
         return self.sample_(img, temp)

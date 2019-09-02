@@ -13,6 +13,8 @@ from .focal import FocalLoss
 class OrthoLoss(nn.Module):
     """
     Orthogonal loss
+
+    See :func:`torchelie.loss.ortho` for details.
     """
     def forward(self, w):
         return ortho(w)
@@ -21,6 +23,8 @@ class OrthoLoss(nn.Module):
 class TotalVariationLoss(nn.Module):
     """
     Total Variation loss
+
+    See :func:`torchelie.loss.total_variation` for details.
     """
     def forward(self, x):
         return total_variation(x)
@@ -29,6 +33,8 @@ class TotalVariationLoss(nn.Module):
 class ContinuousCEWithLogits(nn.Module):
     """
     Cross Entropy loss accepting continuous target values
+
+    See :func:`torchelie.loss.continuous_cross_entropy` for details.
     """
     def forward(self, pred, soft_targets):
         return continuous_cross_entropy(pred, soft_targets)

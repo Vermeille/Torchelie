@@ -8,6 +8,8 @@ class FocalLoss(nn.Module):
     The focal loss
 
     https://arxiv.org/abs/1708.02002
+
+    See :func:`torchelie.loss.focal_loss` for details.
     """
     def __init__(self, gamma=0):
         super(FocalLoss, self).__init__()

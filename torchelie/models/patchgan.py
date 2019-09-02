@@ -42,6 +42,14 @@ def proj_patch_discr(arch, num_classes, in_ch=3, out_ch=1, norm=None):
 
 
 def Patch286(in_ch=3, out_ch=1, norm=nn.BatchNorm2d):
+    """
+    Patch Discriminator from pix2pix
+
+    Args:
+        in_ch (int): input channels, 3 for pictures
+        out_ch (int): output channels, 1 for binary real / fake classification
+        norm (function): the normalization layer to use
+    """
     return patch_discr([64, 128, 256, 512, 512, 512],
                        in_ch=in_ch,
                        out_ch=out_ch,
@@ -49,6 +57,14 @@ def Patch286(in_ch=3, out_ch=1, norm=nn.BatchNorm2d):
 
 
 def Patch70(in_ch=3, out_ch=1, norm=nn.BatchNorm2d):
+    """
+    Patch Discriminator from pix2pix
+
+    Args:
+        in_ch (int): input channels, 3 for pictures
+        out_ch (int): output channels, 1 for binary real / fake classification
+        norm (function): the normalization layer to use
+    """
     return patch_discr([64, 128, 256, 512],
                        in_ch=in_ch,
                        out_ch=out_ch,
@@ -57,11 +73,28 @@ def Patch70(in_ch=3, out_ch=1, norm=nn.BatchNorm2d):
 
 # Not sure about the receptive field but ok
 def Patch32(in_ch=3, out_ch=1, norm=nn.BatchNorm2d):
+    """
+    Patch Discriminator from pix2pix
+
+    Args:
+        in_ch (int): input channels, 3 for pictures
+        out_ch (int): output channels, 1 for binary real / fake classification
+        norm (function): the normalization layer to use
+    """
     return patch_discr([64, 128, 256], in_ch=in_ch, out_ch=out_ch, norm=norm)
 
 
 # Not sure about the receptive field but ok
 def ProjPatch32(in_ch=3, out_ch=1, norm=nn.BatchNorm2d, num_classes=10):
+    """
+    Patch Discriminator from pix2pix, with projection for conditional GANs
+
+    Args:
+        in_ch (int): input channels, 3 for pictures
+        out_ch (int): output channels, 1 for binary real / fake classification
+        norm (function): the normalization layer to use
+        num_classes (int): how many classes to discriminate
+    """
     return proj_patch_discr([64, 128, 256], num_classes=num_classes,
                             in_ch=in_ch,
                             out_ch=out_ch,
@@ -69,4 +102,12 @@ def ProjPatch32(in_ch=3, out_ch=1, norm=nn.BatchNorm2d, num_classes=10):
 
 
 def Patch16(in_ch=3, out_ch=1, norm=nn.BatchNorm2d):
+    """
+    Patch Discriminator from pix2pix
+
+    Args:
+        in_ch (int): input channels, 3 for pictures
+        out_ch (int): output channels, 1 for binary real / fake classification
+        norm (function): the normalization layer to use
+    """
     return patch_discr([64, 128], in_ch=in_ch, out_ch=out_ch, norm=norm)

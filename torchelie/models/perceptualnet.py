@@ -6,6 +6,14 @@ from torchelie.nn import WithSavedActivations
 
 
 def PerceptualNet(layers):
+    """
+    Make a VGG16 with appropriately named layers that records intermediate
+    activations.
+
+    Args:
+        layers (list of str): the names of the layers for which to save the
+            activations.
+    """
     layer_names = [
         'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'maxpool1',
         'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'maxpool2',

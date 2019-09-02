@@ -3,10 +3,12 @@ import torch.nn.functional as F
 
 
 def ortho(w):
-    """
+    r"""
     Returns the orthogonal loss for weight matrix `m`, from Big GAN.
 
     https://arxiv.org/abs/1809.11096
+
+    :math:`R_{\beta}(W)= ||W^T W  \odot (1 - I)||_F^2`
     """
     cosine = torch.mm(w, w.t())
     no_diag = (1 - torch.eye(w.shape[0], device=w.device))
@@ -23,8 +25,10 @@ def total_variation(i):
 
 
 def focal_loss(input, target, gamma=0):
-    """
+    r"""
     Returns the focal loss between `target` and `input`
+
+    :math:`\text{FL}(p_t)=-(1-p_t)^\gamma\log(p_t)`
     """
     logp = nn.functional.cross_entropy(input, target)
     p = torch.exp(-logp)
@@ -33,7 +37,7 @@ def focal_loss(input, target, gamma=0):
 
 
 def continuous_cross_entropy(pred, soft_targets):
-    """
+    r"""
     Compute the cross entropy between the logits `pred` and a normalized
     distribution `soft_targets`. If `soft_targets` is a one-hot vector, this is
     equivalent to `nn.functional.cross_entropy` with a label

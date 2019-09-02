@@ -31,6 +31,16 @@ class PairedDataset(torch.utils.data.Dataset):
 
 
 def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
+    r"""
+    Mixes samples `x1` and `x2` with respective labels `y1` and `y2` according
+    to MixUp
+
+    :math:`\lambda \sim \text{Beta}(\alpha, \alpha)`
+
+    :math:`x = \lambda x_1 + (1-\lambda) x_2`
+
+    :math:`y = \lambda y_1 + (1 - \lambda) y_2`
+    """
     if mixer is None:
         alpha = torch.tensor([alpha])
         mixer = torch.distributions.Beta(alpha, alpha)
