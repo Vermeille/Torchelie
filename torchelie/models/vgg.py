@@ -6,6 +6,18 @@ from .classifier import Classifier
 
 
 def VggBNBone(arch, in_ch=3, leak=0, block=tnn.Conv2dBNReLU, debug=False):
+    """
+    Construct a VGG net
+
+    Args:
+        arch (list): architecture specification
+        in_ch (int): number of input channels
+        leak (float): leak in relus
+        block (fn): block ctor
+
+    Returns:
+        A VGG instance
+    """
     layers = []
 
     if debug:
