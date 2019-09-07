@@ -135,6 +135,8 @@ Modules:
 * `TotalVariationLoss` TV prior on 2D images.
 * `ContinuousCEWithLogits` is a Cross Entropy loss that allows non categorical
   targets.
+* `TemperedCrossEntropyLoss` from _Robust Bi-Tempered Logistic Loss Based on
+  Bregman Divergences_ (Amid et al, 2019)
 
 Functions (`torchelie.loss.functional`):
 
@@ -142,6 +144,8 @@ Functions (`torchelie.loss.functional`):
   (BigGAN)
 * `total_variation(x)` applies a spatial L1 loss on 2D tensors
 * `continuous_cross_entropy`
+* `tempered_cross_entropy` from _Robust Bi-Tempered Logistic Loss Based on
+  Bregman Divergences_ (Amid et al, 2019)
 
 ### `torchelie.loss.gan`
 

@@ -4,6 +4,7 @@ Loss
 Functions
 ~~~~~~~~~
 
+.. autofunction:: torchelie.loss.tempered_cross_entropy
 .. autofunction:: torchelie.loss.ortho
 .. autofunction:: torchelie.loss.total_variation
 .. autofunction:: torchelie.loss.continuous_cross_entropy
@@ -12,6 +13,9 @@ Functions
 Modules
 ~~~~~~~
 
+.. autoclass:: torchelie.loss.TemperedCrossEntropyLoss
+   :members:
+   :undoc-members:
 .. autoclass:: torchelie.loss.OrthoLoss
    :members:
    :undoc-members:

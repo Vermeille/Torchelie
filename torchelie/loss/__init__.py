@@ -9,6 +9,7 @@ from .perceptualloss import PerceptualLoss
 from .neuralstyleloss import NeuralStyleLoss
 from .deepdreamloss import DeepDreamLoss
 from .focal import FocalLoss
+from .bitempered import tempered_cross_entropy, TemperedCrossEntropyLoss
 
 
 class OrthoLoss(nn.Module):
