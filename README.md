@@ -8,6 +8,8 @@ high level features.
 
 Feedback is absolutely welcome.
 
+You may want to [read the detailed docs](https://readthedocs.org/projects/torchelie/)
+
 # Installation
 
 `pip install git+https://github.com/vermeille/Torchelie`
