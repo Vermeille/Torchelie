@@ -6,6 +6,7 @@ Welcome to Torchélie's documentation!
 
    :caption: Reference:
 
+   nn
    optimizers
    utils
    data_learning

@@ -6,6 +6,9 @@ from torchelie.utils import layer_by_name
 
 
 class WithSavedActivations(nn.Module):
+    """
+    FIXME: PLZ DOCUMENT ME
+    """
     def __init__(self, model, types=(nn.Conv2d, nn.Linear), names=None):
         super(WithSavedActivations, self).__init__()
         self.model = model

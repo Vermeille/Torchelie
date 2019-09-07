@@ -96,6 +96,12 @@ def ResNetBone(arch, head, block, in_ch=3, debug=False):
     """
     A resnet
 
+    How to specify an architecture:
+
+    It's a list of block specifications. Each element is a string of the form
+    "output channels:stride". For instance "64:2" is a block with input stride
+    2 and 64 output channels.
+
     Args:
         arch (list): the architecture specification
         head (fn): the module ctor to build for the first conv

@@ -9,6 +9,15 @@ def VggBNBone(arch, in_ch=3, leak=0, block=tnn.Conv2dBNReLU, debug=False):
     """
     Construct a VGG net
 
+    How to specify a VGG architecture:
+
+    It's a list of blocks specifications. Blocks are either:
+
+    - 'M' for maxpool of kernel size 2 and stride 2
+    - 'A' for average pool of kernel size 2 and stride 2
+    - 'U' for nearest neighbors upsampling (scale factor 2)
+    - an integer `ch` for a block with `ch` output channels
+
     Args:
         arch (list): architecture specification
         in_ch (int): number of input channels
@@ -40,6 +49,17 @@ def VggBNBone(arch, in_ch=3, leak=0, block=tnn.Conv2dBNReLU, debug=False):
 
 
 def VggDebug(num_classes, in_ch=1, debug=False):
+    """
+    A not so small Vgg net classifier for testing purposes
+
+    Args:
+        num_classes (int): number of output classes
+        in_ch (int): number of input channels, 3 for RGB images
+        debug (bool): whether to add debug layers
+
+    Returns:
+        a VGG instance
+    """
     return Classifier(
         VggBNBone([64, 64, 'M', 128, 'M', 128, 'M', 256, 256],
                   in_ch=in_ch,
@@ -47,6 +67,16 @@ def VggDebug(num_classes, in_ch=1, debug=False):
 
 
 def VggGeneratorDebug(in_noise=32, out_ch=3):
+    """
+    A not so small Vgg net image GAN generator for testing purposes
+
+    Args:
+        in_noise (int): dimension of the input noise
+        out_ch (int): number of output channels (3 for RGB images)
+
+    Returns:
+        a VGG instance
+    """
     return nn.Sequential(
         kaiming(nn.Linear(in_noise, 128 * 16)), tnn.Reshape(128, 4, 4),
         nn.LeakyReLU(0.2, inplace=True),
@@ -55,6 +85,17 @@ def VggGeneratorDebug(in_noise=32, out_ch=3):
 
 
 class VggImg2ImgGeneratorDebug(nn.Module):
+    """
+    A vgg based image decoder that decodes a latent / noise vector into an
+    image, conditioned on another image, like Pix2Pix or GauGAN. This
+    architecture is really close to GauGAN as it's not an encoder-decoder
+    architecture and uses SPADE
+
+    Args:
+        in_noise (int): dimension of the input latent
+        out_ch (int): number of channels of the output image, 3 for RGB image
+        side_ch (int): number of channels of the input image, 3 for RGB image
+    """
     def __init__(self, in_noise, out_ch, side_ch=1):
         super(VggImg2ImgGeneratorDebug, self).__init__()
 
@@ -73,10 +114,29 @@ class VggImg2ImgGeneratorDebug(nn.Module):
             nn.Sigmoid())
 
     def forward(self, x, y):
+        """
+        Generate an image
+
+        Args:
+            x (4D tensor): input images
+            y (2D tensor): input latent vectors
+
+        Returns:
+            the generated images as a 4D tensor
+        """
         return self.net(x, y)
 
 
 class VggClassCondGeneratorDebug(nn.Module):
+    """
+    A vgg based image decoder that decodes a latent / noise vector into an
+    image, conditioned on a class label (through conditional batchnorm).
+
+    Args:
+        in_noise (int): dimension of the input latent
+        out_ch (int): number of channels of the output image, 3 for RGB image
+        side_ch (int): number of channels of the input image, 3 for RGB image
+    """
     def __init__(self, in_noise, out_ch, num_classes):
         super(VggClassCondGeneratorDebug, self).__init__()
 
@@ -96,5 +156,15 @@ class VggClassCondGeneratorDebug(nn.Module):
             nn.Sigmoid())
 
     def forward(self, x, y):
+        """
+        Generate images
+
+        Args:
+            x (2D tensor): latent vectors
+            y (1D tensor): class labels
+
+        Returns:
+            generated images as a 4D tensor
+        """
         y_emb = self.emb(y)
         return self.net(x, y_emb)

@@ -4,6 +4,19 @@ import torch.nn.functional as F
 
 
 class MaskedConv2d(nn.Conv2d):
+    """
+    A masked 2D convolution for PixelCNN
+
+    Args:
+        in_chan (int): number of input channels
+        out_chan (int): number of output channels
+        ks (int): kernel size
+        center (bool): whereas central pixel is masked or not
+        stride (int): stride, defaults to 1
+        bias (2-tuple of ints): A spatial bias. Either the spatial dimensions
+            of the input for a different bias at each location, or (1, 1) for
+            the same bias everywhere (default)
+    """
     def __init__(self, in_chan, out_chan, ks, center, stride=1, bias=(1, 1)):
         super(MaskedConv2d, self).__init__(in_chan,
                                            out_chan, (ks // 2 + 1, ks),

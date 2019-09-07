@@ -1,4 +1,4 @@
-import torchelie.datasets.debug
+from torchelie.datasets.debug import *
 from .concat import HorizontalConcatDataset
 
 import torch

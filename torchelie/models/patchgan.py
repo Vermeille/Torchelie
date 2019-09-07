@@ -32,11 +32,42 @@ def base_patch_discr(arch, in_ch=3, out_ch=1, norm=None):
 
 
 def patch_discr(arch, in_ch=3, out_ch=1, norm=None):
+    """
+    Construct a PatchGAN discriminator
+
+    Args:
+        arch (list of ints): a list of number of filters. For instance `[64,
+            128, 256]` generates a PatchGAN with 3 conv layers, with respective
+            number of kernels 64, 128 and 256.
+        in_ch (int): number of input channels, 3 for RGB images
+        out_ch (int): number of output channels, 1 for fake / real
+            discriminator
+        norm (fn): a normalization layer ctor
+
+    Returns:
+        the specified patchGAN as CondSeq
+    """
     return Classifier(base_patch_discr(arch, in_ch=in_ch, out_ch=out_ch, norm=norm),
                       arch[-1], out_ch)
 
 
 def proj_patch_discr(arch, num_classes, in_ch=3, out_ch=1, norm=None):
+    """
+    Construct a PatchGAN discriminator with projection
+
+    Args:
+        arch (list of ints): a list of number of filters. For instance `[64,
+            128, 256]` generates a PatchGAN with 3 conv layers, with respective
+            number of kernels 64, 128 and 256.
+        num_classes (int): number of classes to discriminate
+        in_ch (int): number of input channels, 3 for RGB images
+        out_ch (int): number of output channels, 1 for fake / real
+            discriminator
+        norm (fn): a normalization layer ctor
+
+    Returns:
+        the specified patchGAN as CondSeq
+    """
     return ProjectionDiscr(base_patch_discr(arch, in_ch=in_ch, out_ch=out_ch, norm=norm),
                       arch[-1], num_classes=num_classes)
 

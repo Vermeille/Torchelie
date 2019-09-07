@@ -4,6 +4,14 @@ import torch.nn as nn
 
 
 class Debug(nn.Module):
+    """
+    An pass-through layer that prints some debug info during forward pass.
+    It prints its name, the input's shape, mean of channels means, mean,
+    mean of channels std, and std.
+
+    Args:
+        name (str): this layer's name
+    """
     def __init__(self, name):
         super(Debug, self).__init__()
         self.name = name
@@ -22,5 +30,8 @@ class Debug(nn.Module):
 
 
 class Dummy(nn.Module):
+    """
+    A pure pass-through layer
+    """
     def forward(self, x):
         return x

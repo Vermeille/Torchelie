@@ -30,6 +30,9 @@ Modules
 .. autoclass:: torchelie.loss.NeuralStyleLoss
    :members:
    :undoc-members:
+.. autoclass:: torchelie.loss.DeepDreamLoss
+   :members:
+   :undoc-members:
 
 GAN losses
 ~~~~~~~~~~

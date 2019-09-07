@@ -12,4 +12,5 @@ LR Schedulers
 
 .. automodule:: torchelie.lr_scheduler
    :members:
+   :undoc-members:
 

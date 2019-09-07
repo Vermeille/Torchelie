@@ -7,6 +7,19 @@ from .functional import quantize
 
 
 class VQ(nn.Module):
+    """
+    Quantization layer from _Neural Discrete Representation Learning_
+
+    Args:
+        latent_dim (int): number of features along which to quantize
+        num_tokens (int): number of tokens in the codebook
+        dim (int): dimension along which to quantize
+        mode ('angular' or 'nearest'): whether the distance between the input
+            vectors and the codebook vectors is computed with a L2 distance or
+            an angular distance
+        return_indices (bool): whether to return the indices of the quantized
+            code points
+    """
     def __init__(self,
                  latent_dim,
                  num_tokens,
@@ -25,6 +38,16 @@ class VQ(nn.Module):
         self.return_indices = return_indices
 
     def forward(self, x):
+        """
+        Forward pass
+
+        Args:
+            x (tensor): input tensor
+
+        Returns:
+            quantized tensor, or (quantized tensor, indices) if
+            `self.return_indices`
+        """
         dim = self.dim
         nb_codes = self.embedding.weight.shape[0]
 

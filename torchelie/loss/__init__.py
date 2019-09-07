@@ -7,6 +7,7 @@ from .functional import focal_loss
 
 from .perceptualloss import PerceptualLoss
 from .neuralstyleloss import NeuralStyleLoss
+from .deepdreamloss import DeepDreamLoss
 from .focal import FocalLoss
 
 
