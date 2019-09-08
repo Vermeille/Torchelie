@@ -26,7 +26,7 @@ def tempered_softmax(x, t, n_iters=3):
     return exp_t(x - lambdas(x, t, n_iters=n_iters), t)
 
 
-def tempered_cross_entropy(x, y, t1, t2, n_iters=3):
+def tempered_cross_entropy(x, y, t1, t2, n_iters=3, weight=None, reduction='mean'):
     """
     The bi-tempered loss from https://arxiv.org/abs/1906.03361
 
@@ -35,16 +35,31 @@ def tempered_cross_entropy(x, y, t1, t2, n_iters=3):
         y (tensor): a tensor of labels
         t1 (float): temperature 1
         t2 (float): temperature 2
+        weight (tensor): a tensor that associates a weight to each class
+        reduction (str): how to reduce the batch of losses: 'none', 'sum', or
+            'mean'
 
     Returns:
         the loss
     """
-    return tempered_nll_loss(tempered_softmax(x, t2, n_iters=n_iters), y, t1)
+    sm = tempered_softmax(x, t2, n_iters=n_iters)
+    return tempered_nll_loss(sm, y, t1, weight=weight, reduction=reduction)
 
 
-def tempered_nll_loss(x, y, t):
+def tempered_nll_loss(x, y, t, weight=None, reduction='mean'):
     y_hat = x[torch.arange(0, x.shape[0]).long(), y]
-    return -log_t(y_hat, t) - (1 - torch.sum(x**(2 - t), dim=1)) / (2 - t)
+    out = -log_t(y_hat, t) - (1 - torch.sum(x**(2 - t), dim=1)) / (2 - t)
+    if weight is not None:
+        out = weight[y] * out
+
+    if reduction == 'none':
+        return out
+    if reduction == 'mean' and weight is not None:
+        return torch.sum(out / weight[y].sum())
+    if reduction == 'mean' and weight is None:
+        return torch.sum(out / out.shape[0])
+    if reduction == 'sum':
+        return out.sum()
 
 
 class TemperedCrossEntropyLoss(torch.nn.Module):
@@ -54,12 +69,17 @@ class TemperedCrossEntropyLoss(torch.nn.Module):
     Args:
         t1 (float): temperature 1
         t2 (float): temperature 2
+        weight (tensor): a tensor that associates a weight to each class
+        reduction (str): how to reduce the batch of losses: 'none', 'sum', or
+            'mean'
     """
 
-    def __init__(self, t1, t2):
-        super(TemperedCrossEntropy, self).__init__()
+    def __init__(self, t1, t2, weight=None, reduction='mean'):
+        super(TemperedCrossEntropyLoss, self).__init__()
         self.t1 = t1
         self.t2 = t2
+        self.weight = weight
+        self.reduction = reduction
 
     def forward(self, x, y):
         """
@@ -73,16 +93,19 @@ class TemperedCrossEntropyLoss(torch.nn.Module):
         Returns:
             the loss
         """
-        return tempered_cross_entropy(x, y, t1, t2)
+        return tempered_cross_entropy(x, y, self.t1, self.t2, weight=self.weight,
+                reduction=self.reduction)
 
 
 if __name__ == '__main__':
     torch.manual_seed(0)
     a = torch.randn(12, 100)
     l = torch.arange(0, 12).long()
+    w = torch.randn(100).abs() * 10
 
     print(tempered_softmax(a, 1))
     print(torch.nn.functional.softmax(a, dim=1))
 
-    print(torch.nn.functional.cross_entropy(a, l, reduction='none'))
-    print(tempered_cross_entropy(a, l, 1, 1))
+    print(torch.nn.functional.cross_entropy(a, l, reduction='mean', weight=w))
+    print(torch.nn.functional.cross_entropy(a, l, reduction='sum', weight=w))
+    print(tempered_cross_entropy(a, l, 1, 1, weight=w, reduction='mean'))
