@@ -1,3 +1,10 @@
+"""
+Neural Style from Leon Gatys
+
+A commandline interface is provided through `python3 -m
+torchelie.recipes.neural_style`
+"""
+
 import torch
 from torchvision.transforms import ToTensor, ToPILImage
 
@@ -16,7 +23,18 @@ def pil2t(pil):
 
 
 class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
-    def __init__(self, device="cpu", visdom_env='style'):
+    """
+    Neural Style Recipe
+
+    First instantiate the recipe then call `recipe(n_iter, img)`
+
+    Args:
+        lr (float, optional): the learning rate
+        device (device): where to run the computation
+        visdom_env (str or None): the name of the visdom env to use, or None
+            to disable Visdom
+    """
+    def __init__(self, lr=0.01, device="cpu", visdom_env='style'):
         super(NeuralStyleRecipe, self).__init__(callbacks=[
             cb.WindowedMetricAvg('content_loss'),
             cb.WindowedMetricAvg('style_loss'),
@@ -24,6 +42,7 @@ class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
 
         self.loss = NeuralStyleLoss().to(device)
         self.device = device
+        self.lr = lr
 
     def init(self, content_img, style_img, style_ratio, content_layers=None):
         self.loss.set_style(pil2t(style_img).to(self.device), style_ratio)
@@ -34,7 +53,7 @@ class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
                                        content_img.width).to(self.device)
 
         self.opt = torch.optim.LBFGS(self.canvas.parameters(),
-                                     lr=0.01,
+                                     lr=self.lr,
                                      history_size=50)
 
     def forward(self):
@@ -59,6 +78,19 @@ class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
     def result(self):
         return self.canvas.render()
 
+    def __call__(self, n_iters, content, style, ratio, content_layers):
+        """
+        Run the recipe
+
+        Args:
+            n_iters (int): number of iterations to run
+            content (PIL.Image): content image
+            style (PIL.Image): style image
+            ratio (float): weight of style loss
+            content_layers (list of str): layers on which to reconstruct
+                content
+        """
+        return super()(n_iters, content, style, ratio, content_layers)
 
 if __name__ == '__main__':
     import argparse

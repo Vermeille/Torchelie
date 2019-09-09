@@ -1,3 +1,17 @@
+"""
+Deep Dream recipe.
+
+Performs the algorithm described in
+https://ai.googleblog.com/2015/06/inceptionism-going-deeper-into-neural.html
+
+This implementation differs from the original one: the image is optimized in
+Fourier space, for greater details and colors, the model and layers are
+customizable.
+
+A commandline interface is provided through `python3 -m
+torchelie.recipes.deepdream`, and a DeepDreamRecipe is provided.
+"""
+
 import torch
 import torchvision.transforms as TF
 
@@ -12,6 +26,20 @@ from PIL import Image
 
 
 class DeepDreamRecipe(ImageOptimizationBaseRecipe):
+    """
+    Deep Dream recipe
+
+    First instantiate the recipe then call `recipe(n_iter, img)`
+
+    Args:
+        model (nn.Module): the trained model to use
+        dream_layer (str): the layer to use on which activations will be
+            maximized
+        lr (float, optional): the learning rate
+        device (device): where to run the computation
+        visdom_env (str or None): the name of the visdom env to use, or None
+            to disable Visdom
+    """
     def __init__(self,
                  model,
                  dream_layer,
@@ -46,6 +74,19 @@ class DeepDreamRecipe(ImageOptimizationBaseRecipe):
 
     def result(self):
         return self.canvas.render()
+
+    def __call__(self, n_iters, ref):
+        """
+        Run the recipe
+
+        Args:
+            n_iters (int): number of iterations to perform
+            ref (PIL.Image): the base image
+
+        Returns:
+            the optimized image
+        """
+        return super()(n_iters, ref)
 
 
 if __name__ == '__main__':

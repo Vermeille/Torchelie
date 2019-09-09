@@ -7,6 +7,7 @@ Welcome to Torchélie's documentation!
    :caption: Reference:
 
    nn
+   recipes
    optimizers
    utils
    data_learning
