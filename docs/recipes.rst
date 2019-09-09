@@ -6,6 +6,8 @@ Recipes
 Deep Dream
 ~~~~~~~~~~
 
+.. image:: _static/dream_example.jpg
+
 .. automodule:: torchelie.recipes.deepdream
 
 .. autoclass:: torchelie.recipes.deepdream.DeepDreamRecipe
@@ -15,6 +17,8 @@ Deep Dream
 Feature visualization
 ~~~~~~~~~~~~~~~~~~~~~
 
+.. image:: _static/vis_example.jpg
+
 .. automodule:: torchelie.recipes.feature_vis
 
 .. autoclass:: torchelie.recipes.feature_vis.FeatureVisRecipe
@@ -23,6 +27,8 @@ Feature visualization
 
 Neural Style
 ~~~~~~~~~~~~~~~~~~~~~
+
+.. image:: _static/style_example.png
 
 .. automodule:: torchelie.recipes.neural_style
 
