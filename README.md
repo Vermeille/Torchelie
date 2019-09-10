@@ -215,6 +215,8 @@ Classes:
 
 * `DeepDreamOptim` is the optimizer used by DeepDream
 * `AddSign` from _Neural Optimiser search with Reinforcment learning_
+* `RAdamW` from _On the Variance of the Adaptive Learning Rate and Beyond_,
+  with AdamW weight decay fix.
 
 ## `torchelie.data_learning`
 

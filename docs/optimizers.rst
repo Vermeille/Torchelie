@@ -1,11 +1,16 @@
 Optimizers
 ==========
 
+.. autoclass:: torchelie.optim.RAdamW
+   :members:
+
 .. autoclass:: torchelie.optim.DeepDreamOptim
    :members:
 
 .. autoclass:: torchelie.optim.AddSign
    :members:
+
+
 
 LR Schedulers
 =============
