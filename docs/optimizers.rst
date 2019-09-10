@@ -1,6 +1,10 @@
 Optimizers
 ==========
 
+.. autoclass:: torchelie.optim.Lookahead
+   :members:
+   :undoc-members:
+
 .. autoclass:: torchelie.optim.RAdamW
    :members:
 
@@ -9,8 +13,6 @@ Optimizers
 
 .. autoclass:: torchelie.optim.AddSign
    :members:
-
-
 
 LR Schedulers
 =============

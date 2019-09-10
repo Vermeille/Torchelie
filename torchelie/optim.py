@@ -63,14 +63,10 @@ class AddSign(Optimizer):
         lr (float): the learning rate
         eps (float): epsilon value to avoid dividing by zero
     """
-    def __init__(self, params, lr=1e-3, beta=0.9, weight_decay=0):
-        defaults = {
-                'lr': lr,
-                'beta': beta,
-                'weight_decay': weight_decay
-        }
-        super(AddSign, self).__init__(params, defaults)
 
+    def __init__(self, params, lr=1e-3, beta=0.9, weight_decay=0):
+        defaults = {'lr': lr, 'beta': beta, 'weight_decay': weight_decay}
+        super(AddSign, self).__init__(params, defaults)
 
     def step(self, closure=None):
         """Update the weights
@@ -110,6 +106,7 @@ class AddSign(Optimizer):
 
         return loss
 
+
 class RAdamW(Optimizer):
     r"""Implements RAdamW algorithm.
 
@@ -136,18 +133,23 @@ class RAdamW(Optimizer):
         https://arxiv.org/abs/1908.03265v1
     """
 
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
+    def __init__(self,
+                 params,
+                 lr=1e-3,
+                 betas=(0.9, 0.999),
+                 eps=1e-8,
                  weight_decay=1e-6):
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
         if not 0.0 <= eps:
             raise ValueError("Invalid epsilon value: {}".format(eps))
         if not 0.0 <= betas[0] < 1.0:
-            raise ValueError("Invalid beta parameter at index 0: {}".format(betas[0]))
+            raise ValueError("Invalid beta parameter at index 0: {}".format(
+                betas[0]))
         if not 0.0 <= betas[1] < 1.0:
-            raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
-        defaults = dict(lr=lr, betas=betas, eps=eps,
-                        weight_decay=weight_decay)
+            raise ValueError("Invalid beta parameter at index 1: {}".format(
+                betas[1]))
+        defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
         super(RAdamW, self).__init__(params, defaults)
 
     def step(self, closure=None):
@@ -172,7 +174,9 @@ class RAdamW(Optimizer):
                 # Perform optimization step
                 grad = p.grad.data
                 if grad.is_sparse:
-                    raise RuntimeError('Adam does not support sparse gradients, please consider SparseAdam instead')
+                    raise RuntimeError(
+                        'Adam does not support sparse gradients, please consider SparseAdam instead'
+                    )
 
                 state = self.state[p]
 
@@ -192,25 +196,91 @@ class RAdamW(Optimizer):
                     group['rho_inf'] = 2 / (1 - beta2) - 1
                 rho_inf = group['rho_inf']
 
-
                 state['step'] += 1
                 t = state['step']
 
                 # Decay the first and second moment running average coefficient
                 exp_avg_sq.mul_(beta2).addcmul_(1 - beta2, grad, grad)
                 exp_avg.mul_(beta1).add_(1 - beta1, grad)
-                exp_avg_no_bias = exp_avg / (1 - beta1 ** t)
-                rho_t = rho_inf - ((2 * t * (beta2 ** t)) / (1 - beta2 ** t))
+                exp_avg_no_bias = exp_avg / (1 - beta1**t)
+                rho_t = rho_inf - ((2 * t * (beta2**t)) / (1 - beta2**t))
 
                 if rho_t > 4:
-                    var = exp_avg_sq / (1 - beta2 ** t)
+                    var = exp_avg_sq / (1 - beta2**t)
                     var.sqrt_()
                     r = math.sqrt(((rho_t - 4) * (rho_t - 2) * rho_inf) /
-                            ((rho_inf - 4) * (rho_inf - 2) * rho_t))
-
+                                  ((rho_inf - 4) * (rho_inf - 2) * rho_t))
 
                     p.data.addcdiv_(-lr * r, exp_avg_no_bias, var + eps)
                 else:
                     p.data.add_(-lr, exp_avg_no_bias)
 
+        return loss
+
+
+from collections import defaultdict
+
+class Lookahead:
+    """
+    Implements Lookahead from `Lookahead Optimizer: k steps forward, 1 step
+    back` (Zhang et al, 2019)
+
+    Args:
+        base_optimizer (Optimizer): an optimizer for the inner loop
+        alpha (float): outer loop learning rate
+        k (int): number of steps in the inner loop
+    """
+    def __init__(self, base_optimizer, alpha=0.5, k=6):
+        if not 0.0 <= alpha <= 1.0:
+            raise ValueError('Invalid slow update rate: ' + str(alpha))
+        if not 1 <= k:
+            raise ValueError('Invalid lookahead steps: ' + str(k))
+
+        self.alpha = alpha
+        self.k = k
+        self.optimizer = base_optimizer
+        self.state = defaultdict(dict)
+
+    def state_dict(self):
+        return {'lookahead': self.state, 'opt': self.optimizer.state_dict()}
+
+    def load_state_dict(self, state):
+        self.state = state['lookahead']
+        self.optimizer.load_state_dict(state['opt'])
+
+    def zero_grad(self):
+        self.optimizer.zero_grad()
+
+    def step(self, closure=None):
+        """Performs a single optimization step.
+
+        Args:
+            closure (callable, optional): A closure that reevaluates the model
+                and returns the loss.
+        """
+        loss = None
+        if closure is not None:
+            loss = closure()
+        loss = self.optimizer.step()
+        if 'steps' not in self.state:
+            self.state['steps'] = 0
+        steps = self.state['steps']
+
+        self.state['steps'] += 1
+
+        if steps % self.k != 0:
+            return loss
+
+        for group in self.optimizer.param_groups:
+            for p in group['params']:
+                if p.grad is None:
+                    continue
+
+                if p not in self.state:
+                    self.state[p] = p.detach().clone()
+                    self.state[p].requires_grad= False
+
+                q = self.state[p]
+                q.data.add_(self.alpha, p.data - q.data)
+                p.data.copy_(q.data)
         return loss

@@ -217,6 +217,7 @@ Classes:
 * `AddSign` from _Neural Optimiser search with Reinforcment learning_
 * `RAdamW` from _On the Variance of the Adaptive Learning Rate and Beyond_,
   with AdamW weight decay fix.
+* `Lookahead` from `Lookahead Optimizer: k steps forward, 1 step back`
 
 ## `torchelie.data_learning`
 
