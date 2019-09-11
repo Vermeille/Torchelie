@@ -240,6 +240,7 @@ class Lookahead:
         self.k = k
         self.optimizer = base_optimizer
         self.state = defaultdict(dict)
+        self.param_groups = base_optimizer.param_groups
 
     def state_dict(self):
         return {'lookahead': self.state, 'opt': self.optimizer.state_dict()}
