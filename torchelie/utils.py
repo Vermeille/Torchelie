@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 def freeze(net):
@@ -57,7 +58,7 @@ def kaiming(m, a=0, nonlinearity='relu'):
             nonlinearity = 'leaky_relu'
 
     nn.init.kaiming_normal_(m.weight, a=a, nonlinearity=nonlinearity)
-    if m.bias is not None:
+    if hasattr(m, 'biais') and m.bias is not None:
         nn.init.constant_(m.bias, 0)
     return m
 
@@ -73,7 +74,7 @@ def xavier(m):
         the initialized module
     """
     nn.init.xavier_normal_(m.weight)
-    if m.bias is not None:
+    if hasattr(m, 'biais') and m.bias is not None:
         nn.init.constant_(m.bias, 0)
     return m
 
