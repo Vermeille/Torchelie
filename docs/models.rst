@@ -46,21 +46,24 @@ Convolutional
 ~~~~~~~~~~~~~
 
 .. autofunction:: torchelie.models.VggBNBone
-
 .. autofunction:: torchelie.models.ResNetBone
 .. autofunction:: torchelie.models.VectorCondResNetBone
 .. autofunction:: torchelie.models.ClassCondResNetBone
+.. autoclass:: torchelie.models.UNetBone
 
 Image classifiers
 ~~~~~~~~~~~~~~~~~
 
 .. autofunction:: torchelie.models.VggDebug
-
 .. autofunction:: torchelie.models.ResNetDebug
 .. autofunction:: torchelie.models.PreactResNetDebug
 .. autofunction:: torchelie.models.VectorCondResNetDebug
 .. autofunction:: torchelie.models.ClassCondResNetDebug
 
+Image Segmenter
+~~~~~~~~~~~~~~~
+
+.. autofunction:: torchelie.models.UNet
 
 Classification heads
 ~~~~~~~~~~~~~~~~~~~~

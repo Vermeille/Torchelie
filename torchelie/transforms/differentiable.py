@@ -21,6 +21,12 @@ def _rolly(img, begin, to):
                          dim=1)
 
 
+def center_crop(batch, size):
+    y_off = (batch.shape[2] - size[0]) // 2
+    x_off = (batch.shape[3] - size[1]) // 2
+    return batch[:, :, y_off:y_off + size[0], x_off:x_off + size[1]]
+
+
 def crop(batch_img, warped=True, sub_img_factor=2):
     imgs = []
     for img in batch_img:
