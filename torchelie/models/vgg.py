@@ -102,7 +102,7 @@ class VggImg2ImgGeneratorDebug(nn.Module):
         def make_block(in_ch, out_ch, **kwargs):
             return tnn.Conv2dNormReLU(in_ch,
                                       out_ch,
-                                      norm=tnn.Spade2d(out_ch, side_ch, 64),
+                                      norm=lambda out: tnn.Spade2d(out, side_ch, 64),
                                       **kwargs)
 
         self.net = tnn.CondSeq(
@@ -118,8 +118,8 @@ class VggImg2ImgGeneratorDebug(nn.Module):
         Generate an image
 
         Args:
-            x (4D tensor): input images
-            y (2D tensor): input latent vectors
+            x (2D tensor): input latent vectors
+            y (4D tensor): input images
 
         Returns:
             the generated images as a 4D tensor
@@ -143,7 +143,7 @@ class VggClassCondGeneratorDebug(nn.Module):
         def make_block(in_ch, out_ch, **kwargs):
             return tnn.Conv2dNormReLU(in_ch,
                                       out_ch,
-                                      norm=tnn.ConditionalBN2d(out_ch, 64),
+                                      norm=lambda out: tnn.ConditionalBN2d(out, 64),
                                       **kwargs)
 
         self.emb = nn.Embedding(num_classes, 64)

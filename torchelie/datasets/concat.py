@@ -50,11 +50,11 @@ class HorizontalConcatDataset(torch.utils.data.Dataset):
         self.datasets = datasets
 
         self.classes = CatedLists([ds.classes for ds in datasets])
-        self.imgs = CatedSamples([ds.imgs for ds in datasets])
+        self.samples = CatedSamples([ds.samples for ds in datasets])
         self.class_to_idx = {nm: i for i, nm in enumerate(self.classes)}
 
     def __len__(self):
-        return len(self.imgs)
+        return len(self.samples)
 
     def __getitem__(self, i):
         class_offset = 0

@@ -95,7 +95,7 @@ class PixCNNBase(nn.Module):
         self.l5 = nn.Sequential(*[ResBlk(hid * 2, hid *4 , hid*2, 5, sz2) for _ in range(n_layer)])
         self.l6 = nn.Sequential(*[ResBlk(hid*3, hid *6 , hid * 3, 5, sz) for _ in range(n_layer)])
 
-        self.lout = PixelPredictor(hid * 3)
+        self.lout = PixelPredictor(hid * 3, out_ch)
 
     def _body(self, x):
         x = self.lin(x)
