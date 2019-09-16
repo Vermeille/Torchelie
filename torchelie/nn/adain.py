@@ -14,7 +14,7 @@ class AdaIN2d(nn.Module):
             and scale will be derived
     """
     def __init__(self, channels, cond_channels):
-        super(AdaIN, self).__init__()
+        super(AdaIN2d, self).__init__()
         self.make_weight = nn.Linear(cond_channels, channels)
         self.make_bias = nn.Linear(cond_channels, channels)
 
@@ -65,7 +65,7 @@ class FiLM2d(nn.Module):
             and scale will be derived
     """
     def __init__(self, channels, cond_channels):
-        super(AdaIN, self).__init__()
+        super(FiLM2d, self).__init__()
         self.make_weight = nn.Linear(cond_channels, channels)
         self.make_bias = nn.Linear(cond_channels, channels)
 

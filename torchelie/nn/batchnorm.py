@@ -189,14 +189,14 @@ class AttenNorm2d(nn.BatchNorm2d):
     def __init__(self,
                  num_features,
                  num_weights,
-                 eps,
+                 eps=1e-8,
                  momentum=0.8,
                  track_running_stats=True):
         super(AttenNorm2d, self).__init__(num_features,
                                         eps=eps,
                                         momentum=momentum,
                                         affine=False,
-                                        track_running_stats=running)
+                                        track_running_stats=track_running_stats)
         self.gamma = nn.Parameter(torch.ones(num_weights, num_features))
         self.beta = nn.Parameter(torch.zeros(num_weights, num_features))
 
@@ -205,15 +205,19 @@ class AttenNorm2d(nn.BatchNorm2d):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        output = super(AttenNorm, self).forward(x)
+        output = super(AttenNorm2d, self).forward(x)
         size = output.size()
         b, c, _, _ = x.size()
+
         y = self.avgpool(x).view(b, c)
         y = self.fc(y)
         y = self.sigmoid(y)
+
         gamma = torch.mm(y, self.gamma)
         beta = torch.mm(y, self.beta)
-        gamma = weight.unsqueeze(-1).unsqueeze(-1).expand(size)
-        beta = bias.unsqueeze(-1).unsqueeze(-1).expand(size)
+
+        gamma = gamma.unsqueeze(-1).unsqueeze(-1).expand(size)
+        beta = beta.unsqueeze(-1).unsqueeze(-1).expand(size)
         return gamma * output + beta
+
 __all__.append('AttenNorm2d')
