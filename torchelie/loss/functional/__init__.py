@@ -46,4 +46,4 @@ def continuous_cross_entropy(pred, soft_targets):
     distribution `soft_targets`. If `soft_targets` is a one-hot vector, this is
     equivalent to `nn.functional.cross_entropy` with a label
     """
-    return torch.mean(torch.sum(-soft_targets * F.log_softmax(pred), 1))
+    return torch.mean(torch.sum(-soft_targets * F.log_softmax(pred, 1), 1))
