@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 
@@ -30,7 +31,10 @@ def focal_loss(input, target, gamma=0):
 
     :math:`\text{FL}(p_t)=-(1-p_t)^\gamma\log(p_t)`
     """
-    logp = nn.functional.cross_entropy(input, target)
+    if input.shape[1] == 1:
+        logp = nn.functional.binary_cross_entropy_with_logits(input, target)
+    else:
+        logp = nn.functional.cross_entropy(input, target)
     p = torch.exp(-logp)
     loss = (1 - p)**gamma * logp
     return loss.mean()
