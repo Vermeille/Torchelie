@@ -3,6 +3,18 @@ Recipes
 
 .. automodule:: torchelie.recipes
 
+Model Training
+~~~~~~~~~~~~~~
+
+.. autoclass:: torchelie.recipes.trainandtest.TrainAndTest
+   :members:
+
+.. autoclass:: torchelie.recipes.classification.Classification
+   :members:
+
+.. autoclass:: torchelie.recipes.classification.CrossEntropyClassification
+   :members:
+
 Deep Dream
 ~~~~~~~~~~
 
@@ -26,7 +38,7 @@ Feature visualization
    :special-members: __call__
 
 Neural Style
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
 
 .. image:: _static/style_example.png
 

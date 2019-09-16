@@ -8,7 +8,27 @@ import torchelie.metrics.callbacks as cb
 import torchelie.utils as tu
 
 
-class ImageClassifier:
+class TrainAndTest:
+    """
+    Vanilla training loop and testing loop. Displays Loss.
+
+    Args:
+        model (nn.Model): a model
+            The model must define:
+
+                - `model.make_optimizer()`
+                - `model.validation_step(batch)` returns a dict with key loss
+                - `model.train_step(batch, opt)` returns a dict with key loss
+        visdom_env (str): name of the visdom environment to use, or None for
+            not using Visdom (default: None)
+        test_every (int): testing frequency, in number of iterations (default:
+            1000)
+        train_callbacks (list of Callback): additional training callbacks
+            (default: [])
+        test_callbacks (list of Callback): additional testing callbacks
+            (default: [])
+        device: a torch device (default: 'cpu')
+    """
     def __init__(self,
                  model,
                  visdom_env=None,
@@ -24,13 +44,11 @@ class ImageClassifier:
         self.test_state = {'metrics': {}}
         self.train_callbacks = cb.CallbacksRunner(train_callbacks + [
             cb.WindowedMetricAvg('loss'),
-            cb.AccAvg(),
             cb.VisdomLogger(visdom_env=visdom_env, log_every=100),
             cb.StdoutLogger(log_every=100),
         ])
         self.test_callbacks = cb.CallbacksRunner(test_callbacks + [
             cb.EpochMetricAvg('loss', False),
-            cb.AccAvg(post_each_batch=False),
             cb.VisdomLogger(
                 visdom_env=visdom_env, log_every=-1, prefix='test_'),
             cb.StdoutLogger(log_every=-1, prefix='Test'),
@@ -65,6 +83,17 @@ class ImageClassifier:
             return copy.deepcopy(self.test_state['metrics'])
 
     def __call__(self, train_loader, test_loader, epochs=5):
+        """
+        Runs the recipe.
+
+        Args:
+            train_loader (DataLoader): Training set dataloader
+            test_loader (DataLoader): Testing set dataloader
+            epochs (int): number of epochs
+
+        Returns:
+            trained model, test metrics
+        """
         self.state['iters'] = 0
         for epoch in range(epochs):
             self.state['epoch'] = epoch
@@ -95,62 +124,3 @@ class ImageClassifier:
 
         self.model.eval()
         return self.model, self.state['test_metrics']
-
-
-class ImageClassifierDebug(torch.nn.Module):
-    def __init__(self, model, lr=3e-5):
-        super(ImageClassifierDebug, self).__init__()
-        self.model = model
-        self.lr = lr
-
-    def forward(self, x):
-        return self.model(x)
-
-    def train_step(self, batch, opt):
-        x, y = batch
-        opt.zero_grad()
-        pred = self.forward(x)
-        loss = torch.nn.functional.cross_entropy(pred, y)
-        loss.backward()
-        opt.step()
-        return {'loss': loss, 'pred': pred}
-
-    def validation_step(self, batch):
-        x, y = batch
-        pred = self.forward(x)
-        loss = torch.nn.functional.cross_entropy(pred, y)
-        return {'loss': loss, 'pred': pred}
-
-    def make_optimizer(self):
-        return optim.Adam(self.model.parameters(), lr=self.lr)
-
-
-if __name__ == '__main__':
-    from torchvision.datasets import FashionMNIST
-    from torch.utils.data import DataLoader
-    import torchvision.transforms as TF
-    tfm = TF.Compose([
-        TF.Resize(128),
-        TF.Grayscale(3),
-        TF.ToTensor(),
-    ])
-    trainset = FashionMNIST('../tests/', transform=tfm)
-    testset = FashionMNIST('../tests/', train=False, transform=tfm)
-
-    trainloader = DataLoader(trainset,
-                             32,
-                             num_workers=4,
-                             pin_memory=True,
-                             shuffle=True)
-    testloader = DataLoader(testset,
-                            32,
-                            num_workers=4,
-                            pin_memory=True,
-                            shuffle=True)
-
-    model = tvmodels.vgg11_bn(num_classes=10)
-
-    clf_recipe = ImageClassifier(ImageClassifierDebug(model),
-                                 device='cuda',
-                                 visdom_env='clf')
-    clf_recipe(trainloader, testloader, 4)

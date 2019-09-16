@@ -33,6 +33,7 @@ class UNetBone(nn.Module):
         in_ch (int): number of input channels
         out_ch (int): number of output channels
     """
+
     def __init__(self, arch, in_ch=3, out_ch=1):
         super(UNetBone, self).__init__()
         self.arch = arch
