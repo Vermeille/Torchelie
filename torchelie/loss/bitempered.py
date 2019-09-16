@@ -22,8 +22,34 @@ def lambdas(a, t, n_iters=3):
     return -log_t(1 / za, t) + mu
 
 
+def tempered_log_softmax(x, t, n_iters=3):
+    """
+    Tempered log softmax. Computes log softmax along dimension 1
+
+    Args:
+        x (tensor): activations
+        t (float): temperature
+        n_iters (int): number of iters to converge (default: 3
+
+    Returns:
+        result of tempered log softmax
+    """
+    return x - lambdas(x, t, n_iters=n_iters)
+
+
 def tempered_softmax(x, t, n_iters=3):
-    return exp_t(x - lambdas(x, t, n_iters=n_iters), t)
+    """
+    Tempered softmax. Computes softmax along dimension 1
+
+    Args:
+        x (tensor): activations
+        t (float): temperature
+        n_iters (int): number of iters to converge (default: 3
+
+    Returns:
+        result of tempered softmax
+    """
+    return exp_t(tempered_log_softmax(x, t, n_iters), t)
 
 
 def tempered_cross_entropy(x, y, t1, t2, n_iters=3, weight=None, reduction='mean'):
@@ -42,13 +68,28 @@ def tempered_cross_entropy(x, y, t1, t2, n_iters=3, weight=None, reduction='mean
     Returns:
         the loss
     """
-    sm = tempered_softmax(x, t2, n_iters=n_iters)
-    return tempered_nll_loss(sm, y, t1, weight=weight, reduction=reduction)
+    sm = tempered_log_softmax(x, t2, n_iters=n_iters)
+    return tempered_nll_loss(sm, y, t1, t2, weight=weight, reduction=reduction)
 
 
-def tempered_nll_loss(x, y, t, weight=None, reduction='mean'):
+def tempered_nll_loss(x, y, t1, t2, weight=None, reduction='mean'):
+    """
+    Compute tempered nll loss
+
+    Args:
+        x (tensor): activations of log softmax
+        y (tensor): labels
+        t1 (float): temperature 1
+        t2 (float): temperature 2
+        weight (tensor): a tensor that associates a weight to each class
+        reduction (str): how to reduce the batch of losses: 'none', 'sum', or
+            'mean'
+    Returns:
+        the loss
+    """
+    x = exp_t(x, t2)
     y_hat = x[torch.arange(0, x.shape[0]).long(), y]
-    out = -log_t(y_hat, t) - (1 - torch.sum(x**(2 - t), dim=1)) / (2 - t)
+    out = -log_t(y_hat, t1) - (1 - torch.sum(x**(2 - t1), dim=1)) / (2 - t1)
     if weight is not None:
         out = weight[y] * out
 

@@ -24,7 +24,7 @@ class PairedDataset(torch.utils.data.Dataset):
         x1 = self.dataset1[idx1]
         x2 = self.dataset2[idx2]
 
-        return zip(x1, x2)
+        return list(zip(x1, x2))
 
     def __len__(self):
         return len(self.dataset1) * len(self.dataset2)
@@ -40,6 +40,17 @@ def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
     :math:`x = \lambda x_1 + (1-\lambda) x_2`
 
     :math:`y = \lambda y_1 + (1 - \lambda) y_2`
+
+    Args:
+        x1 (tensor): sample 1
+        x2 (tensor): sample 2
+        y1 (tensor): label 1
+        y2 (tensor): label 2
+        num_classes (int): number of classes
+        mixer (Distribution, optional): a distribution to sample lambda from.
+            If unspecified, the distribution will be a Beta(alpha, alpha)
+        alpha (float): if mixer is unspecified, used to parameterize the Beta
+            distribution
     """
     if mixer is None:
         alpha = torch.tensor([alpha])
@@ -47,9 +58,9 @@ def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
 
     lam = mixer.sample(y1.shape).to(y1.device)
     y1 = torch.nn.functional.one_hot(
-        torch.tensor(y1), num_classes=num_classes).float().to(y1.device)
+        y1, num_classes=num_classes).float().to(y1.device)
     y2 = torch.nn.functional.one_hot(
-        torch.tensor(y2), num_classes=num_classes).float().to(y1.device)
+        y2, num_classes=num_classes).float().to(y1.device)
 
     return (lam * x1 + (1 - lam) * x2), (lam * y1 + (1 - lam) * y2)
 
@@ -74,8 +85,7 @@ class MixUpDataset(PairedDataset):
     def __getitem__(self, i):
         (x1, x2), (y1, y2) = super(MixUpDataset, self).__getitem__(i)
 
-        mixer = torch.distributions.Beta(alpha, alpha)
-        return mixup(x1, x2, y1, y2, len(self.dataset1.classes), mixer)
+        return mixup(x1, x2, y1, y2, len(self.dataset1.classes), self.mixer)
 
 
 class NoexceptDataset:

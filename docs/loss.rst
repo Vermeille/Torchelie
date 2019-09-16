@@ -5,6 +5,9 @@ Functions
 ~~~~~~~~~
 
 .. autofunction:: torchelie.loss.tempered_cross_entropy
+.. autofunction:: torchelie.loss.tempered_nll_loss
+.. autofunction:: torchelie.loss.tempered_softmax
+.. autofunction:: torchelie.loss.tempered_log_softmax
 .. autofunction:: torchelie.loss.ortho
 .. autofunction:: torchelie.loss.total_variation
 .. autofunction:: torchelie.loss.continuous_cross_entropy

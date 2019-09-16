@@ -10,6 +10,8 @@ from .neuralstyleloss import NeuralStyleLoss
 from .deepdreamloss import DeepDreamLoss
 from .focal import FocalLoss
 from .bitempered import tempered_cross_entropy, TemperedCrossEntropyLoss
+from .bitempered import tempered_softmax, tempered_nll_loss
+from .bitempered import tempered_log_softmax
 
 
 class OrthoLoss(nn.Module):
