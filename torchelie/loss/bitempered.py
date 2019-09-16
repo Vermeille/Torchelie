@@ -52,7 +52,13 @@ def tempered_softmax(x, t, n_iters=3):
     return exp_t(tempered_log_softmax(x, t, n_iters), t)
 
 
-def tempered_cross_entropy(x, y, t1, t2, n_iters=3, weight=None, reduction='mean'):
+def tempered_cross_entropy(x,
+                           y,
+                           t1,
+                           t2,
+                           n_iters=3,
+                           weight=None,
+                           reduction='mean'):
     """
     The bi-tempered loss from https://arxiv.org/abs/1906.03361
 
@@ -134,8 +140,12 @@ class TemperedCrossEntropyLoss(torch.nn.Module):
         Returns:
             the loss
         """
-        return tempered_cross_entropy(x, y, self.t1, self.t2, weight=self.weight,
-                reduction=self.reduction)
+        return tempered_cross_entropy(x,
+                                      y,
+                                      self.t1,
+                                      self.t2,
+                                      weight=self.weight,
+                                      reduction=self.reduction)
 
 
 if __name__ == '__main__':
