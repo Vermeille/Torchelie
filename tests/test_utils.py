@@ -2,6 +2,7 @@ import torch
 
 from torchelie.utils import *
 
+
 def test_net():
     m = torch.nn.Linear(10, 4)
     freeze(m)
@@ -12,14 +13,16 @@ def test_net():
     nb_parameters(m)
     assert m is layer_by_name(torch.nn.Sequential(m), '0')
     assert layer_by_name(torch.nn.Sequential(m), 'test') is None
-    send_to_device([{'a':[m]}], 'cpu')
+    send_to_device([{'a': [m]}], 'cpu')
 
     fm = FrozenModule(m)
     fm.train()
+    assert not fm.weight.requires_grad
     fm.weight
 
     fm = DetachedModule(m)
     fm.weight
+
 
 def test_utils():
     entropy(torch.randn(1, 10))

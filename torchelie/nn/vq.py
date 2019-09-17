@@ -62,8 +62,11 @@ class VQ(nn.Module):
 
         if (self.init_mode == 'first' and self.initialized.item() == 0
                 and self.training):
+            n_proto = self.embedding.weight.shape[0]
+
             ch_first = x.transpose(dim, -1).contiguous().view(-1, x.shape[1])
-            idx = torch.randperm(ch_first.shape[0])[:nb_codes]
+            n_samples = ch_first.shape[0]
+            idx = torch.randint(0, n_samples, (n_proto,))[:nb_codes]
             self.embedding.weight.data.copy_(ch_first[idx])
             self.initialized[:] = 1
 
