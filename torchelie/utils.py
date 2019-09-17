@@ -9,6 +9,7 @@ def freeze(net):
     """
     for p in net.parameters():
         p.requires_grad_(False)
+    return net
 
 
 def unfreeze(net):
@@ -17,9 +18,10 @@ def unfreeze(net):
     """
     for p in net.parameters():
         p.requires_grad_(True)
+    return net
 
 
-def entropy(out, dim, reduce='mean'):
+def entropy(out, dim=1, reduce='mean'):
     """
     Compute the entropy of the categorical distribution specified by the logits
     `out` along dimension `dim`.
@@ -90,7 +92,7 @@ def n002(m):
         the initialized module
     """
     nn.init.normal_(m.weight, 0, 0.02)
-    if m.bias is not None:
+    if hasattr(m, 'biais') and m.bias is not None:
         nn.init.constant_(m.bias, 0)
     return m
 
@@ -237,13 +239,15 @@ class FrozenModule(nn.Module):
         m (nn.Module): a module
     """
     def __init__(self, m):
+        super(FrozenModule, self).__init__()
         self.m = freeze(m).eval()
 
     def train(self, mode=True):
         return self
 
     def __getattr__(self, name):
-        return getattr(self.m, name)
+        print(self, name)
+        return getattr(super(FrozenModule, self).__getattr__('m'), name)
 
 
 class DetachedModule:
