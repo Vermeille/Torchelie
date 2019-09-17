@@ -1,9 +1,13 @@
+import torchelie.utils as tutils
+
+
 class CurriculumScheduler:
     """
     Allow to pre-specify learning rate and momentum changes
 
     Args:
-        optimizer (torch.optim.Optimizer): the optimizer to schedule
+        optimizer (torch.optim.Optimizer): the optimizer to schedule. Currently
+            works only with SGD
         schedule (list): a schedule. It's a list of keypoints where each
             element is a 3-tuple like (iteration number, lr, mom). Values are
             interpolated linearly between neighboring keypoints
@@ -27,9 +31,9 @@ class CurriculumScheduler:
             lim_hi, lr_hi, mom_hi = hi
 
             if limit_lo <= self.last_iter < lim_hi:
-                t = mathutils.get_t(limit_lo, lim_hi, self.last_iter)
-                the_lr = mathutils.lerp(lr_lo, lr_hi, t)
-                the_mom = mathutils.lerp(mom_lo, mom_hi, t)
+                t = tutils.ilerp(limit_lo, lim_hi, self.last_iter)
+                the_lr = tutils.lerp(lr_lo, lr_hi, t)
+                the_mom = tutils.lerp(mom_lo, mom_hi, t)
 
         for group in self.optimizer.param_groups:
             group['lr'] = the_lr

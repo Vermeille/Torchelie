@@ -262,3 +262,39 @@ class DetachedModule:
 
     def __getattr__(self, name):
         return getattr(self.m, name)
+
+
+def lerp(a, b, t):
+    r"""
+    Linearly interpolate between `a` and `b` according to `t`.
+
+
+    :math:`(1 - t)a + tb`
+
+    Args:
+        a (number or tensor): a
+        b (number or tensor): b
+        t (number or tensor): t between 0 and 1
+
+    Returns:
+        result between a and b
+    """
+    return (1 - t) * a + t * b
+
+
+def ilerp(a, b, t):
+    r"""
+    Inverse or lerp. For `t` between `a` and `b`, returns the fraction or `a`
+    and `b` in `t`.
+
+    :math:`\frac{t - a}{b - a}`
+
+    Args:
+        a (number or tensor): a
+        b (number or tensor): b
+        t (number or tensor): t between a and b
+
+    Returns:
+        result
+    """
+    return (t - a) / (b - a)
