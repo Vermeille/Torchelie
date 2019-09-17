@@ -32,6 +32,7 @@ class Classification(TrainAndTest):
             (default: [])
         device: a torch device (default: 'cpu')
     """
+
     def __init__(self,
                  model,
                  visdom_env=None,
@@ -50,6 +51,7 @@ class Classification(TrainAndTest):
                                  cb.AccAvg(post_each_batch=False),
                              ],
                              device=device)
+
     def __call__(self, train_loader, test_loader, epochs=5):
         """
         Runs the recipe.
@@ -64,10 +66,11 @@ class Classification(TrainAndTest):
         Returns:
             trained model, test metrics
         """
-        super(Classification, self).__call__(train_loader, test_loader, epochs)
+        return super(Classification, self).__call__(train_loader, test_loader,
+                                                    epochs)
 
 
-class CrossEntropyClassification(torch.nn.Module):
+class CrossEntropyLearner(torch.nn.Module):
     """
     Lears a classifier with cross_entropy and adam.
 
@@ -75,8 +78,9 @@ class CrossEntropyClassification(torch.nn.Module):
         model (nn.Module): the model to be learned.
         lr (float): the learning rate
     """
+
     def __init__(self, model, lr=3e-5):
-        super(CrossEntropyClassification, self).__init__()
+        super(CrossEntropyLearner, self).__init__()
         self.model = model
         self.lr = lr
 
@@ -100,6 +104,59 @@ class CrossEntropyClassification(torch.nn.Module):
 
     def make_optimizer(self):
         return optim.Adam(self.model.parameters(), lr=self.lr)
+
+
+class CrossEntropyClassification:
+    """
+    Lears a classifier with cross_entropy and adam.
+
+    Args:
+        model (nn.Module): a model learnable with cross entropy
+        lr (float): the learning rate
+        visdom_env (str): name of the visdom environment to use, or None for
+            not using Visdom (default: None)
+        test_every (int): testing frequency, in number of iterations (default:
+            1000)
+        train_callbacks (list of Callback): additional training callbacks
+            (default: [])
+        test_callbacks (list of Callback): additional testing callbacks
+            (default: [])
+        device: a torch device (default: 'cpu')
+    """
+
+    def __init__(self,
+                 model,
+                 lr=1e-4,
+                 visdom_env=None,
+                 test_every=1000,
+                 train_callbacks=[],
+                 test_callbacks=[],
+                 device='cpu'):
+        self.model = model
+        learner = CrossEntropyLearner(model, lr)
+        self.clf = Classification(learner,
+                                  visdom_env=visdom_env,
+                                  test_every=test_every,
+                                  train_callbacks=train_callbacks,
+                                  test_callbacks=test_callbacks,
+                                  device=device)
+
+    def __call__(self, trainloader, testloader, epochs):
+        """
+        Runs the recipe.
+
+        Dataloaders must return a batch like (input, target).
+
+        Args:
+            train_loader (DataLoader): Training set dataloader
+            test_loader (DataLoader): Testing set dataloader
+            epochs (int): number of epochs
+
+        Returns:
+            trained model, test metrics
+        """
+        _, state = self.clf(trainloader, testloader, epochs)
+        return self.model, state
 
 
 if __name__ == '__main__':
@@ -128,6 +185,6 @@ if __name__ == '__main__':
     model = tvmodels.vgg11_bn(num_classes=10)
 
     clf_recipe = Classification(CrossEntropyClassification(model),
-                                     device='cuda',
-                                     visdom_env='clf')
+                                device='cuda',
+                                visdom_env='clf')
     clf_recipe(trainloader, testloader, 4)

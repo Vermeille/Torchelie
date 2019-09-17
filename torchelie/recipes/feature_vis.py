@@ -88,7 +88,7 @@ class FeatureVisRecipe(ImageOptimizationBaseRecipe):
         Returns:
             the optimized image
         """
-        return super()(n_iters, neuron)
+        return super(FeatureVisRecipe, self).__call__(n_iters, neuron)
 
 
 if __name__ == '__main__':

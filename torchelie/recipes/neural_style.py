@@ -34,11 +34,14 @@ class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
         visdom_env (str or None): the name of the visdom env to use, or None
             to disable Visdom
     """
+
     def __init__(self, lr=0.01, device="cpu", visdom_env='style'):
         super(NeuralStyleRecipe, self).__init__(callbacks=[
             cb.WindowedMetricAvg('content_loss'),
             cb.WindowedMetricAvg('style_loss'),
-        ], visdom_env=visdom_env, log_every=1)
+        ],
+                                                visdom_env=visdom_env,
+                                                log_every=1)
 
         self.loss = NeuralStyleLoss().to(device)
         self.device = device
@@ -90,7 +93,9 @@ class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
             content_layers (list of str): layers on which to reconstruct
                 content
         """
-        return super()(n_iters, content, style, ratio, content_layers)
+        return super(NeuralStyleRecipe, self).__call__(n_iters, content, style,
+                                                       ratio, content_layers)
+
 
 if __name__ == '__main__':
     import argparse

@@ -86,7 +86,7 @@ class DeepDreamRecipe(ImageOptimizationBaseRecipe):
         Returns:
             the optimized image
         """
-        return super()(n_iters, ref)
+        return super(DeepDreamRecipe, self).__call__(n_iters, ref)
 
 
 if __name__ == '__main__':

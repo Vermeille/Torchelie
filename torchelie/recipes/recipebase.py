@@ -22,6 +22,7 @@ class ImageOptimizationBaseRecipe:
         self.callbacks('on_epoch_start', state)
         for i in range(n_iters):
             state['iters'] = i
+            self.iters = i
             state['epoch_batch'] = i
             self.callbacks('on_batch_start', state)
 
