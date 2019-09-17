@@ -25,7 +25,7 @@ class VQ(nn.Module):
                  num_tokens,
                  dim=1,
                  commitment=0.25,
-                 mode='angular',
+                 mode='nearest',
                  return_indices=True):
         super(VQ, self).__init__()
         self.embedding = nn.Embedding(num_tokens, latent_dim)
@@ -56,7 +56,8 @@ class VQ(nn.Module):
             codebook = F.normalize(codebook)
             x = F.normalize(x, dim=dim)
 
-        if self.initialized.item() == 0 and self.training:
+        # FIXME: Is this any good?
+        if False and self.initialized.item() == 0 and self.training:
             ch_first = x.transpose(dim, -1).contiguous().view(-1, x.shape[1])
             idx = torch.randperm(ch_first.shape[0])[:nb_codes]
             self.embedding.weight.data.copy_(ch_first[idx])

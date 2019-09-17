@@ -32,3 +32,31 @@ def test_spade():
 def test_attnnorm():
     m = AttenNorm2d(16, 8)
     m(torch.randn(1, 16, 8, 8))
+
+
+def test_blocks():
+    m = Conv2dNormReLU(4, 8, 3, nn.BatchNorm2d)
+    m(torch.randn(1, 4, 8, 8))
+
+    m = MConvNormReLU(4, 8, 3, nn.BatchNorm2d)
+    m(torch.randn(1, 4, 8, 8))
+
+    m = MConvBNrelu(4, 8, 3)
+    m(torch.randn(1, 4, 8, 8))
+
+    m = Conv2dBNReLU(4, 8, 3)
+    m(torch.randn(1, 4, 8, 8))
+
+    m = ResBlock(4, 8, 1)
+    m(torch.randn(1, 4, 8, 8))
+
+    m = PreactResBlock(4, 8, 1)
+    m(torch.randn(1, 4, 8, 8))
+
+
+def test_vq():
+    m = VQ(8, 16, mode='nearest')
+    m(torch.randn(10, 8))
+
+    m = VQ(8, 16, mode='angular')
+    m(torch.randn(10, 8))
