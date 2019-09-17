@@ -22,6 +22,12 @@ def test_bn():
         m = M(16, 8)
         m(torch.randn(5, 16, 8, 8), torch.randn(5, 8))
 
+    m = PixelNorm()
+    m(torch.randn(5, 16, 8, 8))
+
+    m = Lambda(lambda x: x + 1)
+    m(torch.zeros(1))
+
 
 def test_spade():
     for M in [Spade2d, SpadeMA2d]:
@@ -60,3 +66,30 @@ def test_vq():
 
     m = VQ(8, 16, mode='angular')
     m(torch.randn(10, 8))
+
+    m = VQ(8, 16, mode='nearest', init_mode='first')
+    m(torch.randn(10, 8))
+
+    m = VQ(8, 16, mode='angular', init_mode='first')
+    m(torch.randn(10, 8))
+
+
+def test_tfms():
+    m = ImageNetInputNorm()
+    m(torch.randn(1, 3, 8, 8))
+
+
+def test_maskedconv():
+    m = MaskedConv2d(3, 8, 3, center=True)
+    m(torch.randn(1, 3, 8, 8))
+
+
+def test_misc():
+    m = Noise(1)
+    m(torch.randn(1, 3, 8, 8))
+
+    m = Debug('test')
+    m(torch.randn(1, 3, 8, 8))
+
+    m = Reshape(16)
+    m(torch.randn(1, 4, 4))

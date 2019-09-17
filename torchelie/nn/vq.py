@@ -20,22 +20,26 @@ class VQ(nn.Module):
         return_indices (bool): whether to return the indices of the quantized
             code points
     """
+
     def __init__(self,
                  latent_dim,
                  num_tokens,
                  dim=1,
                  commitment=0.25,
                  mode='nearest',
+                 init_mode='normal',
                  return_indices=True):
         super(VQ, self).__init__()
         self.embedding = nn.Embedding(num_tokens, latent_dim)
-        nn.init.normal_(self.embedding.weight, 0, 0.2)
+        nn.init.normal_(self.embedding.weight, 0, 1)
         self.dim = dim
         self.commitment = commitment
         self.register_buffer('initialized', torch.ByteTensor([0]))
         assert mode in ['nearest', 'angular']
         self.mode = mode
         self.return_indices = return_indices
+        assert init_mode in ['normal', 'first']
+        self.init_mode = init_mode
 
     def forward(self, x):
         """
@@ -56,8 +60,8 @@ class VQ(nn.Module):
             codebook = F.normalize(codebook)
             x = F.normalize(x, dim=dim)
 
-        # FIXME: Is this any good?
-        if False and self.initialized.item() == 0 and self.training:
+        if (self.init_mode == 'first' and self.initialized.item() == 0
+                and self.training):
             ch_first = x.transpose(dim, -1).contiguous().view(-1, x.shape[1])
             idx = torch.randperm(ch_first.shape[0])[:nb_codes]
             self.embedding.weight.data.copy_(ch_first[idx])
