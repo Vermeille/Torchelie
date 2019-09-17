@@ -1,6 +1,7 @@
 import torch
 
 from torchelie.loss import *
+import torchelie.loss.gan as gan
 import torchelie.loss.functional as tlf
 
 
@@ -74,6 +75,19 @@ def test_neural_style():
     ns.set_style(torch.randn(3, 128, 128), 1)
     ns(torch.randn(1, 3, 128, 128))
 
+
 def test_perceptual():
     pl = PerceptualLoss(['conv1_1'], rescale=True)
     pl(torch.randn(1, 3, 64, 64), torch.randn(1, 3, 64, 64))
+
+
+def test_gan():
+    x = torch.randn(5, 5)
+
+    gan.hinge.real(x)
+    gan.hinge.fake(x)
+    gan.hinge.generated(x)
+
+    gan.standard.real(x)
+    gan.standard.fake(x)
+    gan.standard.generated(x)
