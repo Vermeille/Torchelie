@@ -7,43 +7,75 @@ import numpy as np
 
 def _rollx(img, begin, to):
     if to <= img.shape[1]:
-        return img[:, :, begin:to]
+        return img[..., :, begin:to]
     else:
-        return torch.cat([img[:, :, begin:], img[:, :, :to - img.shape[2]]],
-                         dim=2)
+        return torch.cat(
+            [img[..., :, begin:], img[..., :, :to - img.shape[-1]]], dim=-1)
 
 
 def _rolly(img, begin, to):
     if to <= img.shape[0]:
-        return img[:, begin:to, :]
+        return img[..., begin:to, :]
     else:
-        return torch.cat([img[:, begin:, :], img[:, :to - img.shape[1], :]],
-                         dim=1)
+        return torch.cat(
+            [img[..., begin:, :], img[..., :to - img.shape[-2], :]], dim=-2)
+
+
+def roll(img, x_roll, y_roll):
+    """
+    Wrap an image
+
+    Args:
+        img (3D or 4D image(s) tensor): an image tensor
+        x_roll (int): how many pixels to roll on the x axis
+        y_roll (int): how many pixels to roll on the y axis
+
+    Returns:
+        The rolled tensor
+    """
+    return _rollx(_rolly(img, y_roll, img.shape[-2]), x_roll, img.shape[-1])
 
 
 def center_crop(batch, size):
-    y_off = (batch.shape[2] - size[0]) // 2
-    x_off = (batch.shape[3] - size[1]) // 2
-    return batch[:, :, y_off:y_off + size[0], x_off:x_off + size[1]]
+    """
+    Crop the center of a 4D images tensor
+
+    Args:
+        batch (4D images tensor): the tensor to crop
+        size ((int, int)): size of the resulting image as (height, width)
+
+    Returns:
+        The cropped image
+    """
+    y_off = (batch.shape[-2] - size[0]) // 2
+    x_off = (batch.shape[-1] - size[1]) // 2
+    return batch[..., y_off:y_off + size[0], x_off:x_off + size[1]]
 
 
-def crop(batch_img, warped=True, sub_img_factor=2):
-    imgs = []
-    for img in batch_img:
-        sz = img.shape
-        h = np.random.randint(sz[1] // sub_img_factor, sz[1])
-        w = np.random.randint(sz[2] // sub_img_factor, sz[2])
+def crop(img, warped=True, sub_img_factor=2):
+    """
+    Randomly crop a `sub_img_factor` smaller part of `img`.
 
-        if warped:
-            y = np.random.randint(sz[1])
-            x = np.random.randint(sz[2])
-            img_crop = _rolly(_rollx(img, x, x + w), y, y + h)
-        else:
-            y = np.random.randint(sz[1] - h)
-            x = np.random.randint(sz[2] - w)
-            img_crop = img[:, y:y + h, x:x + w]
-        imgs.append(img_crop)
-    return torch.stack(imgs)
+    Args:
+        img (3D or 4D image(s) tensor): input image(s)
+        warped (bool): Whether the image should be considered warped (default:
+            True)
+        sub_img_factor (float): fraction of the image to take. For instance, 2
+            will crop a quarter of the image (half the width, half the height).
+            (default: 2)
+    """
+    sz = img.shape
+    h = np.random.randint(sz[-2] // sub_img_factor, sz[-2])
+    w = np.random.randint(sz[-1] // sub_img_factor, sz[-1])
+
+    if warped:
+        y = np.random.randint(sz[-2])
+        x = np.random.randint(sz[-1])
+        return _rolly(_rollx(img, x, x + w), y, y + h)
+    else:
+        y = np.random.randint(sz[-2] - h)
+        x = np.random.randint(sz[-1] - w)
+        return img[:, y:y + h, x:x + w]
 
 
 def _gblur_kernel_2d(c):
@@ -61,8 +93,17 @@ def _gblur_kernel():
 
 
 def gblur(input):
+    """
+    Gaussian blur with kernel size 3
+
+    Args:
+        input (3D or 4D image(s) tensor): input image
+
+    Returns:
+        the blurred tensor
+    """
     return F.conv2d(input,
-                    torch.FloatTensor(_gblur_kernel()).cuda(),
+                    torch.FloatTensor(_gblur_kernel()).to(input.device),
                     padding=1)
 
 
@@ -81,6 +122,15 @@ def _mblur_kernel():
 
 
 def mblur(input):
+    """
+    Mean (or average) blur with kernel size 3
+
+    Args:
+        input (3D or 4D image(s) tensor): input image
+
+    Returns:
+        the blurred tensor
+    """
     return F.conv2d(input,
-                    torch.FloatTensor(_mblur_kernel()).cuda(),
+                    torch.FloatTensor(_mblur_kernel()).to(input.device),
                     padding=1)
