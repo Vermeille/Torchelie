@@ -14,6 +14,7 @@ Welcome to Torchélie's documentation!
    datasets
    loss
    models
+   transforms
    metrics
 
 Torchélie aims to provide new utilities, layers, tools to pytorch users,
