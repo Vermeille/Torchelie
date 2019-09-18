@@ -18,26 +18,11 @@ GAN from Pix2Pix
 
 .. autofunction:: torchelie.models.patch_discr
 .. autofunction:: torchelie.models.proj_patch_discr
-
-.. autoclass:: torchelie.models.Patch286
-   :members:
-   :undoc-members:
-
-.. autoclass:: torchelie.models.Patch70
-   :members:
-   :undoc-members:
-
-.. autoclass:: torchelie.models.Patch32
-   :members:
-   :undoc-members:
-
-.. autoclass:: torchelie.models.ProjPatch32
-   :members:
-   :undoc-members:
-
-.. autoclass:: torchelie.models.Patch16
-   :members:
-   :undoc-members:
+.. autofunction:: torchelie.models.Patch286
+.. autofunction:: torchelie.models.Patch70
+.. autofunction:: torchelie.models.Patch32
+.. autofunction:: torchelie.models.ProjPatch32
+.. autofunction:: torchelie.models.Patch16
 
 FIXME: Where to put that one?
 .. autofunction:: torchelie.models.VggGeneratorDebug
