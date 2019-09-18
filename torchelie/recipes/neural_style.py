@@ -113,6 +113,7 @@ if __name__ == '__main__':
     parser.add_argument('--content-layers',
                         default=None,
                         type=lambda x: x and x.split(','))
+    parser.add_argument('--iters', default=100, type=int)
     parser.add_argument('--visdom-env')
     args = parser.parse_args(sys.argv[1:])
 
@@ -128,7 +129,8 @@ if __name__ == '__main__':
                           int(style_img.height * args.scale))
         style_img = style_img.resize(new_style_size, Image.BICUBIC)
 
-    result = stylizer(100, content, style_img, args.ratio, args.content_layers)
+    result = stylizer(args.iters, content, style_img, args.ratio,
+                      args.content_layers)
     result = t2pil(result)
 
     result.save(args.out)

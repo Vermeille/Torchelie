@@ -118,7 +118,10 @@ if __name__ == '__main__':
     parser.add_argument('--layer', required=True)
     parser.add_argument('--input-size')
     parser.add_argument('--neuron', required=True, type=int)
+    parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--out', default='features.png')
+    parser.add_argument('--device', default='cuda')
+    parser.add_argument('--iters', default=4000, type=int)
     parser.add_argument('--visdom-env')
     args = parser.parse_args()
 
@@ -128,7 +131,8 @@ if __name__ == '__main__':
     fv = FeatureVisRecipe(model,
                           args.layer,
                           args.input_size or choice['sz'],
-                          'cuda',
+                          lr=args.lr,
+                          device=args.device,
                           visdom_env=args.visdom_env)
-    out = fv(4000, args.neuron)
+    out = fv(args.iters, args.neuron)
     TF.ToPILImage()(out).save(args.out)

@@ -117,6 +117,7 @@ if __name__ == '__main__':
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--model', default='googlenet', choices=models.keys())
     parser.add_argument('--lr', default=3e-4, type=float)
+    parser.add_argument('--iters', default=4000, type=int)
     parser.add_argument('--dream-layer')
     parser.add_argument('--visdom-env')
     args = parser.parse_args()
@@ -130,6 +131,6 @@ if __name__ == '__main__':
                          device=args.device,
                          visdom_env=args.visdom_env)
     img = Image.open(args.input)
-    out = dd(4000, img)
+    out = dd(args.iters, img)
 
     TF.ToPILImage()(out).save(args.out)
