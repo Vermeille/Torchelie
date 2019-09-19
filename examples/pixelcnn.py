@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 import torchelie.models as tmodels
-from torchelie.metrics import WindowAvg
+from torchelie.metrics.avg import WindowAvg
 
 import torchvision.transforms as TF
 from torchvision.datasets import CIFAR10, MNIST, FashionMNIST, SVHN

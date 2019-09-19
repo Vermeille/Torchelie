@@ -31,9 +31,9 @@ device = 'cpu' if opts.cpu else 'cuda'
 
 tfms = TF.Compose([TF.Resize(32), TF.ToTensor()])
 if opts.dataset == 'mnist':
-    ds = MNIST('.', download=True, transform=tfms)
+    ds = MNIST('~/.cache/torch/mnist', download=True, transform=tfms)
 if opts.dataset == 'cifar10':
-    ds = CIFAR10('.', download=True, transform=tfms)
+    ds = CIFAR10('~/.cache/torch/cifar10', download=True, transform=tfms)
 dl = torch.utils.data.DataLoader(ds,
                                  num_workers=4,
                                  batch_size=32,
@@ -69,13 +69,13 @@ def train_net(Net):
         y = y.to(device)
 
         opt.zero_grad()
-        pred = clf(x, z)
+        pred = clf(x, z).squeeze()
         loss = F.binary_cross_entropy_with_logits(pred, y.float())
         loss.backward()
         opt.step()
 
         if iters % 100 == 0:
-            acc = torch.mean((y.byte() == (pred > 0)).float())
+            acc = torch.mean((y.byte() == (pred > 0).byte()).float())
             print("Iter {}, loss {}, acc {}".format(iters, loss.item(),
                                                     acc.item()))
         if iters == 1500:

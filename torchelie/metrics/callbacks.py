@@ -102,14 +102,16 @@ class VisdomLogger:
                               Y=[x],
                               update='append',
                               win=name,
-                              opts=dict(title=name))
+                              opts=dict(title=name),
+                              name=name)
             elif isinstance(x, torch.Tensor):
                 if x.numel() == 1:
                     self.vis.line(X=[iters],
                                   Y=[x.item()],
                                   update='append',
                                   win=name,
-                                  opts=dict(title=name))
+                                  opts=dict(title=name),
+                                  name=name)
                 elif x.dim() == 2:
                     self.vis.heatmap(x, win=name, opts=dict(title=name))
                 elif x.dim() == 3:

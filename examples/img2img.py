@@ -40,9 +40,9 @@ tfms = TF.Compose([
 ])
 
 if opts.dataset == 'mnist':
-    ds = MNIST('.', download=True, transform=tfms)
+    ds = MNIST('~/.cache/torch/mnist', download=True, transform=tfms)
 if opts.dataset == 'cifar10':
-    ds = CIFAR10('.', download=True, transform=tfms)
+    ds = CIFAR10('~/.cache/torch/cifar10', download=True, transform=tfms)
 dl = torch.utils.data.DataLoader(ds,
                                  num_workers=4,
                                  batch_size=32,
@@ -65,7 +65,7 @@ def train_net(Gen, Discr):
     iters = 0
     for epoch in range(10):
         for (x, x2), y in dl:
-            x = x.to(device)
+            x = x.expand(-1, 3, -1, -1).to(device)
             x2 = x2.to(device)
             y = y.to(device)
 

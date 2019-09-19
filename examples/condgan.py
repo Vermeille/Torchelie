@@ -36,9 +36,9 @@ vis = Visdom(env='gan_dbg')
 
 tfms = TF.Compose([TF.Resize(32), TF.ToTensor()])
 if opts.dataset == 'mnist':
-    ds = MNIST('.', download=True, transform=tfms)
+    ds = MNIST('~/.cache/torch/mnist', download=True, transform=tfms)
 if opts.dataset == 'cifar10':
-    ds = CIFAR10('.', download=True, transform=tfms)
+    ds = CIFAR10('~/.cache/torch/cifar10', download=True, transform=tfms)
 dl = torch.utils.data.DataLoader(ds,
                                  num_workers=4,
                                  batch_size=32,

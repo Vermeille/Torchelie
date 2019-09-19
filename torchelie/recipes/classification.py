@@ -7,6 +7,7 @@ import torchvision.models as tvmodels
 import torchelie.metrics.callbacks as cb
 import torchelie.utils as tu
 from torchelie.recipes.trainandtest import TrainAndTest
+from torchelie.optim import RAdamW
 
 
 class Classification(TrainAndTest):
@@ -103,12 +104,13 @@ class CrossEntropyLearner(torch.nn.Module):
         return {'loss': loss, 'pred': pred}
 
     def make_optimizer(self):
-        return optim.Adam(self.model.parameters(), lr=self.lr)
+        return RAdamW(self.model.parameters(), lr=self.lr)
 
 
 class CrossEntropyClassification:
     """
-    Lears a classifier with cross_entropy and adam.
+    Lears a classifier with cross_entropy and adam. It just wraps together
+    Classification + CrossEntropyLearner
 
     Args:
         model (nn.Module): a model learnable with cross entropy
