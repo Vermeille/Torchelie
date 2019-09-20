@@ -64,7 +64,7 @@ class VQ(nn.Module):
                 and self.training):
             n_proto = self.embedding.weight.shape[0]
 
-            ch_first = x.transpose(dim, -1).contiguous().view(-1, x.shape[1])
+            ch_first = x.transpose(dim, -1).contiguous().view(-1, x.shape[dim])
             n_samples = ch_first.shape[0]
             idx = torch.randint(0, n_samples, (n_proto,))[:nb_codes]
             self.embedding.weight.data.copy_(ch_first[idx])
