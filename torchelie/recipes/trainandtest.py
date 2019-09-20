@@ -53,7 +53,7 @@ class TrainAndTest:
                 visdom_env=visdom_env, log_every=-1, prefix='test_'),
             cb.StdoutLogger(log_every=-1, prefix='Test'),
             cb.Checkpoint(
-                'models/clf', {
+                (visdom_env or 'training') + '/model', {
                     'model': self.model,
                     'opt': self.opt,
                     'metrics': self.state['metrics'],

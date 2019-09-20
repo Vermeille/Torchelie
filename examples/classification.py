@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
-from torchelie.optim import RAdamW
+from torchelie.optim import *
 
 from torchvision.datasets import MNIST, CIFAR10
 import torchvision.transforms as TF

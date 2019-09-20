@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 import torch
 from visdom import Visdom
 
@@ -177,6 +179,10 @@ class Checkpoint:
                 saved[k] = m.state_dict()
             else:
                 saved[k] = m
+        try:
+            Path(self.filename()).parent.mkdir()
+        except:
+            pass
         torch.save(saved, self.filename())
         self.nb_saved += 1
 

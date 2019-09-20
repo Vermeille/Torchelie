@@ -6,16 +6,16 @@ import crayons
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.optim import Adam
 
 from torchvision.datasets import MNIST, CIFAR10
 import torchvision.transforms as TF
 
 import torchelie.nn as tnn
-from torchelie.utils import kaiming, xavier
 import torchelie.models
 from torchelie.models import ClassCondResNetDebug
 from torchelie.utils import nb_parameters
+from torchelie.recipes.classification import Classification
+from torchelie.optim import RAdamW
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--cpu', action='store_true')
@@ -29,15 +29,46 @@ opts = parser.parse_args()
 
 device = 'cpu' if opts.cpu else 'cuda'
 
+
+class TrueOrFakeLabelDataset:
+    def __init__(self, dataset):
+        self.dataset = dataset
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, i):
+        x, y = self.dataset[i]
+        if torch.randn(1).item() < 0:
+            return x, 1, y
+        return x, 0, torch.randint(0, 10, (1, )).item()
+
+
 tfms = TF.Compose([TF.Resize(32), TF.ToTensor()])
 if opts.dataset == 'mnist':
-    ds = MNIST('~/.cache/torch/mnist', download=True, transform=tfms)
+    ds = TrueOrFakeLabelDataset(
+        MNIST('~/.cache/torch/mnist', download=True, transform=tfms))
+    dt = TrueOrFakeLabelDataset(
+        MNIST('~/.cache/torch/mnist',
+              download=True,
+              transform=tfms,
+              train=False))
 if opts.dataset == 'cifar10':
-    ds = CIFAR10('~/.cache/torch/cifar10', download=True, transform=tfms)
+    ds = TrueOrFakeLabelDataset(
+        CIFAR10('~/.cache/torch/cifar10', download=True, transform=tfms))
+    dt = TrueOrFakeLabelDataset(
+        CIFAR10('~/.cache/torch/cifar10',
+                download=True,
+                transform=tfms,
+                train=False))
 dl = torch.utils.data.DataLoader(ds,
                                  num_workers=4,
                                  batch_size=32,
                                  shuffle=True)
+dlt = torch.utils.data.DataLoader(dt,
+                                  num_workers=4,
+                                  batch_size=32,
+                                  shuffle=True)
 if opts.models == 'all':
     nets = [ClassCondResNetDebug]
 else:
@@ -52,39 +83,43 @@ def summary(Net):
     print('Nb parameters: {}'.format(nb_parameters(clf)))
 
 
-def train_net(Net):
-    clf = Net(1, 10, in_ch=1).to(device)
+class ConditionalClassification(nn.Module):
+    def __init__(self, model):
+        super(ConditionalClassification, self).__init__()
+        self.model = model
 
-    opt = Adam(clf.parameters())
+    def forward(self, x, z):
+        return self.model(x, z).squeeze()
 
-    iters = 0
-    for x, y in dl:
-        x = x.to(device)
+    def make_optimizer(self):
+        return RAdamW(self.model.parameters(), lr=1e-2)
 
-        z1, z2 = y[:y.size(0) // 2], y[y.size(0) // 2:]
-        z1 = torch.remainder(z1 + 1, 10)
-        z = torch.cat([z1, z2]).to(device)
-        y[:y.size(0) // 2] = 0
-        y[y.size(0) // 2:] = 1
-        y = y.to(device)
+    def train_step(self, batch, opt):
+        x, y, z = batch
+        x = x.expand(-1, 3, -1, -1)
 
         opt.zero_grad()
-        pred = clf(x, z).squeeze()
-        loss = F.binary_cross_entropy_with_logits(pred, y.float())
+        out = self(x, z)
+        loss = F.cross_entropy(out, y)
         loss.backward()
         opt.step()
 
-        if iters % 100 == 0:
-            acc = torch.mean((y.byte() == (pred > 0).byte()).float())
-            print("Iter {}, loss {}, acc {}".format(iters, loss.item(),
-                                                    acc.item()))
-        if iters == 1500:
-            if acc > 0.90:
-                print(crayons.green('PASS ({})'.format(acc), bold=True))
-            else:
-                print(crayons.red('FAILURE ({})'.format(acc), bold=True))
-            break
-        iters += 1
+        return {'loss': loss, 'pred': out}
+
+    def validation_step(self, batch):
+        x, y, z = batch
+        x = x.expand(-1, 3, -1, -1)
+
+        out = self(x, z)
+        loss = F.cross_entropy(out, y)
+        return {'loss': loss, 'pred': out}
+
+
+def train_net(Net):
+    model = Net(2, 10, in_ch=3)
+    clf = Classification(ConditionalClassification(model), device=device)
+    _, res = clf(dl, dlt)
+    print(res['acc'])
 
 
 for Net in nets:

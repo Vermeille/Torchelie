@@ -61,7 +61,7 @@ class ClassCondResNetBone(nn.Module):
     def __init__(self, arch, head, hidden, num_classes, in_ch=3, debug=False):
         super(ClassCondResNetBone, self).__init__()
         block_ctor = functools.partial(tnn.ConditionalResBlock, hidden=hidden)
-        self.bone = ResNetBone(arch, tnn.Conv2d, block_ctor, in_ch, debug)
+        self.bone = ResNetBone(arch, head, block_ctor, in_ch, debug)
         self.emb = nn.Embedding(num_classes, hidden)
 
     def forward(self, x, y):
