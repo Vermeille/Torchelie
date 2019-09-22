@@ -11,9 +11,10 @@ Welcome to Torchélie's documentation!
    optimizers
    utils
    data_learning
-   datasets
    loss
    models
+   distributions
+   datasets
    transforms
    metrics
 
