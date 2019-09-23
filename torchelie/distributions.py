@@ -37,7 +37,7 @@ class LogisticMixture:
         self.weights = weights
         self.logistics = Logistic(locs, scales)
         self.locs = locs
-        self.dim = dim
+        self.dim = dim - len(locs.shape) if dim >= 0 else dim
 
     @property
     def mean(self):

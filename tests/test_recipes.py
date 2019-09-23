@@ -7,6 +7,7 @@ from torchelie.recipes.classification import CrossEntropyClassification
 from torchelie.recipes.deepdream import DeepDreamRecipe
 from torchelie.recipes.feature_vis import FeatureVisRecipe
 from torchelie.recipes.neural_style import NeuralStyleRecipe
+from torchelie.recipes.trainandtest import TrainAndCall
 
 
 class FakeData:
@@ -47,3 +48,29 @@ def test_neuralstyle():
     style_img = ToPILImage()(torch.randn(3, 32, 32))
 
     result = stylizer(1, content, style_img, 1, ['conv1_1'])
+
+def test_trainandcall():
+    class Test(nn.Module):
+        def __init__(self):
+            super(Test, self).__init__()
+            self.model = nn.Linear(10, 2)
+
+        def make_optimizer(self):
+            return torch.optim.Adam(self.model.parameters(), lr=1e-3)
+
+        def train_step(self, batch, opt):
+            x, y = batch
+            opt.zero_grad()
+            out = self.model(x)
+            loss = torch.nn.functional.cross_entropy(out, y)
+            loss.backward()
+            opt.step()
+            return {'loss': loss}
+
+        def after_train(self):
+            print('Yup.')
+            return {}
+
+    trainloader = DataLoader(FakeData(), 4, shuffle=True)
+    trainer = TrainAndCall(Test())
+    trainer(trainloader)
