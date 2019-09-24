@@ -58,9 +58,11 @@ class ResBlk(nn.Module):
                 nn.BatchNorm2d(in_ch),
                 nn.ReLU(inplace=False),
                 tnn.Conv1x1(in_ch, hid_ch),
+
                 nn.BatchNorm2d(hid_ch),
                 nn.ReLU(inplace=True),
-                tnn.MaskedConv2d(hid_ch, hid_ch, ks, center=True, bias=sz),
+                tnn.TopLeftConv2d(hid_ch, hid_ch, ks, center=True, bias=sz),
+
                 nn.BatchNorm2d(hid_ch),
                 nn.ReLU(inplace=True),
                 tnn.Conv1x1(hid_ch, out_ch),
@@ -80,7 +82,7 @@ class PixCNNBase(nn.Module):
         super(PixCNNBase, self).__init__()
         self.sz = sz
         self.lin = tnn.CondSeq(
-                tnn.MaskedConv2d(in_ch, hid, 5, center=False, bias=sz),
+                tnn.TopLeftConv2d(in_ch, hid, 5, center=False, bias=sz),
                 nn.ReLU(inplace=True)
         )
 
@@ -149,7 +151,7 @@ class PixelCNN(PixCNNBase):
             A batch of images
         """
         img = torch.zeros(N, self.channels, *self.sz,
-                device=self.lin[0].weight.device).uniform_(0, 1)
+                device=next(self.parameters()).device).uniform_(0, 1)
         return self.sample_(img, temp)
 
     def partial_sample(self, x, temp):

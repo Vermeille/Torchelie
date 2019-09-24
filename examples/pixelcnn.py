@@ -49,4 +49,4 @@ dl = DataLoader(FashionMNIST('~/.cache/torch/fashionmnist',
                 num_workers=4)
 
 trainer = TrainAndCall(PixMe(), visdom_env='pixelcnn', device='cuda')
-trainer(dl)
+trainer(dl, 10)

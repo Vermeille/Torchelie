@@ -82,6 +82,8 @@ def test_tfms():
 def test_maskedconv():
     m = MaskedConv2d(3, 8, 3, center=True)
     m(torch.randn(1, 3, 8, 8))
+    m = TopLeftConv2d(3, 8, 3, center=True)
+    m(torch.randn(1, 3, 8, 8))
 
 
 def test_misc():

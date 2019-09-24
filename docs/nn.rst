@@ -11,6 +11,9 @@ Convolutions
 .. autoclass:: torchelie.nn.MaskedConv2d
    :members:
    :undoc-members:
+.. autoclass:: torchelie.nn.TopLeftConv2d
+   :members:
+   :undoc-members:
 
 Normalization
 ~~~~~~~~~~~~~

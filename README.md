@@ -99,6 +99,8 @@ Model manipulation modules:
 Net Blocks:
 
 * `MaskedConv2d` is a masked convolution for PixelCNN
+* `TopLeftConv2d` is the convolution from PixelCNN made of two conv blocks: one
+  on top, another on the left.
 * `Conv2d`, `Conv3x3`, `Conv1x1`, `Conv2dBNReLU`, `Conv2dCondBNReLU`, etc. Many
   different convenience blocks in `torchelie.nn.blocks.py`
 * `ResNetBlock`, `PreactResNetBlock`
