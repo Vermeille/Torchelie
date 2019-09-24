@@ -27,9 +27,10 @@ Classes implementing full algorithms, from training to usage
   commandline as well with `python -m torchelie.recipes.feature_vis`.
 * `DeepDreamRecipe` implements something close to Deep Dream.
   `python -m torchelie.recipes.deepdream` works.
-* `ImageClassifierRecipe` (WIP) trains a model for image classification. It
-  provides advanced logging such as loss plots, accuracy plots, confusion
-  matrix (coming soon)
+* `Classification` trains a model for image classification. It
+  provides logging of loss and accuracy. It has a commandline interface with
+  `python3 -m torchelie.recipes.classification` to quickly train a classifier
+  on an image folder with train images and another with test images.
 
 ## `torchelie.utils`
 

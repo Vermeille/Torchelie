@@ -1,3 +1,15 @@
+"""
+Train a classifier.
+
+It logs train and test loss and accuracy. (FIXME: add confusion matrix iff
+number of classes is tractable)
+
+If you have an image training directory with a folder per class and a testing
+directory with a folder per class, you can run it with a command line.
+
+`python3 -m torchelie.recipes.classification --trainset path/to/train --testset
+path/to/test`
+"""
 import copy
 
 import torch
@@ -162,31 +174,44 @@ class CrossEntropyClassification:
 
 
 if __name__ == '__main__':
-    from torchvision.datasets import FashionMNIST
+    import argparse
+
+    from torchvision.datasets import ImageFolder
     from torch.utils.data import DataLoader
     import torchvision.transforms as TF
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--trainset', type=str, required=True)
+    parser.add_argument('--testset', type=str, required=True)
+    parser.add_argument('--batch-size', type=int, default=32)
+    parser.add_argument('--device', type=str, default='cpu')
+    parser.add_argument('--visdom-env', type=str)
+    parser.add_argument('--epochs', type=int, default=5)
+    args = parser.parse_args()
+
     tfm = TF.Compose([
         TF.Resize(128),
         TF.Grayscale(3),
         TF.ToTensor(),
     ])
-    trainset = FashionMNIST('../tests/', transform=tfm)
-    testset = FashionMNIST('../tests/', train=False, transform=tfm)
+    trainset = ImageFolder(args.trainset, transform=tfm)
+    testset = ImageFolder(args.testset, transform=tfm)
 
     trainloader = DataLoader(trainset,
-                             64,
+                             args.batch_size,
                              num_workers=4,
                              pin_memory=True,
                              shuffle=True)
     testloader = DataLoader(testset,
-                            64,
+                            args.batch_size,
                             num_workers=4,
                             pin_memory=True,
                             shuffle=True)
 
-    model = tvmodels.vgg11_bn(num_classes=10)
+    model = tvmodels.resnet18(num_classes=len(trainset.classes))
 
-    clf_recipe = Classification(CrossEntropyClassification(model),
-                                device='cuda',
-                                visdom_env='clf')
-    clf_recipe(trainloader, testloader, 4)
+    clf_recipe = CrossEntropyClassification(model,
+                                            device=args.device,
+                                            visdom_env=args.visdom_env)
+
+    clf_recipe(trainloader, testloader, args.epochs)
