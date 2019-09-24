@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 if false; then
     RUN="--device cuda --iters 1000 --visdom-env torch-test"
 else

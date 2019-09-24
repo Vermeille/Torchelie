@@ -7,7 +7,7 @@ from torchelie.recipes.classification import CrossEntropyClassification
 from torchelie.recipes.deepdream import DeepDreamRecipe
 from torchelie.recipes.feature_vis import FeatureVisRecipe
 from torchelie.recipes.neural_style import NeuralStyleRecipe
-from torchelie.recipes.trainandtest import TrainAndCall
+from torchelie.recipes.trainandcall import TrainAndCall
 
 
 class FakeData:
