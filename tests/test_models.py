@@ -46,6 +46,12 @@ def test_resnet():
     m = VectorCondResNetDebug(12)
     m(torch.randn(1, 3, 32, 32), torch.randn(1, 12))
 
+    m = snres_discr([2, 'D', 3], in_ch=3)
+    m(torch.randn(1, 3, 8, 8))
+
+    m = snres_projdiscr([2, 'D', 3], in_ch=3, num_classes=4)
+    m(torch.randn(1, 3, 8, 8), torch.LongTensor([1]))
+
 
 def test_unet():
     m = UNet()

@@ -77,6 +77,9 @@ def test_blocks():
     m = AutoGANGenBlock(3, 3, [5])
     m(torch.randn(1, 3, 8, 8), [torch.randn(1, 5, 4, 4)])
 
+    m = SNResidualDiscrBlock(6, 3)
+    m(torch.randn(1, 6, 8, 8))
+
 def test_vq():
     m = VQ(8, 16, mode='nearest')
     m(torch.randn(10, 8))

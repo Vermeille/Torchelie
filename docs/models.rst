@@ -32,6 +32,16 @@ Other GANs
 
 .. autoclass:: torchelie.models.AutoGAN
    :members:
+.. autofunction:: torchelie.models.autogan_32
+.. autofunction:: torchelie.models.autogan_64
+.. autofunction:: torchelie.models.autogan_128
+
+.. autofunction:: torchelie.models.snres_discr
+.. autofunction:: torchelie.models.snres_projdiscr
+.. autofunction:: torchelie.models.snres_discr_4l
+.. autofunction:: torchelie.models.snres_projdiscr_4l
+.. autofunction:: torchelie.models.snres_discr_5l
+.. autofunction:: torchelie.models.snres_projdiscr_5l
 
 Convolutional
 ~~~~~~~~~~~~~

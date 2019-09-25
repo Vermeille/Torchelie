@@ -274,3 +274,47 @@ class AutoGANGenBlock(nn.Module):
         return x + x_skip, F.leaky_relu(x_mid, 0.2)
 
 
+class SNResidualDiscrBlock(torch.nn.Module):
+    """
+    A residual block with downsampling and spectral normalization.
+
+    Args:
+        in_ch (int): number of input channels
+        out_ch (int): number of output channels
+        downsample (bool): whether to downsample
+    """
+    def __init__(self, in_ch, out_ch, downsample=False):
+        super(SNResidualDiscrBlock, self).__init__()
+        self.branch = nn.Sequential(*[
+            nn.ReLU(),
+            kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1)),
+            nn.ReLU(True),
+            kaiming(nn.Conv2d(out_ch, out_ch, 3, padding=1)),
+        ])
+        nn.utils.spectral_norm(self.branch[1])
+        nn.utils.spectral_norm(self.branch[3])
+
+        self.downsample = downsample
+        self.sc = None
+        if in_ch != out_ch:
+            self.sc = kaiming(nn.Conv2d(in_ch, out_ch, 1))
+            nn.utils.spectral_norm(self.sc)
+
+    def forward(self, x):
+        """
+        Forward pass
+
+        Args:
+            x (tensor): input tensor
+
+        Returns:
+            output tensor
+        """
+        res = self.branch(x)
+        if self.sc is not None:
+            # FIXME: we can share the relu and have it inplace
+            x = self.sc(x)
+        if self.downsample:
+            x = F.avg_pool2d(x, 2, 2, 0)
+            res = F.avg_pool2d(res, 2, 2, 0)
+        return x + res

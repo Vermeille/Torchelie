@@ -20,6 +20,7 @@ class AutoGAN(nn.Module):
         in_noise (int): dimension of the input noise vector
         out_ch (int): number of channels on the image
     """
+
     def __init__(self, arch, n_skip_max=2, in_noise=256, out_ch=3):
         super(AutoGAN, self).__init__()
         self.n_skip_max = n_skip_max
@@ -55,3 +56,22 @@ class AutoGAN(nn.Module):
             x, sk = b(x, skips)
             skips = ([sk] + skips)[:self.n_skip_max]
         return torch.sigmoid(self.to_rgb(F.leaky_relu(x, 0.2)))
+
+
+def autogan_128(in_noise, out_ch=3):
+    return AutoGAN(arch=[512, 512, 256, 128, 64, 32],
+                   n_skip_max=3,
+                   in_noise=in_noise,
+                   out_ch=out_ch)
+
+def autogan_64(in_noise, out_ch=3):
+    return AutoGAN(arch=[512, 256, 128, 64, 32],
+                   n_skip_max=3,
+                   in_noise=in_noise,
+                   out_ch=out_ch)
+
+def autogan_32(in_noise, out_ch=3):
+    return AutoGAN(arch=[256, 128, 64, 32],
+                   n_skip_max=3,
+                   in_noise=in_noise,
+                   out_ch=out_ch)

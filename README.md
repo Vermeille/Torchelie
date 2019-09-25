@@ -108,6 +108,8 @@ Net Blocks:
 * `ClassConditionalResBlock`
 * `ConditionalResBlock` instead uses `ConditionalBN2d`
 * `SpadeResBlock` instead uses `Spade2d`
+* `AutoGANGenBlock` is a block for AutoGAN
+* `SNResidualDiscrBlock` is a residual block with spectral normalization
 
 ## `torchelie.models`
 
@@ -118,6 +120,9 @@ Net Blocks:
 * `Patch16`, `Patch32`, `Patch70`, `Patch286` are Pix2Pix's PatchGAN's
   discriminators
 * `UNet` for image segmentation
+* `AutoGAN` generator from the paper _AutoGAN: Neural Architecture Search for
+  Generative Adversarial Networks_
+* ResNet discriminator with spectral normalization
 * `PerceptualNet` is a VGG16 with correctly named layers for more convenient
   use with `WithSavedActivations`
 
