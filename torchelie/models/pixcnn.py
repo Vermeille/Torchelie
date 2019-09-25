@@ -131,8 +131,9 @@ class PixelCNN(PixCNNBase):
         sz ((int, int)): the size of the images to learn. Must be square
         channels (int): number of channels in the data. 3 for RGB images
     """
-    def __init__(self, hid, sz, channels=3):
-        super(PixelCNN, self).__init__(channels, hid, channels, 256, sz)
+    def __init__(self, hid, sz, channels=3, n_layer=3):
+        super(PixelCNN, self).__init__(channels, hid, channels, 256, sz,
+                n_layer=n_layer)
         self.channels = channels
 
     def forward(self, x):
