@@ -27,6 +27,12 @@ GAN from Pix2Pix
 FIXME: Where to put that one?
 .. autofunction:: torchelie.models.VggGeneratorDebug
 
+Other GANs
+~~~~~~~~~~
+
+.. autoclass:: torchelie.models.AutoGAN
+   :members:
+
 Convolutional
 ~~~~~~~~~~~~~
 

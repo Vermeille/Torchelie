@@ -64,3 +64,8 @@ def test_vgg():
 
     m = VggClassCondGeneratorDebug(8, 1, 1)
     m(torch.randn(1, 8), torch.LongTensor([0]))
+
+
+def test_autogan():
+    m = AutoGAN([3, 4, 5], in_noise=4)
+    m(torch.randn(16, 4))

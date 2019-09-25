@@ -217,3 +217,65 @@ class SpadeResBlock(nn.Module):
 
     def forward(self, x, z=None):
         return self.fn(self, x, z)
+
+
+class AutoGANGenBlock(nn.Module):
+    """
+    A block of the generator discovered by AutoGAN.
+
+    Args:
+        in_ch (int): number of input channels
+        out_ch (int): number of output channels
+        skips_ch (list of int): a list with one element per incoming skip
+            connection. Each element is the number of channels of the incoming
+            skip connection.
+        ks (int): kernel size of the convolutions
+        mode (str): usampling mode, 'nearest' or 'bilinear'
+    """
+    def __init__(self, in_ch, out_ch, skips_ch, ks=3, mode='nearest'):
+        super(AutoGANGenBlock, self).__init__()
+        assert mode in ['nearest', 'bilinear']
+        self.mode = mode
+
+        self.conv1 = kaiming(nn.Conv2d(in_ch, out_ch, ks, padding=ks // 2))
+        self.conv2 = kaiming(nn.Conv2d(out_ch, out_ch, ks, padding=ks // 2))
+
+        self.shortcut = None
+        if in_ch != out_ch:
+            self.shortcut = kaiming(Conv1x1(in_ch, out_ch, 1))
+
+        self.skip_convs = nn.ModuleList(
+            [kaiming(Conv1x1(ch, out_ch)) for ch in skips_ch])
+
+    def forward(self, x, skips=[]):
+        """
+        Forward pass
+
+        Args:
+            x (tensor): input tensor
+            skips (list of tensor): a tensor per incoming skip connection
+
+        Return:
+            output tensor, intermediate value to use in the next block's skip
+                connections
+        """
+        x = F.interpolate(x, scale_factor=2, mode=self.mode)
+        if self.shortcut is not None:
+            x = F.leaky_relu(x, 0.2)
+            x_skip = x
+            x_skip = self.shortcut(x_skip)
+        else:
+            x_skip = x
+            x = F.leaky_relu(x, 0.2)
+
+        x_mid = self.conv1(x)
+
+        x_w_skips = x_mid
+        for conv, skip in zip(self.skip_convs, skips):
+            x_w_skips += conv(F.interpolate(skip, size=x_mid.shape[-2:],
+                mode=self.mode))
+
+        x = self.conv2(F.leaky_relu(x_w_skips, 0.2))
+        return x + x_skip, F.leaky_relu(x_mid, 0.2)
+
+
