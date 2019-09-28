@@ -4,25 +4,29 @@ from torchelie.nn import *
 
 
 def test_adain():
-    m = AdaIN2d(16, 8)
+    m = torch.jit.script(AdaIN2d(16, 8))
     m(torch.randn(5, 16, 8, 8), torch.randn(5, 8))
+
+    m = torch.jit.script(AdaIN2d(16, 8))
+    m.condition(torch.randn(5, 8))
+    m(torch.randn(5, 16, 8, 8))
 
 
 def test_film():
-    m = FiLM2d(16, 8)
+    m = torch.jit.script(FiLM2d(16, 8))
     m(torch.randn(5, 16, 8, 8), torch.randn(5, 8))
 
 
 def test_bn():
     for M in [NoAffineBN2d, NoAffineMABN2d, BatchNorm2d, MovingAverageBN2d]:
-        m = M(16)
+        m = torch.jit.script(M(16))
         m(torch.randn(5, 16, 8, 8))
 
     for M in [ConditionalBN2d, ConditionalMABN2d]:
         m = M(16, 8)
         m(torch.randn(5, 16, 8, 8), torch.randn(5, 8))
 
-    m = PixelNorm()
+    m = torch.jit.script(PixelNorm())
     m(torch.randn(5, 16, 8, 8))
 
     m = Lambda(lambda x: x + 1)

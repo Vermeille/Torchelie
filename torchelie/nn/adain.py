@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from typing import Optional
+
 
 class AdaIN2d(nn.Module):
     """
@@ -13,12 +15,15 @@ class AdaIN2d(nn.Module):
         cond_channels (int): number of conditioning channels from which bias
             and scale will be derived
     """
+
     def __init__(self, channels, cond_channels):
         super(AdaIN2d, self).__init__()
         self.make_weight = nn.Linear(cond_channels, channels)
         self.make_bias = nn.Linear(cond_channels, channels)
+        self.register_buffer('weight', torch.zeros(0))
+        self.register_buffer('bias', torch.zeros(0))
 
-    def forward(self, x, z=None):
+    def forward(self, x, z: Optional[torch.Tensor] = None):
         """
         Forward pass
 
@@ -64,12 +69,15 @@ class FiLM2d(nn.Module):
         cond_channels (int): number of conditioning channels from which bias
             and scale will be derived
     """
+
     def __init__(self, channels, cond_channels):
         super(FiLM2d, self).__init__()
         self.make_weight = nn.Linear(cond_channels, channels)
         self.make_bias = nn.Linear(cond_channels, channels)
+        self.register_buffer('weight', torch.zeros(0))
+        self.register_buffer('bias', torch.zeros(0))
 
-    def forward(self, x, z=None):
+    def forward(self, x, z: Optional[torch.Tensor] = None):
         """
         Forward pass
 
