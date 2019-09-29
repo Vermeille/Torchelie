@@ -231,6 +231,46 @@ def send_to_device(x, device, non_blocking=False):
     return x
 
 
+def recursive_state_dict(x):
+    """
+    Recursively call state_dict() on all elements contained in a list / tuple /
+    dict so that it can be saved safely via torch.save().
+
+    Args:
+        x: any nesting of list / tuple / dict containing state_dict()able
+            objects
+
+    Returns:
+        the same structure with state dicts
+    """
+    if hasattr(x, 'state_dict'):
+        return x.state_dict()
+    if isinstance(x, tuple):
+        return tuple(recursive_state_dict(xx) for xx in x)
+    if isinstance(x, list):
+        return [recursive_state_dict(xx) for xx in x]
+    if isinstance(x, dict):
+        return {k: recursive_state_dict(v) for k, v in x.items()}
+
+
+def load_recursive_state_dict(x, obj):
+    """
+    Reload a state dict saved with `recursive_state_dict()`
+
+    Args:
+        x: the recursive state dict
+        obj: the object that has been recursive_state_dict()ed
+    """
+    if hasattr(obj, 'load_state_dict'):
+        obj.load_state_dict(x)
+    if isinstance(x, (tuple, list)):
+        for xx, oo in zip(x, obj):
+            load_recursive_state_dict(xx, oo)
+    if isinstance(x, dict):
+        for k in objs.keys():
+            load_recursive_state_dict(xx[k], oo[k])
+
+
 class FrozenModule(nn.Module):
     """
     Wrap a module to eval model, can't be turned back to training mode
