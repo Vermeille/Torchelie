@@ -3,7 +3,8 @@ from pathlib import Path
 import torch
 from visdom import Visdom
 
-from torchelie.utils import dict_by_key
+from torchelie.utils import dict_by_key, recursive_state_dict
+from torchelie.utils import load_recursive_state_dict
 
 from .avg import *
 
@@ -167,18 +168,14 @@ class StdoutLogger:
 
 class Checkpoint:
     """FIXME: WIP"""
+
     def __init__(self, filename_base, objects):
         self.filename_base = filename_base
         self.objects = objects
         self.nb_saved = 0
 
     def save(self, state):
-        saved = {}
-        for k, m in self.objects.items():
-            if hasattr(m, 'state_dict'):
-                saved[k] = m.state_dict()
-            else:
-                saved[k] = m
+        saved = recursive_state_dict(self.objects)
         try:
             Path(self.filename()).parent.mkdir()
         except:
@@ -197,15 +194,11 @@ class Checkpoint:
                 pass
             self.nb_saved += 1
 
-        for k in self.keys:
-            m = state[k]
-            if hasattr(m, 'load_state_dict'):
-                m.load_state_dict(loaded[k])
-            else:
-                state[k] = loaded[k]
+        load_recursive_state_dict(loaded, self.objects)
 
     def on_epoch_end(self, state):
         self.save(state)
+
 
 class CallbacksRunner:
     def __init__(self, cbs):
