@@ -254,7 +254,7 @@ class AutoGANGenBlock(nn.Module):
             output tensor, intermediate value to use in the next block's skip
                 connections
         """
-        x = F.interpolate(x, scale_factor=2, mode=self.mode)
+        x = F.interpolate(x, scale_factor=2., mode=self.mode)
         if self.shortcut is not None:
             x = F.leaky_relu(x, 0.2)
             x_skip = x

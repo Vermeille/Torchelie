@@ -99,7 +99,7 @@ def test_vq():
 
 
 def test_tfms():
-    m = ImageNetInputNorm()
+    m = torch.jit.script(ImageNetInputNorm())
     m(torch.randn(1, 3, 8, 8))
 
 
@@ -111,11 +111,11 @@ def test_maskedconv():
 
 
 def test_misc():
-    m = Noise(1)
+    m = torch.jit.script(Noise(1))
     m(torch.randn(1, 3, 8, 8))
 
     m = Debug('test')
     m(torch.randn(1, 3, 8, 8))
 
-    m = Reshape(16)
+    m = torch.jit.script(Reshape(16))
     m(torch.randn(1, 4, 4))

@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from .layers import Conv3x3
 from torchelie.utils import kaiming, xavier
 
+from typing import Optional, Tuple
+
 __all__ = []
 
 
