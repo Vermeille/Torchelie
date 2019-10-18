@@ -107,6 +107,8 @@ class VisdomLogger:
                               win=name,
                               opts=dict(title=name),
                               name=name)
+            elif isinstance(x, str):
+                self.vis.text(x, win=name, opts=dict(title=name))
             elif isinstance(x, torch.Tensor):
                 if x.numel() == 1:
                     self.vis.line(X=[iters],
@@ -132,7 +134,7 @@ class VisdomLogger:
                 else:
                     assert False, "incorrect tensor dim"
             else:
-                assert False, "incorrect tensor dim"
+                assert False, "incorrect type " + x.__class__.__name__
 
 
 class StdoutLogger:
@@ -161,6 +163,8 @@ class StdoutLogger:
                     pass
                 else:
                     assert False, "incorrect tensor dim"
+            elif isinstance(x, str):
+                show[name] = x[:20]
             else:
                 assert False, "incorrect tensor dim"
         print(self.prefix, '| Ep.', epoch, 'It', epoch_batch, '|', show)
