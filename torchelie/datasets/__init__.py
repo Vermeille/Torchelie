@@ -133,3 +133,26 @@ class WithIndexDataset(_Wrap):
 
     def __len__(self):
         return len(self.ds)
+
+
+class CachedDataset(_Wrap):
+    def __init__(self, ds, transform=None, device='cpu'):
+        self.ds = ds
+        self.transform = transform
+        self.cache = [None] * len(self.ds)
+        self.device = device
+
+    def __len__(self):
+        return len(self.ds)
+
+    def __getitem__(self, i):
+        if self.cache[i] is None:
+            self.cache[i] = tu.send_to_device(self.ds[i], self.device,
+                    non_blocking=True)
+
+        x, *y = self.cache[i]
+
+        if self.transform is not None:
+            x = self.transform(x)
+
+        return [x] + y

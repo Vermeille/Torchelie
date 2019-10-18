@@ -209,6 +209,8 @@ Classes:
   samples for instance.
 * `WithIndexDataset` returns the sample's index as well. Useful if you want to
   retrieve the sample or associate something to it.
+* `CachedDataset` lazily caches a dataset so that next iterations won't access
+  the original storage or recompute the initial dataset's transforms
 
 ## `torchelie.datasets.debug`
 
