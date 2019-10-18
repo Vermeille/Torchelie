@@ -207,6 +207,8 @@ Classes:
 * `NoexceptDataset` wraps a dataset and suppresses the exceptions raised while
   loading samples. Useful in case of a big downloaded dataset with corrupted
   samples for instance.
+* `WithIndexDataset` returns the sample's index as well. Useful if you want to
+  retrieve the sample or associate something to it.
 
 ## `torchelie.datasets.debug`
 

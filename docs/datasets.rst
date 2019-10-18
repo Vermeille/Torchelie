@@ -26,6 +26,9 @@ Datasets wrappers
 .. autoclass:: torchelie.datasets.NoexceptDataset
    :members:
    :undoc-members:
+.. autoclass:: torchelie.datasets.WithIndexDataset
+   :members:
+   :undoc-members:
 
 Functions
 ~~~~~~~~~

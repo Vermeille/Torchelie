@@ -230,7 +230,7 @@ class Lookahead:
         alpha (float): outer loop learning rate
         k (int): number of steps in the inner loop
     """
-    def __init__(self, base_optimizer, alpha=0.5, k=6):
+    def __init__(self, base_optimizer, alpha=0.5, k=5):
         if not 0.0 <= alpha <= 1.0:
             raise ValueError('Invalid slow update rate: ' + str(alpha))
         if not 1 <= k:
@@ -285,3 +285,7 @@ class Lookahead:
                 q.data.add_(self.alpha, p.data - q.data)
                 p.data.copy_(q.data)
         return loss
+
+    def __repr__(self):
+        return "Lookahead({}, alpha={}, k={})".format(repr(self.optimizer),
+                self.alpha, self.k)
