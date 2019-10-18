@@ -125,10 +125,24 @@ class NoexceptDataset(_Wrap):
 
 
 class WithIndexDataset(_Wrap):
+    """
+    Wrap a dataset. Also returns the index of the accessed element. Original
+    dataset's attributes are transparently accessible
+
+    Args:
+        ds (Dataset): A dataset
+    """
     def __init__(self, ds):
         self.ds = ds
 
     def __getitem__(self, i):
+        """
+        Args:
+            i (int): index
+
+        Returns:
+            A tuple (i, self.ds[i])
+        """
         return i, self.ds[i]
 
     def __len__(self):
@@ -136,6 +150,14 @@ class WithIndexDataset(_Wrap):
 
 
 class CachedDataset(_Wrap):
+    """
+    Wrap a dataset. Lazily caches elements returned by the underlying dataset.
+
+    Args:
+        ds (Dataset): A dataset
+        transform (Callable): transform to apply on cached elements
+        device: the device on which the cache is allocated
+    """
     def __init__(self, ds, transform=None, device='cpu'):
         self.ds = ds
         self.transform = transform
@@ -146,6 +168,11 @@ class CachedDataset(_Wrap):
         return len(self.ds)
 
     def __getitem__(self, i):
+        """
+        Returns:
+            The ith element of the underlying dataset or its cached value if
+            available
+        """
         if self.cache[i] is None:
             self.cache[i] = tu.send_to_device(self.ds[i], self.device,
                     non_blocking=True)

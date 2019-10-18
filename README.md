@@ -179,6 +179,8 @@ Torchvision-like transforms:
 * `MultiBranch` allows different transformations branches in order to transform
   the same image in different ways. Useful for self supervision tasks for
   instance.
+* `ResizedCrop`: deterministic version of
+  `torchvision.transforms.RandomResizedCrop`
 
 ### `torchelie.transforms.differentiable`
 

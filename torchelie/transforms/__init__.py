@@ -125,15 +125,13 @@ class Canny:
 
 
 class ResizedCrop(object):
-    """Crop the given PIL Image to random size and aspect ratio.
-    A crop of random size (default: of 0.08 to 1.0) of the original size and a random
-    aspect ratio (default: of 3/4 to 4/3) of the original aspect ratio is made. This crop
+    """Crop the given PIL Image to size.
+    A crop of size of the original size is made. This crop
     is finally resized to given size.
-    This is popularly used to train the Inception networks.
+
     Args:
         size: expected output size of each edge
-        scale: range of size of the origin size cropped
-        ratio: range of aspect ratio of the origin aspect ratio cropped
+        scale: size of the origin size cropped
         interpolation: Default: PIL.Image.BILINEAR
     """
 
@@ -157,13 +155,12 @@ class ResizedCrop(object):
 
     @staticmethod
     def get_params(img, scale):
-        """Get parameters for ``crop`` for a random sized crop.
+        """Get parameters for ``crop``.
         Args:
             img (PIL Image): Image to be cropped.
-            scale (tuple): range of size of the origin size cropped
+            scale (float): range of size of the origin size cropped
         Returns:
-            tuple: params (i, j, h, w) to be passed to ``crop`` for a random
-                sized crop.
+            tuple: params (i, j, h, w) to be passed to ``crop``.
         """
         scale = math.sqrt(scale)
         ratio=1
@@ -196,9 +193,7 @@ class ResizedCrop(object):
         return F.resized_crop(img, i, j, h, w, self.size, self.interpolation)
 
     def __repr__(self):
-        interpolate_str = _pil_interpolation_to_str[self.interpolation]
         format_string = self.__class__.__name__ + '(size={0}'.format(self.size)
-        format_string += ', scale={0}'.format(tuple(round(s, 4) for s in self.scale))
-        format_string += ', ratio={0}'.format(tuple(round(r, 4) for r in self.ratio))
-        format_string += ', interpolation={0})'.format(interpolate_str)
+        format_string += ', scale={0}'.format(round(self.scale, 4))
+        format_string += ', interpolation={0})'.format(self.interpolation)
         return format_string

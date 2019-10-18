@@ -7,6 +7,9 @@ Transforms
 .. autoclass:: torchelie.transforms.ResizeNoCrop
    :members:
 
+.. autoclass:: torchelie.transforms.ResizedCrop
+   :members:
+
 .. autoclass:: torchelie.transforms.AdaptPad
    :members:
 
