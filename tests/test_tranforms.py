@@ -33,6 +33,12 @@ def test_canny():
     tf(img)
 
 
+def test_resizedcrop():
+    img = ToPILImage()(torch.clamp(torch.randn(3, 30, 16) + 1, min=0, max=1))
+    tf = ResizedCrop(48)
+    tf(img)
+
+
 def test_diff():
     dtf.roll(torch.randn(3, 16, 16), 3, 3)
     dtf.roll(torch.randn(1, 3, 16, 16), 3, 3)

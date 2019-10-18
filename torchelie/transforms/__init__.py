@@ -1,6 +1,11 @@
+import math
+
+import torch
 import torchvision.transforms as TF
+import torchvision.transforms.functional as F
 from PIL import Image
 import numpy as np
+
 
 try:
     import cv2
@@ -119,3 +124,81 @@ class Canny:
         return Image.fromarray(img)
 
 
+class ResizedCrop(object):
+    """Crop the given PIL Image to random size and aspect ratio.
+    A crop of random size (default: of 0.08 to 1.0) of the original size and a random
+    aspect ratio (default: of 3/4 to 4/3) of the original aspect ratio is made. This crop
+    is finally resized to given size.
+    This is popularly used to train the Inception networks.
+    Args:
+        size: expected output size of each edge
+        scale: range of size of the origin size cropped
+        ratio: range of aspect ratio of the origin aspect ratio cropped
+        interpolation: Default: PIL.Image.BILINEAR
+    """
+
+    def __init__(self, size, scale=0.54, interpolation=Image.BILINEAR):
+        if isinstance(size, tuple):
+            self.size = size
+        else:
+            self.size = (size, size)
+
+        self.interpolation = interpolation
+        self.scale = scale
+
+    @staticmethod
+    def _get_image_size(img):
+        if F._is_pil_image(img):
+            return img.size
+        elif isinstance(img, torch.Tensor) and img.dim() > 2:
+            return img.shape[-2:][::-1]
+        else:
+            raise TypeError("Unexpected type {}".format(type(img)))
+
+    @staticmethod
+    def get_params(img, scale):
+        """Get parameters for ``crop`` for a random sized crop.
+        Args:
+            img (PIL Image): Image to be cropped.
+            scale (tuple): range of size of the origin size cropped
+        Returns:
+            tuple: params (i, j, h, w) to be passed to ``crop`` for a random
+                sized crop.
+        """
+        scale = math.sqrt(scale)
+        ratio=1
+        width, height = ResizedCrop._get_image_size(img)
+        area = height * width
+
+        # Fallback to central crop
+        in_ratio = float(width) / float(height)
+        if (in_ratio < 1):
+            w = width * scale
+            h = int(round(w / ratio))
+        elif (in_ratio > 1):
+            h = height * scale
+            w = int(round(h * ratio))
+        else:  # whole image
+            w = width * scale
+            h = height * scale
+        i = (height - h) // 2
+        j = (width - w) // 2
+        return i, j, h, w
+
+    def __call__(self, img):
+        """
+        Args:
+            img (PIL Image): Image to be cropped and resized.
+        Returns:
+            PIL Image: Randomly cropped and resized image.
+        """
+        i, j, h, w = self.get_params(img, self.scale)
+        return F.resized_crop(img, i, j, h, w, self.size, self.interpolation)
+
+    def __repr__(self):
+        interpolate_str = _pil_interpolation_to_str[self.interpolation]
+        format_string = self.__class__.__name__ + '(size={0}'.format(self.size)
+        format_string += ', scale={0}'.format(tuple(round(s, 4) for s in self.scale))
+        format_string += ', ratio={0}'.format(tuple(round(r, 4) for r in self.ratio))
+        format_string += ', interpolation={0})'.format(interpolate_str)
+        return format_string
