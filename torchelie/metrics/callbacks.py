@@ -5,6 +5,7 @@ from visdom import Visdom
 
 from torchelie.utils import dict_by_key, recursive_state_dict
 from torchelie.utils import load_recursive_state_dict
+from torchelie.metrics.inspector import ClassificationInspector as CIVis
 
 from .avg import *
 
@@ -66,6 +67,59 @@ class AccAvg:
 
     def on_epoch_end(self, state):
         state['metrics']['acc'] = self.avg.get()
+
+
+class MetricsTable:
+    def __init__(self, post_each_batch=True):
+        self.post_each_batch = post_each_batch
+
+    def on_epoch_start(self, state):
+        if 'table' in state['metrics']:
+            del state['metrics']['table']
+
+    def make_html(self, state):
+        html = '''
+        <style>
+        table {
+            border: solid 1px #DDEEEE;
+            border-collapse: collapse;
+            border-spacing: 0;
+            font: normal 13px Arial, sans-serif;
+        }
+        th {
+            background-color: #DDEFEF;
+            border: solid 1px #DDEEEE;
+            color: #336B6B;
+            padding: 10px;
+            text-align: left;
+            text-shadow: 1px 1px 1px #fff;
+        }
+        td {
+            border: solid 1px #DDEEEE;
+            color: #333;
+            padding: 10px;
+            text-shadow: 1px 1px 1px #fff;
+        }
+        </style>
+        <table>
+        '''
+
+        for k, v in state['metrics'].items():
+            if isinstance(v, float):
+                html += '<tr><th>{}</th><td>{}</td></tr>'.format(
+                    k, round(v, 6))
+            elif isinstance(v, torch.Tensor) and v.numel() == 1:
+                html += '<tr><th>{}</th><td>{}</td></tr>'.format(
+                    k, round(v.item(), 6))
+        html += '</table>'
+        return html
+
+    def on_batch_end(self, state):
+        if self.post_each_batch:
+            state['metrics']['table'] = self.make_html(state)
+
+    def on_epoch_end(self, state):
+        state['metrics']['table'] = self.make_html(state)
 
 
 class Log:
@@ -212,3 +266,23 @@ class CallbacksRunner:
         for cb in self.cbs:
             if hasattr(cb, name):
                 getattr(cb, name)(*args, **kwargs)
+
+
+class ClassificationInspector:
+    def __init__(self, nb_show, classes, post_each_batch=True):
+        self.vis = CIVis(nb_show, classes, 1. / len(classes))
+        self.post_each_batch = post_each_batch
+
+    def on_epoch_start(self, state):
+        if 'report' in state['metrics']:
+            del state['metrics']['report']
+        self.vis.reset()
+
+    def on_batch_end(self, state):
+        pred, y, x = state['pred'], state['batch'][1], state['batch'][0]
+        self.vis.analyze(x, pred, y)
+        if self.post_each_batch:
+            state['metrics']['report'] = self.vis.show()
+
+    def on_epoch_end(self, state):
+        state['metrics']['report'] = self.vis.show()
