@@ -8,5 +8,6 @@ import torchelie.datasets
 import torchelie.data_learning
 import torchelie.optim
 import torchelie.distributions
+import torchelie.lr_scheduler
 
 __version__ = '0.1.0'

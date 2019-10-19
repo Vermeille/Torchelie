@@ -13,6 +13,7 @@ class CurriculumScheduler:
             interpolated linearly between neighboring keypoints
         last_iter (int): starting iteration
     """
+
     def __init__(self, optimizer, schedule, last_iter=-1):
         print(type(schedule), schedule)
         self.optimizer = optimizer
@@ -37,7 +38,35 @@ class CurriculumScheduler:
 
         for group in self.optimizer.param_groups:
             group['lr'] = the_lr
-            group['momentum'] = the_mom
+            if 'momentum' in group:
+                group['momentum'] = the_mom
 
     def __repr__(self):
         return "CurriculumScheduler({})".format(self.schedule)
+
+
+class OneCycle(CurriculumScheduler):
+    """
+    Implements 1cycle policy.
+
+    Goes from:
+    - `lr[0]` to `lr[1]` during `num_iters // 3` iterations
+    - `lr[1]` to `lr[0]` during another `num_iters // 3` iterations
+    - `lr[0]` to `lr[0] // 10` during another `num_iters // 3` iterations
+
+    Args:
+        opt (Optimizer): the optimizer on which to modulate lr
+        lr (2-tuple): lr range
+        num_iters (int): total number of iterations
+        mom (2-tuple): momentum range
+        last_iter (int): last_iteration index
+    """
+    def __init__(self, opt, lr, num_iters, mom=(0.95, 0.9), last_iter=-1):
+        super(OneCycle, self).__init__(
+            opt, [[0, lr[0], mom[0]], [num_iters // 3, lr[1], mom[1]],
+                  [2 * num_iters // 3, lr[0], mom[0]],
+                  [num_iters, lr[0] / 10, mom[0]]],
+            last_iter=last_iter)
+
+    def __repr__(self):
+        return 'OneCycle({})'.format(self.schedule)

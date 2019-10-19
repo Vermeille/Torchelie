@@ -194,6 +194,7 @@ Classes:
 * `CurriculumScheduler` takes a lr schedule and an optimizer as argument. Call
   `sched.step()` on each batch. The lr will be interpolated linearly between
   keypoints.
+* `OneCycle` implements 1cycle policy
 
 ## `torchelie.datasets`
 
