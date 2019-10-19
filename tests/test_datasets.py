@@ -1,5 +1,6 @@
 from torchelie.datasets import *
 
+
 class StupidDataset:
     def __init__(self):
         self.classes = [0, 1]
@@ -11,6 +12,7 @@ class StupidDataset:
 
     def __getitem__(self, i):
         return torch.FloatTensor([i]), torch.LongTensor([self.imgs[i][1]])
+
 
 def test_colored():
     cc = ColoredColumns(64, 64)
@@ -47,3 +49,14 @@ def test_mixup():
     md = MixUpDataset(ds)
     md[0]
 
+
+def test_cached():
+    ds = StupidDataset()
+    md = CachedDataset(ds)
+    md[0]
+
+
+def test_withindex():
+    ds = StupidDataset()
+    md = WithIndexDataset(ds)
+    md[0]
