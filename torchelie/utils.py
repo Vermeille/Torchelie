@@ -342,3 +342,33 @@ def ilerp(a, b, t):
         result
     """
     return (t - a) / (b - a)
+
+
+def as_multiclass_shape(preds, as_probs=False):
+    """
+    Manipulate an array of logit predictions so that binary prediction is not a
+    special case anymore. Outputs `preds` as (Batch size, Num classes (>=2)).
+
+    if preds has one dim, another one is added. If this is binary
+    classification, a second column is added as 1 - preds.
+
+    Args:
+        preds (tensor): predictions
+        as_probs (bool): whether to return the preds as logits or probs
+
+    Returns:
+        the predictions reshaped
+    """
+    assert preds.ndim <= 2
+
+    if preds.ndim == 1:
+        preds = preds.unsqueeze(1)
+    if preds.shape[1] == 1:
+        preds = torch.cat([-preds, preds], dim=1)
+        if as_probs:
+            preds = torch.sigmoid(preds)
+        return preds
+    else:
+        if as_probs:
+            preds = F.softmax(preds, dim=1)
+        return preds

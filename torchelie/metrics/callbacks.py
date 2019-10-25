@@ -4,7 +4,7 @@ import torch
 from visdom import Visdom
 
 from torchelie.utils import dict_by_key, recursive_state_dict
-from torchelie.utils import load_recursive_state_dict
+from torchelie.utils import load_recursive_state_dict, as_multiclass_shape
 from torchelie.metrics.inspector import ClassificationInspector as CIVis
 
 from .avg import *
@@ -59,6 +59,7 @@ class AccAvg:
 
     def on_batch_end(self, state):
         pred, y = state['pred'], state['batch'][1]
+        pred = as_multiclass_shape(pred)
         batch_correct = pred.argmax(1).eq(y).float().sum()
         self.avg.log(batch_correct, pred.shape[0])
 
