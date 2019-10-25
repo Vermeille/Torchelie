@@ -58,7 +58,10 @@ class TrainAndTest(TrainAndCallBase):
     def after_train(self):
         test_loader = self.test_loader
         with torch.no_grad():
-            self.test_state = self.state
+            self.test_state = {
+                    'iters': self.state['iters'],
+                    'epoch': self.state['epoch'],
+                    'epoch_batch': self.state['epoch_batch']}
             self.test_state['metrics'] = {}
             self.test_callbacks('on_epoch_start', self.test_state)
             for batch in test_loader:

@@ -5,8 +5,8 @@ class ImageOptimizationBaseRecipe:
     def __init__(self, visdom_env=None, log_every=10, callbacks=[]):
         self.callbacks = cb.CallbacksRunner(callbacks + [
             cb.WindowedMetricAvg('loss'),
-            cb.VisdomLogger(visdom_env, log_every=10),
-            cb.StdoutLogger(log_every=10),
+            cb.VisdomLogger(visdom_env, log_every=log_every),
+            cb.StdoutLogger(log_every=log_every),
         ])
 
     def forward(self):
