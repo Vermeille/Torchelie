@@ -60,6 +60,8 @@ def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
         alpha = torch.tensor([alpha])
         mixer = torch.distributions.Beta(alpha, alpha)
 
+    y1 = torch.tensor(y1)
+    y2 = torch.tensor(y2)
     lam = mixer.sample(y1.shape).to(y1.device)
     y1 = torch.nn.functional.one_hot(y1, num_classes=num_classes).float().to(
         y1.device)
