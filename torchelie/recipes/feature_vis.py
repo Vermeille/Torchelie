@@ -6,19 +6,20 @@ features it captures
 
 A commandline is provided with `python3 -m torchelie.recipes.feature_vis`
 """
+import random
 
 import torch
 import torchvision.transforms as TF
 
 import torchelie
 import torchelie.nn as tnn
-import torchelie.metrics.callbacks as cb
+import torchelie.metrics.callbacks as tcb
 from torchelie.optim import DeepDreamOptim
-from torchelie.recipes.recipebase import ImageOptimizationBaseRecipe
+from torchelie.recipes.recipebase import DataModelLoop
 from torchelie.data_learning import ParameterizedImg
 
 
-class FeatureVisRecipe(ImageOptimizationBaseRecipe):
+class FeatureVis(torch.nn.Module):
     """
     Feature viz
 
@@ -41,54 +42,56 @@ class FeatureVisRecipe(ImageOptimizationBaseRecipe):
                  lr=1e-3,
                  device='cpu',
                  visdom_env='feature_vis'):
-        super(FeatureVisRecipe, self).__init__(visdom_env=visdom_env)
+        super(FeatureVis, self).__init__()
         self.device = device
-        self.model = tnn.WithSavedActivations(model, names=[layer]).to(device)
-        self.model.eval()
+        self.model = tnn.WithSavedActivations(model, names=[layer])
         self.layer = layer
         self.input_size = input_size
-        self.norm = tnn.ImageNetInputNorm().to(device)
+        self.norm = tnn.ImageNetInputNorm()
         self.lr = lr
+        self.visdom_env = visdom_env
 
-    def init(self, channel):
-        self.channel = channel
-        self.canvas = ParameterizedImg(3, self.input_size + 10,
-                                       self.input_size + 10).to(self.device)
-
-        self.opt = DeepDreamOptim(self.canvas.parameters(), lr=self.lr)
-
-    def forward(self):
-        self.opt.zero_grad()
-
-        cim = self.canvas()
-        im = cim[:, :, self.iters % 10:, self.iters % 10:]
-        im = torch.nn.functional.interpolate(im,
-                                             size=(self.input_size,
-                                                   self.input_size),
-                                             mode='bilinear')
-        _, acts = self.model(self.norm(im), detach=False)
-        fmap = acts[self.layer]
-        loss = -fmap[0][self.channel].sum()
-        loss.backward()
-        self.opt.step()
-
-        return {'loss': loss, 'x': self.canvas.render()}
-
-    def result(self):
-        return self.canvas.render()
-
-    def __call__(self, n_iters, neuron):
+    def fit(self, n_iters, neuron):
         """
         Run the recipe
 
         Args:
             n_iters (int): number of iterations to run
-            neuron (int): the the feature map to maximize
+            neuron (int): the feature map to maximize
 
         Returns:
             the optimized image
         """
-        return super(FeatureVisRecipe, self).__call__(n_iters, neuron)
+        canvas = ParameterizedImg(3, self.input_size + 10,
+                                       self.input_size + 10).to(self.device)
+
+
+        def forward(_):
+            cim = canvas()
+            rnd = random.randint(0, 50)
+            im = cim[:, :, rnd:, rnd:]
+            im = torch.nn.functional.interpolate(im,
+                                                 size=(self.input_size,
+                                                       self.input_size),
+                                                 mode='bilinear')
+            _, acts = self.model(self.norm(im), detach=False)
+            fmap = acts[self.layer]
+            loss = -fmap[0][neuron].sum()
+            loss.backward()
+
+            return {'loss': loss, 'img': cim}
+
+        loop = DataModelLoop(self, forward, range(n_iters), device=self.device)
+        loop.add_callbacks([
+            tcb.Counter(),
+            tcb.Log('loss', 'loss'),
+            tcb.Log('img', 'img'),
+            tcb.Optimizer(DeepDreamOptim(canvas.parameters(), lr=self.lr)),
+            tcb.VisdomLogger(visdom_env=self.visdom_env, log_every=10),
+            tcb.StdoutLogger(log_every=10)
+        ])
+        loop.run(1)
+        return canvas.render()[0].cpu()
 
 
 if __name__ == '__main__':
@@ -128,11 +131,11 @@ if __name__ == '__main__':
     choice = models[args.model]
     model = choice['ctor'](pretrained=True)
     print(model)
-    fv = FeatureVisRecipe(model,
+    fv = FeatureVis(model,
                           args.layer,
                           args.input_size or choice['sz'],
                           lr=args.lr,
                           device=args.device,
                           visdom_env=args.visdom_env)
-    out = fv(args.iters, args.neuron)
+    out = fv.fit(args.iters, args.neuron)
     TF.ToPILImage()(out).save(args.out)

@@ -10,8 +10,8 @@ from torchvision.transforms import ToTensor, ToPILImage
 
 from torchelie.loss import NeuralStyleLoss
 from torchelie.data_learning import ParameterizedImg
-from torchelie.recipes.recipebase import ImageOptimizationBaseRecipe
-import torchelie.metrics.callbacks as cb
+from torchelie.recipes.recipebase import DataModelLoop
+import torchelie.metrics.callbacks as tcb
 
 
 def t2pil(t):
@@ -22,7 +22,7 @@ def pil2t(pil):
     return ToTensor()(pil)
 
 
-class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
+class NeuralStyle(torch.nn.Module):
     """
     Neural Style Recipe
 
@@ -36,52 +36,19 @@ class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
     """
 
     def __init__(self, lr=0.01, device="cpu", visdom_env='style'):
-        super(NeuralStyleRecipe, self).__init__(callbacks=[
-            cb.WindowedMetricAvg('content_loss'),
-            cb.WindowedMetricAvg('style_loss'),
-        ],
-                                                visdom_env=visdom_env,
-                                                log_every=1)
-
-        self.loss = NeuralStyleLoss().to(device)
+        super(NeuralStyle, self).__init__()
+        self.loss = NeuralStyleLoss()
         self.device = device
         self.lr = lr
+        self.visdom_env = visdom_env
+        self.loss.to(self.device)
 
-    def init(self, content_img, style_img, style_ratio, content_layers=None):
-        self.loss.set_style(pil2t(style_img).to(self.device), style_ratio)
-        self.loss.set_content(
-            pil2t(content_img).to(self.device), content_layers)
-
-        self.canvas = ParameterizedImg(3, content_img.height,
-                                       content_img.width).to(self.device)
-
-        self.opt = torch.optim.LBFGS(self.canvas.parameters(),
-                                     lr=self.lr,
-                                     history_size=50)
-
-    def forward(self):
-        losses = None
-
-        def make_loss():
-            nonlocal losses
-            self.opt.zero_grad()
-            input_img = self.canvas()
-            loss, losses = self.loss(input_img)
-            loss.backward()
-            return loss
-
-        loss = self.opt.step(make_loss).item()
-
-        return {
-            'loss': loss,
-            'content_loss': losses['content_loss'],
-            'style_loss': losses['style_loss']
-        }
-
-    def result(self):
-        return self.canvas.render()
-
-    def __call__(self, n_iters, content, style, ratio, content_layers):
+    def fit(self,
+            iters,
+            content_img,
+            style_img,
+            style_ratio,
+            content_layers=None):
         """
         Run the recipe
 
@@ -93,8 +60,51 @@ class NeuralStyleRecipe(ImageOptimizationBaseRecipe):
             content_layers (list of str): layers on which to reconstruct
                 content
         """
-        return super(NeuralStyleRecipe, self).__call__(n_iters, content, style,
-                                                       ratio, content_layers)
+        self.loss.set_style(pil2t(style_img).to(self.device), style_ratio)
+        self.loss.set_content(
+            pil2t(content_img).to(self.device), content_layers)
+
+        canvas = ParameterizedImg(3, content_img.height,
+                                  content_img.width).to(self.device)
+
+        self.opt = torch.optim.LBFGS(canvas.parameters(),
+                                     lr=self.lr,
+                                     history_size=10)
+
+        def forward(_):
+            losses = None
+            img = None
+
+            def make_loss():
+                nonlocal losses
+                nonlocal img
+                self.opt.zero_grad()
+                img = canvas()
+                loss, losses = self.loss(img)
+                loss.backward()
+                return loss
+
+            loss = self.opt.step(make_loss).item()
+
+            return {
+                'loss': loss,
+                'content_loss': losses['content_loss'],
+                'style_loss': losses['style_loss'],
+                'img': img
+            }
+
+        loop = DataModelLoop(self, forward, range(iters), device=self.device)
+        loop.add_callbacks([
+            tcb.Counter(),
+            tcb.WindowedMetricAvg('loss'),
+            tcb.WindowedMetricAvg('content_loss'),
+            tcb.WindowedMetricAvg('style_loss'),
+            tcb.Log('img', 'img'),
+            tcb.VisdomLogger(visdom_env=self.visdom_env, log_every=10),
+            tcb.StdoutLogger(log_every=10)
+        ])
+        loop.run(1)
+        return canvas.render()[0].cpu()
 
 
 if __name__ == '__main__':
@@ -117,8 +127,7 @@ if __name__ == '__main__':
     parser.add_argument('--visdom-env')
     args = parser.parse_args(sys.argv[1:])
 
-    stylizer = NeuralStyleRecipe(device=args.device,
-                                 visdom_env=args.visdom_env)
+    stylizer = NeuralStyle(device=args.device, visdom_env=args.visdom_env)
 
     content = Image.open(args.content)
     content.thumbnail((args.size, args.size))
@@ -129,8 +138,8 @@ if __name__ == '__main__':
                           int(style_img.height * args.scale))
         style_img = style_img.resize(new_style_size, Image.BICUBIC)
 
-    result = stylizer(args.iters, content, style_img, args.ratio,
-                      args.content_layers)
+    result = stylizer.fit(args.iters, content, style_img, args.ratio,
+                          args.content_layers)
     result = t2pil(result)
 
     result.save(args.out)

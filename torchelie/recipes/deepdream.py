@@ -11,6 +11,7 @@ customizable.
 A commandline interface is provided through `python3 -m
 torchelie.recipes.deepdream`, and a DeepDreamRecipe is provided.
 """
+import random
 
 import torch
 import torchvision.transforms as TF
@@ -20,12 +21,13 @@ import torchelie.metrics.callbacks as cb
 from torchelie.data_learning import ParameterizedImg
 from torchelie.loss.deepdreamloss import DeepDreamLoss
 from torchelie.optim import DeepDreamOptim
-from torchelie.recipes.recipebase import ImageOptimizationBaseRecipe
+from torchelie.recipes.recipebase import DataModelLoop
+import torchelie.metrics.callbacks as tcb
 
 from PIL import Image
 
 
-class DeepDreamRecipe(ImageOptimizationBaseRecipe):
+class DeepDream(torch.nn.Module):
     """
     Deep Dream recipe
 
@@ -35,58 +37,47 @@ class DeepDreamRecipe(ImageOptimizationBaseRecipe):
         model (nn.Module): the trained model to use
         dream_layer (str): the layer to use on which activations will be
             maximized
-        lr (float, optional): the learning rate
-        device (device): where to run the computation
-        visdom_env (str or None): the name of the visdom env to use, or None
-            to disable Visdom
     """
-    def __init__(self,
-                 model,
-                 dream_layer,
-                 lr=3e-4,
-                 device='cpu',
-                 visdom_env='deepdream'):
-        super(DeepDreamRecipe, self).__init__(visdom_env=visdom_env)
-        self.device = device
-        self.loss = DeepDreamLoss(model, dream_layer).to(device)
-        self.norm = tnn.ImageNetInputNorm().to(device)
-        self.lr = lr
 
-    def init(self, ref):
-        ref_tensor = TF.ToTensor()(ref)
-        self.canvas = ParameterizedImg(3,
-                                       ref_tensor.shape[1],
-                                       ref_tensor.shape[2],
-                                       init_img=ref_tensor,
-                                       space='spectral',
-                                       colors='uncorr').to(self.device)
+    def __init__(self, model, dream_layer):
+        super(DeepDream, self).__init__()
+        self.loss = DeepDreamLoss(model, dream_layer)
+        self.norm = tnn.ImageNetInputNorm()
 
-        self.opt = DeepDreamOptim(self.canvas.parameters(), lr=self.lr)
-
-    def forward(self):
-        self.opt.zero_grad()
-        cim = self.canvas()
-        loss = self.loss(
-            self.norm(cim[:, :, self.iters % 10:, self.iters % 10:]))
-        loss.backward()
-        self.opt.step()
-        return {'loss': loss}
-
-    def result(self):
-        return self.canvas.render()
-
-    def __call__(self, n_iters, ref):
+    def fit(self, ref, iters, lr=3e-4, device='cpu', visdom_env='deepdream'):
         """
-        Run the recipe
-
         Args:
-            n_iters (int): number of iterations to perform
-            ref (PIL.Image): the base image
-
-        Returns:
-            the optimized image
+            lr (float, optional): the learning rate
+            device (device): where to run the computation
+            visdom_env (str or None): the name of the visdom env to use, or None
+                to disable Visdom
         """
-        return super(DeepDreamRecipe, self).__call__(n_iters, ref)
+        ref_tensor = TF.ToTensor()(ref)
+        canvas = ParameterizedImg(3,
+                                  ref_tensor.shape[1],
+                                  ref_tensor.shape[2],
+                                  init_img=ref_tensor,
+                                  space='spectral',
+                                  colors='uncorr').to(device)
+
+        def forward(_):
+            img = canvas()
+            rnd = random.randint(0, 10)
+            loss = self.loss(self.norm(img[:, :, rnd:, rnd:]))
+            loss.backward()
+            return {'loss': loss, 'img': img}
+
+        loop = DataModelLoop(self, forward, range(iters), device=device)
+        loop.add_callbacks([
+            tcb.Counter(),
+            tcb.Log('loss', 'loss'),
+            tcb.Log('img', 'img'),
+            tcb.Optimizer(DeepDreamOptim(canvas.parameters(), lr=lr)),
+            tcb.VisdomLogger(visdom_env=visdom_env, log_every=10),
+            tcb.StdoutLogger(log_every=10)
+        ])
+        loop.run(1)
+        return canvas.render()[0].cpu()
 
 
 if __name__ == '__main__':
@@ -125,12 +116,12 @@ if __name__ == '__main__':
     model = models[args.model]['ctor'](pretrained=True)
 
     print(model)
-    dd = DeepDreamRecipe(model,
-                         args.dream_layer or models[args.model]['layer'],
-                         lr=args.lr,
-                         device=args.device,
-                         visdom_env=args.visdom_env)
     img = Image.open(args.input)
-    out = dd(args.iters, img)
+    dd = DeepDream(model, args.dream_layer or models[args.model]['layer'])
+    out = dd.fit(img,
+                 args.iters,
+                 lr=args.lr,
+                 device=args.device,
+                 visdom_env=args.visdom_env)
 
     TF.ToPILImage()(out).save(args.out)

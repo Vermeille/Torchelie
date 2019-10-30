@@ -220,7 +220,7 @@ class RAdamW(Optimizer):
 
 from collections import defaultdict
 
-class Lookahead:
+class Lookahead(Optimizer):
     """
     Implements Lookahead from `Lookahead Optimizer: k steps forward, 1 step
     back` (Zhang et al, 2019)

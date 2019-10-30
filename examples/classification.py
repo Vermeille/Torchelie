@@ -60,9 +60,14 @@ def summary(Net):
 def train_net(Net):
     clf = Net(10, in_ch=1)
 
-    clf_recipe = CrossEntropyClassification(clf, test_every=1500, lr=1e-3,
-            device=device)
-    acc = clf_recipe(dl, dlt, 1)[1]['acc']
+
+    clf_recipe = CrossEntropyClassification(clf,
+                                            dl,
+                                            dlt,
+                                            ds.classes,
+                                            device=device)
+
+    acc = clf_recipe.fit(1)['test_metrics']['acc']
 
     if acc > 0.90:
         print(crayons.green('PASS ({})'.format(acc), bold=True))

@@ -8,32 +8,42 @@ from torchvision.datasets import CIFAR10, MNIST, FashionMNIST, SVHN
 from torch.utils.data import DataLoader
 from torchelie.optim import RAdamW
 from torchelie.recipes import TrainAndCall
+import torchelie.metrics.callbacks as tcb
 
-
-class PixMe(torch.nn.Module):
-    def __init__(self):
-        super(PixMe, self).__init__()
-        self.model = tmodels.PixelCNN(64, (32, 32), channels=3)
-
-    def make_optimizer(self):
-        return RAdamW(self.model.parameters(), lr=3e-3, betas=(0.95, 0.9995))
-
-    def train_step(self, batch, opt):
+def train(model, loader):
+    def train_step(batch):
         x = batch[0]
         x = x.expand(-1, 3, -1, -1)
 
-        opt.zero_grad()
-        x2 = self.model(x * 2 - 1)
+        x2 = model(x * 2 - 1)
         loss = F.cross_entropy(x2, (x * 255).long())
         loss.backward()
-        opt.step()
-
         reconstruction = x2.argmax(dim=1).float() / 255.0
-        return {'loss': loss, 'metrics': {'reconstruction': reconstruction}}
+        return {'loss': loss, 'reconstruction': reconstruction}
 
-    def after_train(self):
-        imgs = self.model.sample(1, 4).expand(-1, 3, -1, -1)
-        return {'metrics': {'imgs': imgs}}
+    def after_train():
+        imgs = model.sample(1, 4).expand(-1, 3, -1, -1)
+        return {'imgs': imgs}
+
+    opt = RAdamW(model.parameters(), lr=3e-3)
+    trainer = TrainAndCall(model,
+                           train_step,
+                           after_train,
+                           dl,
+                           test_every=500,
+                           visdom_env='pixelcnn',
+                           device='cuda')
+    trainer.add_callbacks([
+        tcb.WindowedMetricAvg('loss'),
+        tcb.Log('reconstruction', 'reconstruction'),
+        tcb.Optimizer(opt, log_lr=True),
+        tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(opt))
+    ])
+    trainer.add_test_callbacks([
+        tcb.Log('imgs', 'imgs'),
+    ])
+
+    trainer.fit(10)
 
 
 tfms = TF.Compose([
@@ -44,9 +54,9 @@ tfms = TF.Compose([
 dl = DataLoader(FashionMNIST('~/.cache/torch/fashionmnist',
                              transform=tfms,
                              download=True),
-                batch_size=8,
+                batch_size=32,
                 shuffle=True,
                 num_workers=4)
 
-trainer = TrainAndCall(PixMe(), visdom_env='pixelcnn', device='cuda')
-trainer(dl, 10)
+model = tmodels.PixelCNN(64, (32, 32), channels=3)
+train(model, dl)

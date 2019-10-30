@@ -1,11 +1,14 @@
+import copy
+from collections import defaultdict
 import os
 from pathlib import Path
 import torch
 from visdom import Visdom
 
 from torchelie.utils import dict_by_key, recursive_state_dict
-from torchelie.utils import load_recursive_state_dict, as_multiclass_shape
+from torchelie.utils import load_recursive_state_dict
 from torchelie.metrics.inspector import ClassificationInspector as CIVis
+import torchelie.utils as tu
 
 from .avg import *
 
@@ -59,7 +62,7 @@ class AccAvg:
 
     def on_batch_end(self, state):
         pred, y = state['pred'], state['batch'][1]
-        pred = as_multiclass_shape(pred)
+        pred = tu.as_multiclass_shape(pred)
         batch_correct = pred.argmax(1).eq(y).float().sum()
         self.avg.log(batch_correct, pred.shape[0])
 
@@ -121,6 +124,54 @@ class MetricsTable:
 
     def on_epoch_end(self, state):
         state['metrics']['table'] = self.make_html(state)
+
+
+class Optimizer:
+    def __init__(self, opt, accumulation=1, log_lr=False):
+        self.opt = opt
+        self.accumulation = accumulation
+        self.log_lr = log_lr
+
+    def state_dict(self):
+        return {'optimizer': self.opt.state_dict()}
+
+    def load_state_dict(self, dicc):
+        self.opt.load_state_dict(dicc['optimizer'])
+
+    def on_batch_start(self, state):
+        if state['iters'] % self.accumulation == 0:
+            self.opt.zero_grad()
+
+        if self.log_lr:
+            state['metrics']['lr'] = self.opt.param_groups[0]['lr']
+
+    def on_batch_end(self, state):
+        if (state['iters'] + 1) % self.accumulation == 0:
+            self.opt.step()
+
+
+class LRSched:
+    def __init__(self, sched, metric='loss', step_each_batch=False):
+        self.sched = sched
+        self.metric = metric
+        self.step_each_batch = step_each_batch
+
+    def state_dict(self):
+        if hasattr(self.sched, 'state_dict'):
+            return {'scheduler': self.sched.state_dict()}
+        return {}
+
+    def load_state_dict(self, dicc):
+        if 'scheduler' in dicc:
+            self.sched.load_state_dict(dicc['scheduler'])
+
+    def on_batch_end(self, state):
+        if self.step_each_batch:
+            self.sched.step(state['metrics'][self.metric])
+
+    def on_epoch_end(self, state):
+        if not self.step_each_batch:
+            self.sched.step(state['metrics'][self.metric])
 
 
 class Log:
@@ -259,14 +310,52 @@ class Checkpoint:
         self.save(state)
 
 
-class CallbacksRunner:
-    def __init__(self, cbs):
-        self.cbs = cbs
+class Polyak:
+    def __init__(self, original, copy, beta=0.999):
+        self.original = original
+        self.copy = copy
+        self.beta = beta
 
-    def __call__(self, name, *args, **kwargs):
-        for cb in self.cbs:
-            if hasattr(cb, name):
-                getattr(cb, name)(*args, **kwargs)
+    @torch.no_grad()
+    def on_batch_end(self, state):
+        for s, d in zip(self.original.parameters(), self.copy.parameters()):
+            d.mul_(self.beta).add_(1 - self.beta, s)
+
+
+class Counter:
+    def __init__(self):
+        self.epoch = -1
+        self.iters = -1
+        self.epoch_batch = -1
+
+    def state_dict(self):
+        return {
+            'epoch': self.epoch,
+            'iters': self.iters,
+            'epoch_batch': self.epoch_batch
+        }
+
+    def load_state_dict(self, dicc):
+        self.epoch = dicc['epoch']
+        self.iters = dicc['iters']
+        self.epoch_batch = dicc['epoch_batch']
+
+    def on_batch_start(self, state):
+        self.iters += 1
+        self.epoch_batch += 1
+
+        state['epoch'] = self.epoch
+        state['iters'] = self.iters
+        state['epoch_batch'] = self.epoch_batch
+
+    def on_epoch_start(self, state):
+        self.epoch += 1
+        self.epoch_batch = 0
+
+        state['epoch'] = self.epoch
+        state['iters'] = self.iters
+        state['epoch_batch'] = self.epoch_batch
+
 
 
 class ClassificationInspector:
@@ -287,3 +376,28 @@ class ClassificationInspector:
 
     def on_epoch_end(self, state):
         state['metrics']['report'] = self.vis.show()
+
+
+class CallDataLoop:
+    def __init__(self, loop, model, run_every=100, prefix='test'):
+        self.loop = loop
+        self.model = model
+        self.run_every = run_every
+        self.prefix = prefix
+
+    def state_dict(self):
+        dicc = self.loop.state_dict()
+        return {'loop': dicc}
+
+    def load_state_dict(self, dicc):
+        self.loop.load_state_dict(dicc['loop'])
+
+    def on_batch_end(self, state):
+        if state['iters'] % self.run_every == 0:
+            self.loop.set_initial_state({
+                'epoch': state['epoch'],
+                'iters': state['iters'],
+                'epoch_batch': state['epoch_batch']
+            })
+            out = self.loop.run(1)
+            state[self.prefix + '_metrics'] = copy.deepcopy(out['metrics'])
