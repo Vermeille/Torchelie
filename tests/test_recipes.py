@@ -4,10 +4,11 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import ToPILImage
 
 from torchelie.recipes.classification import CrossEntropyClassification
-from torchelie.recipes.deepdream import DeepDreamRecipe
-from torchelie.recipes.feature_vis import FeatureVisRecipe
-from torchelie.recipes.neural_style import NeuralStyleRecipe
+from torchelie.recipes.deepdream import DeepDream
+from torchelie.recipes.feature_vis import FeatureVis
+from torchelie.recipes.neural_style import NeuralStyle
 from torchelie.recipes.trainandcall import TrainAndCall
+import torchelie.metrics.callbacks as tcb
 
 
 class FakeData:
@@ -25,52 +26,49 @@ def test_classification():
 
     model = nn.Linear(10, 2)
 
-    clf_recipe = CrossEntropyClassification(model)
-    clf_recipe(trainloader, testloader, 1)
+    clf_recipe = CrossEntropyClassification(model, trainloader, testloader,
+    ['foo', 'bar'])
+    clf_recipe.fit(1)
 
 
 def test_deepdream():
     model = nn.Sequential(nn.Conv2d(3, 6, 3))
-    dd = DeepDreamRecipe(model, '0', lr=1)
-    dd(1, ToPILImage()(torch.randn(3, 8, 8)))
+    dd = DeepDream(model, '0')
+    dd.fit(ToPILImage()(torch.randn(3, 128, 128)), 1)
 
 
 def test_featurevis():
     model = nn.Sequential(nn.Conv2d(3, 6, 3))
-    dd = FeatureVisRecipe(model, '0', 8, lr=1)
-    dd(1, 0)
+    dd = FeatureVis(model, '0', 229, lr=1)
+    dd.fit(1, 0)
 
 
 def test_neuralstyle():
-    stylizer = NeuralStyleRecipe()
+    stylizer = NeuralStyle()
 
     content = ToPILImage()(torch.randn(3, 32, 32))
     style_img = ToPILImage()(torch.randn(3, 32, 32))
 
-    result = stylizer(1, content, style_img, 1, ['conv1_1'])
+    result = stylizer.fit(1, content, style_img, 1, ['conv1_1'])
 
 def test_trainandcall():
-    class Test(nn.Module):
-        def __init__(self):
-            super(Test, self).__init__()
-            self.model = nn.Linear(10, 2)
+    model = nn.Linear(10, 2)
 
-        def make_optimizer(self):
-            return torch.optim.Adam(self.model.parameters(), lr=1e-3)
+    def train_step(batch):
+        x, y = batch
+        out = model(x)
+        loss = torch.nn.functional.cross_entropy(out, y)
+        loss.backward()
+        return {'loss': loss}
 
-        def train_step(self, batch, opt):
-            x, y = batch
-            opt.zero_grad()
-            out = self.model(x)
-            loss = torch.nn.functional.cross_entropy(out, y)
-            loss.backward()
-            opt.step()
-            return {'loss': loss}
-
-        def after_train(self):
-            print('Yup.')
-            return {}
+    def after_train():
+        print('Yup.')
+        return {}
 
     trainloader = DataLoader(FakeData(), 4, shuffle=True)
-    trainer = TrainAndCall(Test())
-    trainer(trainloader)
+    trainer = TrainAndCall(model, train_step, after_train, trainloader)
+    trainer.add_callbacks([
+        tcb.Optimizer(torch.optim.Adam(model.parameters(), lr=1e-3))
+    ])
+
+    trainer.fit(1)
