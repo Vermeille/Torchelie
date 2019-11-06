@@ -127,10 +127,11 @@ class MetricsTable:
 
 
 class Optimizer:
-    def __init__(self, opt, accumulation=1, log_lr=False):
+    def __init__(self, opt, accumulation=1, log_lr=False, log_mom=False):
         self.opt = opt
         self.accumulation = accumulation
         self.log_lr = log_lr
+        self.log_mom = log_mom
 
     def state_dict(self):
         return {'optimizer': self.opt.state_dict()}
@@ -143,7 +144,17 @@ class Optimizer:
             self.opt.zero_grad()
 
         if self.log_lr:
-            state['metrics']['lr'] = self.opt.param_groups[0]['lr']
+            for i in range(len(self.opt.param_groups)):
+                pg = self.opt.param_groups[i]
+                state['metrics']['lr_' + str(i)] = pg['lr']
+
+        if self.log_mom:
+            for i in range(len(self.opt.param_groups)):
+                pg = self.opt.param_groups[i]
+                if 'momentum' in pg:
+                    state['metrics']['mom_' + str(i)] = pg['momentum']
+                elif 'betas' in pg:
+                    state['metrics']['mom_' + str(i)] = pg['betas'][0]
 
     def on_batch_end(self, state):
         if (state['iters'] + 1) % self.accumulation == 0:
