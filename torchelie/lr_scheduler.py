@@ -1,3 +1,4 @@
+import math
 import torchelie.utils as tutils
 
 
@@ -15,7 +16,6 @@ class CurriculumScheduler:
     """
 
     def __init__(self, optimizer, schedule, last_iter=-1):
-        print(type(schedule), schedule)
         self.optimizer = optimizer
         self.schedule = schedule
         self.last_iter = last_iter
@@ -40,6 +40,8 @@ class CurriculumScheduler:
             group['lr'] = the_lr
             if 'momentum' in group:
                 group['momentum'] = the_mom
+            elif 'betas' in group:
+                group['betas'] = (the_mom, group['betas'][1])
 
     def __repr__(self):
         return "CurriculumScheduler({})".format(self.schedule)
@@ -61,12 +63,30 @@ class OneCycle(CurriculumScheduler):
         mom (2-tuple): momentum range
         last_iter (int): last_iteration index
     """
-    def __init__(self, opt, lr, num_iters, mom=(0.95, 0.9), last_iter=-1):
+    def __init__(self, opt, lr, num_iters, mom=(0.95, 0.9), log=False, last_iter=-1):
+        third = num_iters // 3
+        self.log = log
+        if log:
+            lr = math.log(lr[0]), math.log(lr[1])
+            mom = math.log(mom[0]), math.log(mom[1])
         super(OneCycle, self).__init__(
-            opt, [[0, lr[0], mom[0]], [num_iters // 3, lr[1], mom[1]],
-                  [2 * num_iters // 3, lr[0], mom[0]],
-                  [num_iters, lr[0] / 10, mom[0]]],
+            opt, [[0, lr[0], mom[0]], [third, lr[1], mom[1]],
+                  [2 * third, lr[0], mom[0]],
+                  [num_iters, lr[0] / (lr[1] / lr[0] * 10000), mom[0]]],
             last_iter=last_iter)
+
+    def step(self, *unused):
+        super(OneCycle, self).step()
+
+        if not self.log:
+            return
+
+        for group in self.optimizer.param_groups:
+            group['lr'] = math.exp(group['lr'])
+            if 'momentum' in group:
+                group['momentum'] = math.exp(group['momentum'])
+            elif 'betas' in group:
+                group['betas'] = (math.exp(group['momentum']), group['betas'][1])
 
     def __repr__(self):
         return 'OneCycle({})'.format(self.schedule)
