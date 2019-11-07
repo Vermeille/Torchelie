@@ -68,7 +68,7 @@ def Classification(model,
                         device=device)
     loop.train_loop.add_callbacks([
         tcb.AccAvg(),
-        tcb.WindowedMetricAvg('loss'),
+        tcb.EpochMetricAvg('loss'),
     ])
 
     loop.add_test_callbacks([

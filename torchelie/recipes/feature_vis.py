@@ -68,7 +68,7 @@ class FeatureVis(torch.nn.Module):
 
         def forward(_):
             cim = canvas()
-            rnd = random.randint(0, 50)
+            rnd = random.randint(0, cim.shape[2] // 10)
             im = cim[:, :, rnd:, rnd:]
             im = torch.nn.functional.interpolate(im,
                                                  size=(self.input_size,
@@ -91,7 +91,7 @@ class FeatureVis(torch.nn.Module):
             tcb.StdoutLogger(log_every=10)
         ])
         loop.run(1)
-        return canvas.render()[0].cpu()
+        return canvas.render().cpu()
 
 
 if __name__ == '__main__':
