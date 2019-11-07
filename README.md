@@ -2,6 +2,9 @@
 
 <img src="https://github.com/Vermeille/Torchelie/blob/master/logo.png" height="200"/>
 
+Torchélie is a set of tools for pyTorch. It includes losses, optimizers,
+algorithms, utils, layers, models and training loops.
+
 Torchelie is currently very API unstable. Test at your own risks, and you
 should expect to update often and have many breaking changes, especially in
 high level features.
