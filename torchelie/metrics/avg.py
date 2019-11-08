@@ -2,13 +2,16 @@
 Those classes are different ways of averaging metrics.
 """
 
-class RunningAvg:
+import torchelie.utils as tu
+
+class RunningAvg(tu.AutoStateDict):
     """
     Average by keeping the whole sum and number of elements of the data logged.
     Useful when the metrics come per batch and an accurate number for the whole
     epoch is needed.
     """
     def __init__(self):
+        super(RunningAvg, self).__init__()
         self.count = 0
         self.val = 0
 
@@ -30,7 +33,7 @@ class RunningAvg:
         return self.val / self.count
 
 
-class WindowAvg:
+class WindowAvg(tu.AutoStateDict):
     """
     Average a window containing the `k` previous logged values
 
@@ -38,6 +41,7 @@ class WindowAvg:
         k (int): the window's length
     """
     def __init__(self, k=100):
+        super(WindowAvg, self).__init__()
         self.vals = []
         self.k = k
 
@@ -56,7 +60,7 @@ class WindowAvg:
         return sum(self.vals) / len(self.vals)
 
 
-class ExponentialAvg:
+class ExponentialAvg(tu.AutoStateDict):
     r"""
     Keep an exponentially decaying average of the values according to
 
@@ -66,6 +70,7 @@ class ExponentialAvg:
         beta (float): the decay rate
     """
     def __init__(self, beta=0.6):
+        super(ExponentialAvg, self).__init__()
         self.beta = beta
         self.val = None
 

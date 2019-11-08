@@ -21,7 +21,7 @@ import torchelie.metrics.callbacks as cb
 from torchelie.data_learning import ParameterizedImg
 from torchelie.loss.deepdreamloss import DeepDreamLoss
 from torchelie.optim import DeepDreamOptim
-from torchelie.recipes.recipebase import DataModelLoop
+from torchelie.recipes.recipebase import DataLoop
 import torchelie.metrics.callbacks as tcb
 
 from PIL import Image
@@ -58,7 +58,7 @@ class DeepDream(torch.nn.Module):
                                   ref_tensor.shape[2],
                                   init_img=ref_tensor,
                                   space='spectral',
-                                  colors='uncorr').to(device)
+                                  colors='uncorr')
 
         def forward(_):
             img = canvas()
@@ -67,7 +67,8 @@ class DeepDream(torch.nn.Module):
             loss.backward()
             return {'loss': loss, 'img': img}
 
-        loop = DataModelLoop(self, forward, range(iters), device=device)
+        loop = DataLoop(forward, range(iters))
+        loop.register('model', self)
         loop.add_callbacks([
             tcb.Counter(),
             tcb.Log('loss', 'loss'),
@@ -77,7 +78,7 @@ class DeepDream(torch.nn.Module):
             tcb.StdoutLogger(log_every=10)
         ])
         loop.run(1)
-        return canvas.render()[0].cpu()
+        return canvas.render().cpu()
 
 
 if __name__ == '__main__':

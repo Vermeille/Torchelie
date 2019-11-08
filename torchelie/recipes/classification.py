@@ -64,8 +64,7 @@ def Classification(model,
                         test_loader,
                         visdom_env=visdom_env,
                         test_every=test_every,
-                        log_every=log_every,
-                        device=device)
+                        log_every=log_every)
     loop.train_loop.add_callbacks([
         tcb.AccAvg(),
         tcb.EpochMetricAvg('loss'),

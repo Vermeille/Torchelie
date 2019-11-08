@@ -1,8 +1,8 @@
 import math
-import torchelie.utils as tutils
+import torchelie.utils as tu
 
 
-class CurriculumScheduler:
+class CurriculumScheduler(tu.AutoStateDict):
     """
     Allow to pre-specify learning rate and momentum changes
 
@@ -16,6 +16,7 @@ class CurriculumScheduler:
     """
 
     def __init__(self, optimizer, schedule, last_iter=-1):
+        super(CurriculumScheduler, self).__init__(except_names=['optimizer'])
         self.optimizer = optimizer
         self.schedule = schedule
         self.last_iter = last_iter
@@ -32,9 +33,9 @@ class CurriculumScheduler:
             lim_hi, lr_hi, mom_hi = hi
 
             if limit_lo <= self.last_iter < lim_hi:
-                t = tutils.ilerp(limit_lo, lim_hi, self.last_iter)
-                the_lr = tutils.lerp(lr_lo, lr_hi, t)
-                the_mom = tutils.lerp(mom_lo, mom_hi, t)
+                t = tu.ilerp(limit_lo, lim_hi, self.last_iter)
+                the_lr = tu.lerp(lr_lo, lr_hi, t)
+                the_mom = tu.lerp(mom_lo, mom_hi, t)
 
         for group in self.optimizer.param_groups:
             group['lr'] = the_lr
@@ -45,6 +46,7 @@ class CurriculumScheduler:
 
     def __repr__(self):
         return "CurriculumScheduler({})".format(self.schedule)
+
 
 
 class OneCycle(CurriculumScheduler):
@@ -64,11 +66,13 @@ class OneCycle(CurriculumScheduler):
         last_iter (int): last_iteration index
     """
     def __init__(self, opt, lr, num_iters, mom=(0.95, 0.9), log=False, last_iter=-1):
-        third = num_iters // 3
         self.log = log
+
         if log:
             lr = math.log(lr[0]), math.log(lr[1])
             mom = math.log(mom[0]), math.log(mom[1])
+
+        third = num_iters // 3
         super(OneCycle, self).__init__(
             opt, [[0, lr[0], mom[0]], [third, lr[1], mom[1]],
                   [2 * third, lr[0], mom[0]],

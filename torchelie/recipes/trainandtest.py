@@ -3,7 +3,7 @@ import copy
 import torch
 
 import torchelie.metrics.callbacks as tcb
-from torchelie.recipes.recipebase import DataModelLoop, DataLoop
+from torchelie.recipes.recipebase import DataLoop
 
 class TrainAndTest:
     """
@@ -49,12 +49,14 @@ class TrainAndTest:
             model.train()
             return out
 
-        train_loop = DataModelLoop(model, train_fun, train_loader, device=device)
-        test_loop = DataLoop(eval_call, test_loader, device=device)
+        train_loop = DataLoop(train_fun, train_loader)
+        train_loop.register('model', model)
+
+        test_loop = DataLoop(eval_call, test_loader)
 
         train_loop.add_prologues([tcb.Counter()])
         train_loop.add_epilogues([
-            tcb.CallDataLoop(test_loop, model, test_every),
+            tcb.CallDataLoop(test_loop, test_every),
             tcb.VisdomLogger(visdom_env=visdom_env, log_every=log_every),
             tcb.StdoutLogger(log_every=log_every),
         ])
@@ -66,8 +68,8 @@ class TrainAndTest:
             tcb.Checkpoint((visdom_env or 'model') + '/ckpt', train_loop)
         ])
 
-        self.train_loop = train_loop
-        self.test_loop = test_loop
+        self.train_loop = train_loop.to(device)
+        self.test_loop = test_loop.to(device)
 
     def add_callbacks(self, cbs):
         self.train_loop.add_callbacks(cbs)

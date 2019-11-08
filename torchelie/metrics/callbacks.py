@@ -6,15 +6,16 @@ import torch
 from visdom import Visdom
 
 from torchelie.utils import dict_by_key, recursive_state_dict
-from torchelie.utils import load_recursive_state_dict
+from torchelie.utils import load_recursive_state_dict, AutoStateDict
 from torchelie.metrics.inspector import ClassificationInspector as CIVis
 import torchelie.utils as tu
 
 from .avg import *
 
 
-class WindowedMetricAvg:
+class WindowedMetricAvg(tu.AutoStateDict):
     def __init__(self, name, post_each_batch=True):
+        super(WindowedMetricAvg, self).__init__()
         self.name = name
         self.avg = WindowAvg(k=100)
         self.post_each_batch = post_each_batch
@@ -32,8 +33,9 @@ class WindowedMetricAvg:
         state['metrics'][self.name] = self.avg.get()
 
 
-class EpochMetricAvg:
+class EpochMetricAvg(tu.AutoStateDict):
     def __init__(self, name, post_each_batch=True):
+        super(EpochMetricAvg, self).__init__()
         self.name = name
         self.post_each_batch = post_each_batch
 
@@ -51,8 +53,9 @@ class EpochMetricAvg:
         state['metrics'][self.name] = self.avg.get()
 
 
-class AccAvg:
+class AccAvg(tu.AutoStateDict):
     def __init__(self, post_each_batch=True):
+        super(AccAvg, self).__init__()
         self.post_each_batch = post_each_batch
 
     def on_epoch_start(self, state):
@@ -73,8 +76,9 @@ class AccAvg:
         state['metrics']['acc'] = self.avg.get()
 
 
-class MetricsTable:
+class MetricsTable(tu.AutoStateDict):
     def __init__(self, post_each_batch=True):
+        super(MetricsTable, self).__init__()
         self.post_each_batch = post_each_batch
 
     def on_epoch_start(self, state):
@@ -126,18 +130,13 @@ class MetricsTable:
         state['metrics']['table'] = self.make_html(state)
 
 
-class Optimizer:
+class Optimizer(tu.AutoStateDict):
     def __init__(self, opt, accumulation=1, log_lr=False, log_mom=False):
+        super(Optimizer, self).__init__()
         self.opt = opt
         self.accumulation = accumulation
         self.log_lr = log_lr
         self.log_mom = log_mom
-
-    def state_dict(self):
-        return {'optimizer': self.opt.state_dict()}
-
-    def load_state_dict(self, dicc):
-        self.opt.load_state_dict(dicc['optimizer'])
 
     def on_batch_start(self, state):
         if state['iters'] % self.accumulation == 0:
@@ -161,8 +160,9 @@ class Optimizer:
             self.opt.step()
 
 
-class LRSched:
+class LRSched(tu.AutoStateDict):
     def __init__(self, sched, metric='loss', step_each_batch=False):
+        super(LRSched, self).__init__()
         self.sched = sched
         self.metric = metric
         self.step_each_batch = step_each_batch
@@ -185,8 +185,9 @@ class LRSched:
             self.sched.step(state['metrics'][self.metric])
 
 
-class Log:
+class Log(tu.AutoStateDict):
     def __init__(self, from_k, to):
+        super(Log, self).__init__()
         self.from_k = from_k
         self.to = to
 
@@ -194,8 +195,9 @@ class Log:
         state['metrics'][self.to] = dict_by_key(state, self.from_k)
 
 
-class VisdomLogger:
+class VisdomLogger(tu.AutoStateDict):
     def __init__(self, visdom_env='main', log_every=10, prefix=''):
+        super(VisdomLogger, self).__init__(except_names=['vis'])
         self.vis = None
         self.log_every = log_every
         self.prefix = prefix
@@ -254,9 +256,9 @@ class VisdomLogger:
                 assert False, "incorrect type " + x.__class__.__name__
 
 
-class StdoutLogger:
+class StdoutLogger(tu.AutoStateDict):
     def __init__(self, log_every=10, prefix=''):
-        self.vis = None
+        super(StdoutLogger, self).__init__()
         self.log_every = log_every
         self.prefix = prefix
 
@@ -333,23 +335,12 @@ class Polyak:
             d.mul_(self.beta).add_(1 - self.beta, s)
 
 
-class Counter:
+class Counter(tu.AutoStateDict):
     def __init__(self):
+        super(Counter, self).__init__()
         self.epoch = -1
         self.iters = -1
         self.epoch_batch = -1
-
-    def state_dict(self):
-        return {
-            'epoch': self.epoch,
-            'iters': self.iters,
-            'epoch_batch': self.epoch_batch
-        }
-
-    def load_state_dict(self, dicc):
-        self.epoch = dicc['epoch']
-        self.iters = dicc['iters']
-        self.epoch_batch = dicc['epoch_batch']
 
     def on_batch_start(self, state):
         self.iters += 1
@@ -389,19 +380,12 @@ class ClassificationInspector:
         state['metrics']['report'] = self.vis.show()
 
 
-class CallDataLoop:
-    def __init__(self, loop, model, run_every=100, prefix='test'):
+class CallDataLoop(tu.AutoStateDict):
+    def __init__(self, loop, run_every=100, prefix='test'):
+        super(CallDataLoop, self).__init__()
         self.loop = loop
-        self.model = model
         self.run_every = run_every
         self.prefix = prefix
-
-    def state_dict(self):
-        dicc = self.loop.state_dict()
-        return {'loop': dicc}
-
-    def load_state_dict(self, dicc):
-        self.loop.load_state_dict(dicc['loop'])
 
     def on_batch_end(self, state):
         if state['iters'] % self.run_every == 0:

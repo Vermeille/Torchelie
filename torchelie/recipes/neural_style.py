@@ -10,7 +10,7 @@ from torchvision.transforms import ToTensor, ToPILImage
 
 from torchelie.loss import NeuralStyleLoss
 from torchelie.data_learning import ParameterizedImg
-from torchelie.recipes.recipebase import DataModelLoop
+from torchelie.recipes.recipebase import DataLoop
 import torchelie.metrics.callbacks as tcb
 
 
@@ -41,7 +41,6 @@ class NeuralStyle(torch.nn.Module):
         self.device = device
         self.lr = lr
         self.visdom_env = visdom_env
-        self.loss.to(self.device)
 
     def fit(self,
             iters,
@@ -60,12 +59,12 @@ class NeuralStyle(torch.nn.Module):
             content_layers (list of str): layers on which to reconstruct
                 content
         """
+        self.loss.to(self.device)
         self.loss.set_style(pil2t(style_img).to(self.device), style_ratio)
-        self.loss.set_content(
-            pil2t(content_img).to(self.device), content_layers)
+        self.loss.set_content(pil2t(content_img).to(self.device), content_layers)
 
         canvas = ParameterizedImg(3, content_img.height,
-                                  content_img.width).to(self.device)
+                                  content_img.width)
 
         self.opt = torch.optim.LBFGS(canvas.parameters(),
                                      lr=self.lr,
@@ -93,7 +92,9 @@ class NeuralStyle(torch.nn.Module):
                 'img': img
             }
 
-        loop = DataModelLoop(self, forward, range(iters), device=self.device)
+        loop = DataLoop(forward, range(iters))
+        loop.register('canvas', canvas)
+        loop.register('model', self)
         loop.add_callbacks([
             tcb.Counter(),
             tcb.WindowedMetricAvg('loss'),
@@ -103,8 +104,9 @@ class NeuralStyle(torch.nn.Module):
             tcb.VisdomLogger(visdom_env=self.visdom_env, log_every=10),
             tcb.StdoutLogger(log_every=10)
         ])
+        loop.to(self.device)
         loop.run(1)
-        return canvas.render()[0].cpu()
+        return canvas.render().cpu()
 
 
 if __name__ == '__main__':

@@ -278,6 +278,7 @@ class FrozenModule(nn.Module):
     Args:
         m (nn.Module): a module
     """
+
     def __init__(self, m):
         super(FrozenModule, self).__init__()
         self.m = freeze(m).eval()
@@ -298,6 +299,7 @@ class DetachedModule:
     Args:
         m (nn.Module): a module
     """
+
     def __init__(self, m):
         self.m = freeze(m).eval()
 
@@ -372,3 +374,22 @@ def as_multiclass_shape(preds, as_probs=False):
         if as_probs:
             preds = F.softmax(preds, dim=1)
         return preds
+
+
+class AutoStateDict:
+    def __init__(self, except_names=[]):
+        self._except = except_names
+
+    def state_dict(self):
+        return {
+            key: (val.state_dict() if hasattr(val, 'state_dict') else val)
+            for key, val in self.__dict__.items()
+            if key not in self._except and key != '_except'
+        }
+
+    def load_state_dict(self, state_dict):
+        for nm, v in self.state_dict.items():
+            if hasattr(self.__dict__[nm], 'load_state_dict'):
+                self.__dict__[nm].load_state_dict(v)
+            else:
+                self.__dict__[nm] = v

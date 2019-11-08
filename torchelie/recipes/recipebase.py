@@ -1,4 +1,5 @@
-from collections import defaultdict
+import torch
+from collections import defaultdict, OrderedDict
 import torchelie.utils as tu
 
 
@@ -56,15 +57,77 @@ class CallbacksRunner:
         self.cbs[2].append(cb)
 
 
-class DataLoop:
-    def __init__(self, call_fun, loader, device='cpu'):
-        self.device = device
-        self.call_fun = call_fun
-        self.callbacks = CallbacksRunner()
-        self.loader = loader
+class LoopBase:
+    def __init__(self):
+        self._modules = set()
+        self._savable = set()
+        self.device = 'cpu'
+
+    def _check_init(self):
+        if '_modules' not in self.__dict__:
+            raise AttributeError('You forgot to call ModulesAware.__init__()')
+
+    def register(self, name, value):
+        self._check_init()
+        self._modules.discard(name)
+        self._savable.discard(name)
+
+        if isinstance(value, torch.nn.Module):
+            self._modules.add(name)
+        else:
+            self._savable.add(name)
+
+        self.__dict__[name] = value
 
     def state_dict(self):
-        return {'callbacks': self.callbacks.state_dict()}
+        sd = OrderedDict()
+        for nm in self._modules:
+            sd[nm] = self.__dict__[nm].state_dict()
+
+        for nm in self._savable:
+            val = self.__dict__[nm]
+            if hasattr(val, 'state_dict'):
+                sd[nm] = val.state_dict()
+            else:
+                sd[nm] = val
+        return sd
+
+    def load_state_dict(self, state_dict):
+        for key, state in state_dict:
+            val = self.__dict__[key]
+            if hasattr(val, 'load_state_dict'):
+                val.load_state_dict(state)
+            else:
+                self.__dict__[key] = val
+        return self
+
+
+    def modules(self):
+        for m in self._modules:
+            yield self.__dict__[m]
+
+    def to(self, device):
+        self._check_init()
+        self.device = device
+
+        for m in self.modules():
+            m.to(self.device)
+
+        return self
+
+    def cuda(self):
+        return self.to('cuda')
+
+    def cpu(self):
+        return self.to('cpu')
+
+
+class DataLoop(LoopBase):
+    def __init__(self, call_fun, loader):
+        super(DataLoop, self).__init__()
+        self.call_fun = call_fun
+        self.register('callbacks', CallbacksRunner())
+        self.loader = loader
 
     def add_prologues(self, cbs):
         for cb in cbs:
@@ -86,6 +149,7 @@ class DataLoop:
         return self
 
     def run(self, epochs):
+        self.to(self.device)
         for epoch in range(epochs):
             self.callbacks('on_epoch_start')
             for batch in self.loader:
@@ -102,22 +166,3 @@ class DataLoop:
                 self.callbacks('on_batch_end')
             self.callbacks('on_epoch_end')
         return self.callbacks.state
-
-
-class DataModelLoop(DataLoop):
-    def __init__(self, model, call_fun, loader, device='cpu'):
-        super(DataModelLoop, self).__init__(call_fun, loader, device)
-        self.model = model
-
-    def state_dict(self):
-        dicc = super(DataModelLoop, self).state_dict()
-        dicc['model'] = self.model.state_dict()
-        return dicc
-
-    def load_state_dict(self, dicc):
-        super(DataModelLoop, self).load_state_dict(dicc['callbacks'])
-        self.model.load_state_dict(dicc['model'])
-
-    def run(self, epochs):
-        self.model.to(self.device)
-        return super(DataModelLoop, self).run(epochs)
