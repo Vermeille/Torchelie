@@ -56,6 +56,18 @@ class CallbacksRunner:
     def add_epilogue(self, cb):
         self.cbs[2].append(cb)
 
+    def add_prologues(self, cbs):
+        for cb in cbs:
+            self.add_prologue(cb)
+
+    def add_callbacks(self, cbs):
+        for cb in cbs:
+            self.add_callback(cb)
+
+    def add_epilogues(self, cbs):
+        for cb in cbs:
+            self.add_epilogue(cb)
+
 
 class LoopBase:
     def __init__(self):

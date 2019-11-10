@@ -54,14 +54,21 @@ class TrainAndTest:
 
         test_loop = DataLoop(eval_call, test_loader)
 
-        train_loop.add_prologues([tcb.Counter()])
-        train_loop.add_epilogues([
-            tcb.CallDataLoop(test_loop, test_every),
+        def prepare_test(state):
+            test_loop.callbacks.update_state({
+                'epoch': state['epoch'],
+                'iters': state['iters'],
+                'epoch_batch': state['epoch_batch']
+            })
+
+        train_loop.callbacks.add_prologues([tcb.Counter()])
+        train_loop.callbacks.add_epilogues([
+            tcb.CallDataLoop(test_loop, test_every, init_fun=prepare_test),
             tcb.VisdomLogger(visdom_env=visdom_env, log_every=log_every),
             tcb.StdoutLogger(log_every=log_every),
         ])
 
-        test_loop.add_epilogues([
+        test_loop.callbacks.add_epilogues([
             tcb.VisdomLogger(
                 visdom_env=visdom_env, log_every=-1, prefix='test_'),
             tcb.StdoutLogger(log_every=-1, prefix='Test'),
@@ -70,12 +77,6 @@ class TrainAndTest:
 
         self.train_loop = train_loop.to(device)
         self.test_loop = test_loop.to(device)
-
-    def add_callbacks(self, cbs):
-        self.train_loop.add_callbacks(cbs)
-
-    def add_test_callbacks(self, cbs):
-        self.test_loop.add_callbacks(cbs)
 
     def fit(self, iters):
         """

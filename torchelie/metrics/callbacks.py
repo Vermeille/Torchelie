@@ -381,18 +381,16 @@ class ClassificationInspector:
 
 
 class CallDataLoop(tu.AutoStateDict):
-    def __init__(self, loop, run_every=100, prefix='test'):
-        super(CallDataLoop, self).__init__()
+    def __init__(self, loop, run_every=100, prefix='test', init_fun=None):
+        super(CallDataLoop, self).__init__(except_names=['init_fun'])
         self.loop = loop
         self.run_every = run_every
         self.prefix = prefix
+        self.init_fun = init_fun
 
     def on_batch_end(self, state):
         if state['iters'] % self.run_every == 0:
-            self.loop.set_initial_state({
-                'epoch': state['epoch'],
-                'iters': state['iters'],
-                'epoch_batch': state['epoch_batch']
-            })
+            if self.init_fun is not None:
+                self.init_fun(state)
             out = self.loop.run(1)
             state[self.prefix + '_metrics'] = copy.deepcopy(out['metrics'])

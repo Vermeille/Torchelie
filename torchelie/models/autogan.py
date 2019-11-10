@@ -19,9 +19,17 @@ class AutoGAN(nn.Module):
             connections maximum.
         in_noise (int): dimension of the input noise vector
         out_ch (int): number of channels on the image
+        batchnorm_in_output (bool): whether to have a batchnorm just before
+            projecting to RGB. I have found it better on False, but the
+            official AutoGAN repo has it.
     """
 
-    def __init__(self, arch, n_skip_max=2, in_noise=256, out_ch=3):
+    def __init__(self,
+                 arch,
+                 n_skip_max=2,
+                 in_noise=256,
+                 out_ch=3,
+                 batchnorm_in_output=False):
         super(AutoGAN, self).__init__()
         self.n_skip_max = n_skip_max
         self.make_noise = (nn.Linear(in_noise, 4 * 4 * arch[0]))
@@ -35,8 +43,13 @@ class AutoGAN(nn.Module):
             lasts = ([out] + lasts)[:n_skip_max]
             in_ch = out
         self.blocks = nn.ModuleList(blocks)
-        self.to_rgb = nn.Sequential(nn.BatchNorm2d(arch[-1]), nn.ReLU(True),
-                                    xavier(tnn.Conv3x3(arch[-1], out_ch)))
+        if batchnorm_in_output:
+            self.to_rgb = nn.Sequential(nn.BatchNorm2d(arch[-1]),
+                                        nn.ReLU(True),
+                                        xavier(tnn.Conv3x3(arch[-1], out_ch)))
+        else:
+            self.to_rgb = nn.Sequential(nn.ReLU(True),
+                                        xavier(tnn.Conv3x3(arch[-1], out_ch)))
 
     def forward(self, z):
         """
@@ -64,11 +77,13 @@ def autogan_128(in_noise, out_ch=3):
                    in_noise=in_noise,
                    out_ch=out_ch)
 
+
 def autogan_64(in_noise, out_ch=3):
     return AutoGAN(arch=[512, 256, 128, 64, 32],
                    n_skip_max=3,
                    in_noise=in_noise,
                    out_ch=out_ch)
+
 
 def autogan_32(in_noise, out_ch=3):
     return AutoGAN(arch=[256, 128, 64, 32],

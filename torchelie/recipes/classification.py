@@ -65,22 +65,22 @@ def Classification(model,
                         visdom_env=visdom_env,
                         test_every=test_every,
                         log_every=log_every)
-    loop.train_loop.add_callbacks([
+    loop.train_loop.callbacks.add_callbacks([
         tcb.AccAvg(),
         tcb.EpochMetricAvg('loss'),
     ])
 
-    loop.add_test_callbacks([
+    loop.test_loop.callbacks.add_callbacks([
         tcb.AccAvg(post_each_batch=False),
         tcb.EpochMetricAvg('loss', False),
     ])
 
     if visdom_env is not None:
-        loop.train_loop.add_epilogues(
+        loop.train_loop.callbacks.add_epilogues(
             [tcb.ClassificationInspector(30, classes),
              tcb.MetricsTable()])
 
-        loop.add_test_callbacks([
+        loop.test_loop.callbacks.add_callbacks([
             tcb.ClassificationInspector(30, classes, False),
             tcb.MetricsTable(False)
         ])
@@ -139,7 +139,7 @@ def CrossEntropyClassification(model,
                           device=device)
 
     opt = RAdamW(model.parameters(), lr=lr)
-    loop.add_callbacks([
+    loop.train_loop.callbacks.add_callbacks([
         tcb.Optimizer(opt, log_lr=True),
         tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(opt))
     ])
