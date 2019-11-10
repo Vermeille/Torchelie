@@ -113,7 +113,6 @@ class LoopBase:
                 self.__dict__[key] = val
         return self
 
-
     def modules(self):
         for m in self._modules:
             yield self.__dict__[m]
@@ -138,27 +137,9 @@ class DataLoop(LoopBase):
     def __init__(self, call_fun, loader):
         super(DataLoop, self).__init__()
         self.call_fun = call_fun
-        self.register('callbacks', CallbacksRunner())
         self.loader = loader
 
-    def add_prologues(self, cbs):
-        for cb in cbs:
-            self.callbacks.add_prologue(cb)
-        return self
-
-    def add_callbacks(self, cbs):
-        for cb in cbs:
-            self.callbacks.add_callback(cb)
-        return self
-
-    def add_epilogues(self, cbs):
-        for cb in cbs:
-            self.callbacks.add_epilogue(cb)
-        return self
-
-    def set_initial_state(self, state):
-        self.callbacks.update_state(state)
-        return self
+        self.register('callbacks', CallbacksRunner())
 
     def run(self, epochs):
         self.to(self.device)
@@ -178,3 +159,5 @@ class DataLoop(LoopBase):
                 self.callbacks('on_batch_end')
             self.callbacks('on_epoch_end')
         return self.callbacks.state
+
+
