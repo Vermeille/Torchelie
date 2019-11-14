@@ -12,13 +12,31 @@ import torch
 import torch.nn.functional as F
 
 
-def real(x):
-    return F.relu(1 - x).mean()
+def real(x, reduction='mean'):
+    out = F.relu(1 - x)
+    if reduction == 'none':
+        return out
+    if reduction == 'mean':
+        return out.mean()
+    if reduction == 'sum':
+        return out.sum()
 
 
-def fake(x):
-    return F.relu(1 + x).mean()
+def fake(x, reduction='mean'):
+    out = F.relu(1 + x)
+    if reduction == 'none':
+        return out
+    if reduction == 'mean':
+        return out.mean()
+    if reduction == 'sum':
+        return out.sum()
 
 
-def generated(x):
-    return -x.mean()
+def generated(x, reduction='mean'):
+    out = -x
+    if reduction == 'none':
+        return out
+    if reduction == 'mean':
+        return out.mean()
+    if reduction == 'sum':
+        return out.sum()
