@@ -84,7 +84,7 @@ class FeatureVis(torch.nn.Module):
         loop = DataLoop(forward, range(n_iters))
         loop.register('canvas', canvas)
         loop.register('model', self)
-        loop.add_callbacks([
+        loop.callbacks.add_callbacks([
             tcb.Counter(),
             tcb.Log('loss', 'loss'),
             tcb.Log('img', 'img'),
