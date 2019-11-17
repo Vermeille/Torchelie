@@ -131,12 +131,18 @@ class MetricsTable(tu.AutoStateDict):
 
 
 class Optimizer(tu.AutoStateDict):
-    def __init__(self, opt, accumulation=1, log_lr=False, log_mom=False):
+    def __init__(self,
+                 opt,
+                 accumulation=1,
+                 clip_grad_norm=None,
+                 log_lr=False,
+                 log_mom=False):
         super(Optimizer, self).__init__()
         self.opt = opt
         self.accumulation = accumulation
         self.log_lr = log_lr
         self.log_mom = log_mom
+        self.clip_grad_norm = clip_grad_norm
 
     def on_batch_start(self, state):
         if state['iters'] % self.accumulation == 0:
@@ -157,6 +163,10 @@ class Optimizer(tu.AutoStateDict):
 
     def on_batch_end(self, state):
         if (state['iters'] + 1) % self.accumulation == 0:
+            if self.clip_grad_norm is not None:
+                state['metrics']['grad_norm'] = torch.nn.utils.clip_grad_norm_(
+                    (p for pg in self.opt.param_groups for p in pg['params']),
+                    self.clip_grad_norm)
             self.opt.step()
 
 
@@ -363,7 +373,6 @@ class Counter(tu.AutoStateDict):
         state['epoch'] = self.epoch
         state['iters'] = self.iters
         state['epoch_batch'] = self.epoch_batch
-
 
 
 class ClassificationInspector:
