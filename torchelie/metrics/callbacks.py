@@ -178,11 +178,17 @@ class LRSched(tu.AutoStateDict):
 
     def on_batch_end(self, state):
         if self.step_each_batch:
-            self.sched.step(state['metrics'][self.metric])
+            if self.metric is None:
+                self.sched.step()
+            else:
+                self.sched.step(state['metrics'][self.metric])
 
     def on_epoch_end(self, state):
         if not self.step_each_batch:
-            self.sched.step(state['metrics'][self.metric])
+            if self.metric is None:
+                self.sched.step()
+            else:
+                self.sched.step(state['metrics'][self.metric])
 
 
 class Log(tu.AutoStateDict):
