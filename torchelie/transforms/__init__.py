@@ -6,7 +6,6 @@ import torchvision.transforms.functional as F
 from PIL import Image
 import numpy as np
 
-
 try:
     import cv2
 except:
@@ -20,6 +19,7 @@ class ResizeNoCrop:
     Args:
         size (int): max size of the image
     """
+
     def __init__(self, size):
         self.size = size
 
@@ -48,6 +48,7 @@ class AdaptPad:
         sz ((int, int)): target size
         padding_mode (str): one of the modes of `torchvision.transforms.pad`
     """
+
     def __init__(self, sz, padding_mode='constant'):
         self.sz = sz
         self.padding_mode = padding_mode
@@ -81,6 +82,7 @@ class MultiBranch:
     Args:
         transforms (list of transforms): the parallel set of transforms
     """
+
     def __init__(self, transforms):
         self.transforms = transforms
 
@@ -105,6 +107,7 @@ class Canny:
         thresh_low (int): lower threshold (default: 100)
         thresh_high (int): upper threshold (default: 200)
     """
+
     def __init__(self, thresh_low=100, thresh_high=200):
         self.thresh_low = thresh_low
         self.thresh_high = thresh_high
@@ -163,7 +166,7 @@ class ResizedCrop(object):
             tuple: params (i, j, h, w) to be passed to ``crop``.
         """
         scale = math.sqrt(scale)
-        ratio=1
+        ratio = 1
         width, height = ResizedCrop._get_image_size(img)
         area = height * width
 
@@ -197,3 +200,44 @@ class ResizedCrop(object):
         format_string += ', scale={0}'.format(round(self.scale, 4))
         format_string += ', interpolation={0})'.format(self.interpolation)
         return format_string
+
+
+def patches(img, patch_size=128):
+    """
+    Cut an image into square patches of equal size. Padding is added if needed.
+
+    Args:
+        img (PIL.Image): the image to split
+        patch_size (int): the size od the square patch
+
+    Returns:
+        A list of split and coordinates like [((y pos, x pos), img patch)]
+    """
+    h, w = img.height, img.width
+    padder = AdaptPad((patch_size, patch_size))
+    for l, h_off in enumerate(range(0, h, patch_size)):
+        for c, w_off in enumerate(range(0, w, patch_size)):
+            p = img.crop(
+                (w_off, h_off, w_off + patch_size, h_off + patch_size))
+            yield (l, c), padder(p)
+
+
+def paste_patches(patches):
+    """
+    Collate a list of patches and their coordinates such as returned by
+    `patches` into an image.
+
+    Args:
+        patches (list): a list of patches and coordinates such as returned by
+            `patches`
+
+    Returns:
+        the assembled PIL.Image.
+    """
+    patch_size = patches[0][1].width
+    total_height = patch_size * (1 + max(p[0][0] for p in patches))
+    total_width = patch_size * (1 + max(p[0][1] for p in patches))
+    new_im = Image.new('RGB', (total_width, total_height))
+    for (l, c), p in patches:
+        new_im.paste(p, (c * patch_size, l * patch_size))
+    return new_im
