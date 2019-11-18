@@ -95,7 +95,7 @@ class NeuralStyle(torch.nn.Module):
         loop = DataLoop(forward, range(iters))
         loop.register('canvas', canvas)
         loop.register('model', self)
-        loop.add_callbacks([
+        loop.callbacks.add_callbacks([
             tcb.Counter(),
             tcb.WindowedMetricAvg('loss'),
             tcb.WindowedMetricAvg('content_loss'),

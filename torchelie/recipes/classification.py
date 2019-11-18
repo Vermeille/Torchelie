@@ -30,8 +30,7 @@ def Classification(model,
                    classes,
                    visdom_env=None,
                    test_every=1000,
-                   log_every=100,
-                   device='cpu'):
+                   log_every=100):
     """
     Vanilla classification loop and testing loop. Displays Loss and accuracy.
 
@@ -54,7 +53,6 @@ def Classification(model,
             (default: [])
         test_callbacks (list of Callback): additional testing callbacks
             (default: [])
-        device: a torch device (default: 'cpu')
     """
 
     loop = TrainAndTest(model,
@@ -65,7 +63,7 @@ def Classification(model,
                         visdom_env=visdom_env,
                         test_every=test_every,
                         log_every=log_every)
-    loop.train_loop.callbacks.add_callbacks([
+    loop.callbacks.add_callbacks([
         tcb.AccAvg(),
         tcb.EpochMetricAvg('loss'),
     ])
@@ -76,7 +74,7 @@ def Classification(model,
     ])
 
     if visdom_env is not None:
-        loop.train_loop.callbacks.add_epilogues(
+        loop.callbacks.add_epilogues(
             [tcb.ClassificationInspector(30, classes),
              tcb.MetricsTable()])
 
@@ -94,8 +92,7 @@ def CrossEntropyClassification(model,
                                lr=3e-3,
                                visdom_env=None,
                                test_every=1000,
-                               log_every=100,
-                               device='cpu'):
+                               log_every=100):
     """
     Lears a classifier with cross_entropy and adam. It just wraps together
     Classification + CrossEntropyLearner
@@ -111,7 +108,6 @@ def CrossEntropyClassification(model,
             (default: [])
         test_callbacks (list of Callback): additional testing callbacks
             (default: [])
-        device: a torch device (default: 'cpu')
     """
 
     def train_step(batch):
@@ -135,11 +131,10 @@ def CrossEntropyClassification(model,
                           classes,
                           visdom_env=visdom_env,
                           test_every=test_every,
-                          log_every=log_every,
-                          device=device)
+                          log_every=log_every)
 
     opt = RAdamW(model.parameters(), lr=lr)
-    loop.train_loop.callbacks.add_callbacks([
+    loop.callbacks.add_callbacks([
         tcb.Optimizer(opt, log_lr=True),
         tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(opt))
     ])
@@ -186,8 +181,8 @@ if __name__ == '__main__':
                                             trainloader,
                                             testloader,
                                             trainset.classes,
-                                            device=args.device,
                                             log_every=10,
                                             visdom_env=args.visdom_env)
 
-    clf_recipe.fit(args.epochs)
+    clf_recipe.to(args.device)
+    clf_recipe.run(args.epochs)

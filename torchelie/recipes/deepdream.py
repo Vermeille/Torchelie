@@ -48,7 +48,6 @@ class DeepDream(torch.nn.Module):
         """
         Args:
             lr (float, optional): the learning rate
-            device (device): where to run the computation
             visdom_env (str or None): the name of the visdom env to use, or None
                 to disable Visdom
         """
@@ -69,7 +68,8 @@ class DeepDream(torch.nn.Module):
 
         loop = DataLoop(forward, range(iters))
         loop.register('model', self)
-        loop.add_callbacks([
+        loop.register('canvas', canvas)
+        loop.callbacks.add_callbacks([
             tcb.Counter(),
             tcb.Log('loss', 'loss'),
             tcb.Log('img', 'img'),
@@ -77,6 +77,7 @@ class DeepDream(torch.nn.Module):
             tcb.VisdomLogger(visdom_env=visdom_env, log_every=10),
             tcb.StdoutLogger(log_every=10)
         ])
+        loop.to(device)
         loop.run(1)
         return canvas.render().cpu()
 

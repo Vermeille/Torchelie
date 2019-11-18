@@ -13,8 +13,8 @@ def TrainAndCall(model,
                  train_loader,
                  test_every=100,
                  visdom_env='main',
-                 log_every=10,
-                 device='cpu'):
+                 checkpoint='model',
+                 log_every=10):
     """
     Training loop, calls `model.after_train()` after every `test_every`
     iterations. Displays Loss.
@@ -37,7 +37,6 @@ def TrainAndCall(model,
             (default: [])
         test_callbacks (list of Callback): additional testing callbacks
             (default: [])
-        device: a torch device (default: 'cpu')
     """
 
     def test_fun_wrap(_):
@@ -50,5 +49,5 @@ def TrainAndCall(model,
                         test_loader=range(1),
                         test_every=test_every,
                         visdom_env=visdom_env,
-                        log_every=log_every,
-                        device=device)
+                        checkpoint=checkpoint,
+                        log_every=log_every)

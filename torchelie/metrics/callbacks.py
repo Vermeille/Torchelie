@@ -397,7 +397,7 @@ class ClassificationInspector:
 
 class CallDataLoop(tu.AutoStateDict):
     def __init__(self, loop, run_every=100, prefix='test', init_fun=None):
-        super(CallDataLoop, self).__init__(except_names=['init_fun'])
+        super(CallDataLoop, self).__init__(except_names=['init_fun', 'loop'])
         self.loop = loop
         self.run_every = run_every
         self.prefix = prefix

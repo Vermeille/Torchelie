@@ -31,19 +31,19 @@ def train(model, loader):
                            after_train,
                            dl,
                            test_every=500,
-                           visdom_env='pixelcnn',
-                           device='cuda')
-    trainer.add_callbacks([
+                           visdom_env='pixelcnn')
+    trainer.callbacks.add_callbacks([
         tcb.WindowedMetricAvg('loss'),
         tcb.Log('reconstruction', 'reconstruction'),
         tcb.Optimizer(opt, log_lr=True),
         tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(opt))
     ])
-    trainer.add_test_callbacks([
+    trainer.test_loop.callbacks.add_callbacks([
         tcb.Log('imgs', 'imgs'),
     ])
 
-    trainer.fit(10)
+    trainer.to('cuda')
+    trainer.run(10)
 
 
 tfms = TF.Compose([

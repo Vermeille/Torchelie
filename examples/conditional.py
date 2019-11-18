@@ -117,7 +117,7 @@ class ConditionalClassification(nn.Module):
 
 def train_net(Net):
     model = Net(2, 10, in_ch=3)
-    clf = Classification(ConditionalClassification(model), device=device)
+    clf = Classification(ConditionalClassification(model)).to(device)
     _, res = clf(dl, dlt)
     print(res['acc'])
 

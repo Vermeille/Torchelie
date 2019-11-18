@@ -52,8 +52,8 @@ else:
 
 
 def summary(Net):
-    clf = Net(10, in_ch=1, debug=True).to(device)
-    clf(torch.randn(32, 1, 32, 32).to(device))
+    clf = Net(10, in_ch=1, debug=True)
+    clf(torch.randn(32, 1, 32, 32))
     print('Nb parameters: {}'.format(nb_parameters(clf)))
 
 
@@ -64,10 +64,10 @@ def train_net(Net):
     clf_recipe = CrossEntropyClassification(clf,
                                             dl,
                                             dlt,
-                                            ds.classes,
-                                            device=device)
+                                            ds.classes)
 
-    acc = clf_recipe.fit(1)['test_metrics']['acc']
+    clf_recipe.to(device)
+    acc = clf_recipe.run(1)['test_metrics']['acc']
 
     if acc > 0.90:
         print(crayons.green('PASS ({})'.format(acc), bold=True))

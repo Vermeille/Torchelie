@@ -124,6 +124,11 @@ class LoopBase:
         for m in self.modules():
             m.to(self.device)
 
+        for nm in self._savable:
+            m = self.__dict__[nm]
+            if hasattr(m, 'to'):
+                m.to(self.device)
+
         return self
 
     def cuda(self):
@@ -139,7 +144,8 @@ class DataLoop(LoopBase):
         self.call_fun = call_fun
         self.loader = loader
 
-        self.register('callbacks', CallbacksRunner())
+        self.callbacks = CallbacksRunner()
+        self.register('callbacks', self.callbacks)
 
     def run(self, epochs):
         self.to(self.device)

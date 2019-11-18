@@ -5,7 +5,16 @@ import torch
 import torchelie.metrics.callbacks as tcb
 from torchelie.recipes.recipebase import DataLoop
 
-class TrainAndTest:
+
+def TrainAndTest(model,
+                 train_fun,
+                 test_fun,
+                 train_loader,
+                 test_loader,
+                 test_every=100,
+                 visdom_env='main',
+                 log_every=10,
+                 checkpoint='model'):
     """
     Training loop, calls `model.after_train()` after every `test_every`
     iterations. Displays Loss.
@@ -28,64 +37,44 @@ class TrainAndTest:
             (default: [])
         test_callbacks (list of Callback): additional testing callbacks
             (default: [])
-        device: a torch device (default: 'cpu')
     """
 
-    def __init__(self,
-                 model,
-                 train_fun,
-                 test_fun,
-                 train_loader,
-                 test_loader,
-                 test_every=100,
-                 visdom_env='main',
-                 log_every=10,
-                 device='cpu'):
+    def eval_call(batch):
+        model.eval()
+        with torch.no_grad():
+            out = test_fun(batch)
+        model.train()
+        return out
 
-        def eval_call(batch):
-            model.eval()
-            with torch.no_grad():
-                out = test_fun(batch)
-            model.train()
-            return out
+    train_loop = DataLoop(train_fun, train_loader)
+    train_loop.register('model', model)
 
-        train_loop = DataLoop(train_fun, train_loader)
-        train_loop.register('model', model)
+    test_loop = DataLoop(eval_call, test_loader)
+    train_loop.test_loop = test_loop
+    train_loop.register('test_loop', test_loop)
 
-        test_loop = DataLoop(eval_call, test_loader)
+    def prepare_test(state):
+        test_loop.callbacks.update_state({
+            'epoch': state['epoch'],
+            'iters': state['iters'],
+            'epoch_batch': state['epoch_batch']
+        })
 
-        def prepare_test(state):
-            test_loop.callbacks.update_state({
-                'epoch': state['epoch'],
-                'iters': state['iters'],
-                'epoch_batch': state['epoch_batch']
-            })
+    train_loop.callbacks.add_prologues([tcb.Counter()])
+    train_loop.callbacks.add_epilogues([
+        tcb.CallDataLoop(test_loop, test_every, init_fun=prepare_test),
+        tcb.VisdomLogger(visdom_env=visdom_env, log_every=log_every),
+        tcb.StdoutLogger(log_every=log_every),
+    ])
 
-        train_loop.callbacks.add_prologues([tcb.Counter()])
-        train_loop.callbacks.add_epilogues([
-            tcb.CallDataLoop(test_loop, test_every, init_fun=prepare_test),
-            tcb.VisdomLogger(visdom_env=visdom_env, log_every=log_every),
-            tcb.StdoutLogger(log_every=log_every),
-        ])
+    test_loop.callbacks.add_epilogues([
+        tcb.VisdomLogger(visdom_env=visdom_env, log_every=-1, prefix='test_'),
+        tcb.StdoutLogger(log_every=-1, prefix='Test'),
+    ])
 
+    if checkpoint is not None:
         test_loop.callbacks.add_epilogues([
-            tcb.VisdomLogger(
-                visdom_env=visdom_env, log_every=-1, prefix='test_'),
-            tcb.StdoutLogger(log_every=-1, prefix='Test'),
-            tcb.Checkpoint((visdom_env or 'model') + '/ckpt', train_loop)
+            tcb.Checkpoint(checkpoint + '/ckpt', train_loop)
         ])
 
-        self.train_loop = train_loop.to(device)
-        self.test_loop = test_loop.to(device)
-
-    def fit(self, iters):
-        """
-        Runs the recipe.
-
-        Args:
-            epochs (int): number of epochs
-
-        Returns:
-            trained model, test metrics
-        """
-        return self.train_loop.run(iters)
+    return train_loop

@@ -28,7 +28,7 @@ def test_classification():
 
     clf_recipe = CrossEntropyClassification(model, trainloader, testloader,
     ['foo', 'bar'])
-    clf_recipe.fit(1)
+    clf_recipe.run(1)
 
 
 def test_deepdream():
@@ -67,8 +67,8 @@ def test_trainandcall():
 
     trainloader = DataLoader(FakeData(), 4, shuffle=True)
     trainer = TrainAndCall(model, train_step, after_train, trainloader)
-    trainer.add_callbacks([
+    trainer.callbacks.add_callbacks([
         tcb.Optimizer(torch.optim.Adam(model.parameters(), lr=1e-3))
     ])
 
-    trainer.fit(1)
+    trainer.run(1)
