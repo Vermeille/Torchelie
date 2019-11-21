@@ -305,6 +305,24 @@ class StdoutLogger(tu.AutoStateDict):
         print(self.prefix, '| Ep.', epoch, 'It', epoch_batch, '|', show)
 
 
+class ImageGradientVis:
+    def on_batch_start(self, state):
+        state['batch_gpu'][0].requires_grad = True
+
+    def on_batch_end(self, state):
+        x = state['batch_gpu'][0]
+        grad_img = x.grad.abs().sum(1, keepdim=True)
+        b, c, h, w = grad_img.shape
+        gi_flat = grad_img.view(b, c, -1)
+        cl = torch.kthvalue(gi_flat, int(grad_img[0].numel() * 0.99), dim=-1)[0]
+        grad_img = torch.min(grad_img, cl.unsqueeze(-1).unsqueeze(-1))
+        m = gi_flat.min(dim=-1).values.unsqueeze(-1).unsqueeze(-1)
+        M = gi_flat.max(dim=-1).values.unsqueeze(-1).unsqueeze(-1)
+        grad_img = (grad_img - m) / (M - m)
+        img = (x + 1) / 2 * grad_img + 0.5 * (1 - grad_img)
+        state['metrics']['feature_vis'] = img
+
+
 class Checkpoint:
     """FIXME: WIP"""
 
