@@ -138,7 +138,7 @@ class RAdamW(Optimizer):
                  lr=1e-3,
                  betas=(0.9, 0.999),
                  eps=1e-8,
-                 weight_decay=1e-6):
+                 weight_decay=1e-2):
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
         if not 0.0 <= eps:
