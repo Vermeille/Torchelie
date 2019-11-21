@@ -38,6 +38,38 @@ class Classifier(nn.Module):
         return out
 
 
+class Classifier1(nn.Module):
+    """
+    A one layer classification head added on top of a feature extraction model.
+
+    Args:
+        feat_extractor (nn.Module): a feature extraction model
+        feature_size (int): the number of features in the last layer of the
+            feature extractor
+        num_classes (int): the number of output classes
+    """
+    def __init__(self, feat_extractor, feature_size, num_classes):
+        super(Classifier1, self).__init__()
+        self.bone = feat_extractor
+
+        self.head = nn.Sequential(
+            nn.AdaptiveMaxPool2d(1),
+            tnn.Reshape(feature_size),
+            #nn.Dropout(0.5),
+            kaiming(nn.Linear(feature_size, num_classes)),
+            nn.BatchNorm1d(num_classes)
+        )
+
+    def forward(self, *xs):
+        """
+        Forward pass
+
+        Args:
+            *xs: arguments for `feat_extractor`
+        """
+        out = self.head(self.bone(*xs))
+        return out
+
 class ProjectionDiscr(nn.Module):
     """
     A classification head for conditional GANs discriminators using a
