@@ -201,6 +201,13 @@ class ResizedCrop(object):
         format_string += ', interpolation={0})'.format(self.interpolation)
         return format_string
 
+class Noise:
+    def __init__(self, std):
+        self.std = std
+
+    def __call__(self, x):
+        return x + torch.randn_like(x) * self.std
+
 
 def patches(img, patch_size=128):
     """
