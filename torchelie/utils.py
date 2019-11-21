@@ -388,7 +388,7 @@ class AutoStateDict:
         }
 
     def load_state_dict(self, state_dict):
-        for nm, v in self.state_dict.items():
+        for nm, v in state_dict.items():
             if hasattr(self.__dict__[nm], 'load_state_dict'):
                 self.__dict__[nm].load_state_dict(v)
             else:

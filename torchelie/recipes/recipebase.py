@@ -105,7 +105,7 @@ class LoopBase:
         return sd
 
     def load_state_dict(self, state_dict):
-        for key, state in state_dict:
+        for key, state in state_dict.items():
             val = self.__dict__[key]
             if hasattr(val, 'load_state_dict'):
                 val.load_state_dict(state)
