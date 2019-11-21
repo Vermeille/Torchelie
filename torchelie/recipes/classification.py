@@ -74,9 +74,11 @@ def Classification(model,
     ])
 
     if visdom_env is not None:
-        loop.callbacks.add_epilogues(
-            [tcb.ClassificationInspector(30, classes),
-             tcb.MetricsTable()])
+        loop.callbacks.add_epilogues([
+            tcb.ImageGradientVis(),
+            tcb.ClassificationInspector(30, classes),
+            tcb.MetricsTable()
+        ])
 
         loop.test_loop.callbacks.add_callbacks([
             tcb.ClassificationInspector(30, classes, False),
