@@ -24,6 +24,7 @@ class WindowedMetricAvg(tu.AutoStateDict):
         if self.name in state['metrics']:
             del state['metrics'][self.name]
 
+    @torch.no_grad()
     def on_batch_end(self, state):
         self.avg.log(state[self.name])
         if self.post_each_batch:
@@ -44,6 +45,7 @@ class EpochMetricAvg(tu.AutoStateDict):
         if self.name in state['metrics']:
             del state['metrics'][self.name]
 
+    @torch.no_grad()
     def on_batch_end(self, state):
         self.avg.log(state[self.name])
         if self.post_each_batch:
@@ -63,6 +65,7 @@ class AccAvg(tu.AutoStateDict):
         if 'acc' in state['metrics']:
             del state['metrics']['acc']
 
+    @torch.no_grad()
     def on_batch_end(self, state):
         pred, y = state['pred'], state['batch'][1]
         pred = tu.as_multiclass_shape(pred)
@@ -207,6 +210,7 @@ class Log(tu.AutoStateDict):
         self.from_k = from_k
         self.to = to
 
+    @torch.no_grad()
     def on_batch_end(self, state):
         state['metrics'][self.to] = dict_by_key(state, self.from_k)
 
@@ -221,6 +225,7 @@ class VisdomLogger(tu.AutoStateDict):
             self.vis = Visdom(env=visdom_env)
             self.vis.close()
 
+    @torch.no_grad()
     def on_batch_end(self, state):
         iters = state['iters']
         if self.log_every != -1 and iters % self.log_every == 0:
@@ -283,6 +288,7 @@ class StdoutLogger(tu.AutoStateDict):
         if self.log_every != -1 and iters % self.log_every == 0:
             self.log(state['metrics'], state['epoch'], state['epoch_batch'])
 
+    @torch.no_grad()
     def on_epoch_end(self, state):
         self.log(state['metrics'], state['epoch'], state['epoch_batch'])
 
@@ -309,6 +315,7 @@ class ImageGradientVis:
     def on_batch_start(self, state):
         state['batch_gpu'][0].requires_grad = True
 
+    @torch.no_grad()
     def on_batch_end(self, state):
         x = state['batch_gpu'][0]
         grad_img = x.grad.abs().sum(1, keepdim=True)
@@ -403,6 +410,7 @@ class ClassificationInspector:
             del state['metrics']['report']
         self.vis.reset()
 
+    @torch.no_grad()
     def on_batch_end(self, state):
         pred, y, x = state['pred'], state['batch'][1], state['batch'][0]
         self.vis.analyze(x, pred, y)
@@ -412,6 +420,46 @@ class ClassificationInspector:
     def on_epoch_end(self, state):
         state['metrics']['report'] = self.vis.show()
 
+
+class ConfusionMatrix:
+    def __init__(self, labels):
+        self.labels = labels
+
+    def reset(self, state):
+        state['cm'] = [[0] * len(self.labels)
+                       for _ in range(len(self.labels))]
+
+    def on_epoch_start(self, state):
+        self.reset(state)
+
+    @torch.no_grad()
+    def on_batch_end(self, state):
+        import torchelie.utils as tu
+        cm = state['cm']
+        pred = tu.as_multiclass_shape(state['pred']).argmax(1)
+        true = state['batch'][1]
+        for p, t in zip(pred, true):
+            cm[p][t] += 1
+
+    def to_html(self, cm):
+        s = "<tr><th>P\T</th><th>{}</th></tr>".format("</th><th>".join(
+            self.labels))
+
+        for l, row in zip(self.labels, cm):
+            total = sum(row)
+            if total == 0:
+                row_str = "".join(["<td>0</td>" for _ in range(len(row))])
+            else:
+                row_str = ''.join([(
+                    '<td style="background-color:rgb({0}, {0}, {0})">{1}'
+                    '</td>').format(
+                        int(255 - x / total * 255), x) for x in row])
+            s += "<tr><th>{}</th>{}</tr>".format(l, row_str)
+
+        return "<table>" + s + "</table>"
+
+    def on_epoch_end(self, state):
+        state['metrics']['cm'] = self.to_html(state['cm'])
 
 class CallDataLoop(tu.AutoStateDict):
     def __init__(self, loop, run_every=100, prefix='test', init_fun=None):
