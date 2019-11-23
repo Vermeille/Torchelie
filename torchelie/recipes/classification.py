@@ -137,6 +137,7 @@ def CrossEntropyClassification(model,
                           test_every=test_every,
                           log_every=log_every)
 
+
     opt = RAdamW(model.parameters(), lr=lr)
     loop.callbacks.add_callbacks([
         tcb.Optimizer(opt, log_lr=True),

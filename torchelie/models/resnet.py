@@ -121,7 +121,7 @@ def ResNetBone(arch, head, block, in_ch=3, debug=False):
         layers.append(tnn.Debug('Input'))
 
     ch, s = parse(arch[0])
-    layers.append(head(in_ch, ch, 3, stride=s))
+    layers.append(head(in_ch, ch, 7, stride=s))
     if debug:
         layers.append(tnn.Debug('Head'))
     in_ch = ch
