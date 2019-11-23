@@ -13,10 +13,10 @@ from torchelie.optim import RAdamW
 import torchelie.loss.gan.hinge as gan_loss
 from torchelie.datasets import NoexceptDataset
 from torchelie.transforms import AdaptPad
-from torchelie.recipes.gan import GANLoop
+from torchelie.recipes.gan import GANRecipe
 import torchelie.metrics.callbacks as tcb
 from torch.optim import AdamW
-from torchelie.recipes.recipebase import DataLoop
+from torchelie.recipes.recipebase import Recipe
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--cpu', action='store_true')
@@ -96,18 +96,18 @@ def train_net(Gen, Discr):
         return {'loss': loss, 'real_loss': real_loss.item(), 'fake_loss':
                 fake_loss.item()}
 
-    polyak_test = DataLoop(G_polyak_fun, range(1))
+    polyak_test = Recipe(G_polyak_fun, range(1))
     polyak_test.callbacks.add_callbacks([
         tcb.Log('imgs', 'imgs')
     ])
-    loop = GANLoop(G, D, G_fun, D_fun, dl, log_every=100).to(device)
+    loop = GANRecipe(G, D, G_fun, D_fun, dl, log_every=100).to(device)
     loop.G_loop.callbacks.add_callbacks([
         tcb.Optimizer(AdamW(G.parameters(), lr=1e-4, betas=(0., 0.99))),
     ])
     loop.register('G_polyak', G_polyak)
     loop.callbacks.add_callbacks([
         tcb.Polyak(G, G_polyak),
-        tcb.CallDataLoop(polyak_test, prefix='polyak'),
+        tcb.CallRecipe(polyak_test, prefix='polyak'),
         tcb.Log('polyak_metrics.imgs', 'polyak_imgs'),
         tcb.Log('batch.0', 'x'),
         tcb.WindowedMetricAvg('real_loss'),

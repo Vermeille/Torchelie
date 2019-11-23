@@ -15,7 +15,7 @@ import torchelie
 import torchelie.nn as tnn
 import torchelie.metrics.callbacks as tcb
 from torchelie.optim import DeepDreamOptim
-from torchelie.recipes.recipebase import DataLoop
+from torchelie.recipes.recipebase import Recipe
 from torchelie.data_learning import ParameterizedImg
 
 
@@ -81,7 +81,7 @@ class FeatureVis(torch.nn.Module):
 
             return {'loss': loss, 'img': cim}
 
-        loop = DataLoop(forward, range(n_iters))
+        loop = Recipe(forward, range(n_iters))
         loop.register('canvas', canvas)
         loop.register('model', self)
         loop.callbacks.add_callbacks([

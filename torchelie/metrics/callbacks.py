@@ -461,9 +461,9 @@ class ConfusionMatrix:
     def on_epoch_end(self, state):
         state['metrics']['cm'] = self.to_html(state['cm'])
 
-class CallDataLoop(tu.AutoStateDict):
+class CallRecipe(tu.AutoStateDict):
     def __init__(self, loop, run_every=100, prefix='test', init_fun=None):
-        super(CallDataLoop, self).__init__(except_names=['init_fun', 'loop'])
+        super(CallRecipe, self).__init__(except_names=['init_fun', 'loop'])
         self.loop = loop
         self.run_every = run_every
         self.prefix = prefix

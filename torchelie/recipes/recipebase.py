@@ -69,7 +69,7 @@ class CallbacksRunner:
             self.add_epilogue(cb)
 
 
-class LoopBase:
+class RecipeBase:
     def __init__(self):
         self._modules = set()
         self._savable = set()
@@ -138,9 +138,9 @@ class LoopBase:
         return self.to('cpu')
 
 
-class DataLoop(LoopBase):
+class Recipe(RecipeBase):
     def __init__(self, call_fun, loader):
-        super(DataLoop, self).__init__()
+        super(Recipe, self).__init__()
         self.call_fun = call_fun
         self.loader = loader
 

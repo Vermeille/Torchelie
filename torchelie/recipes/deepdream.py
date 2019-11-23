@@ -21,7 +21,7 @@ import torchelie.metrics.callbacks as cb
 from torchelie.data_learning import ParameterizedImg
 from torchelie.loss.deepdreamloss import DeepDreamLoss
 from torchelie.optim import DeepDreamOptim
-from torchelie.recipes.recipebase import DataLoop
+from torchelie.recipes.recipebase import Recipe
 import torchelie.metrics.callbacks as tcb
 
 from PIL import Image
@@ -66,7 +66,7 @@ class DeepDream(torch.nn.Module):
             loss.backward()
             return {'loss': loss, 'img': img}
 
-        loop = DataLoop(forward, range(iters))
+        loop = Recipe(forward, range(iters))
         loop.register('model', self)
         loop.register('canvas', canvas)
         loop.callbacks.add_callbacks([

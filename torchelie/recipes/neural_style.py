@@ -10,7 +10,7 @@ from torchvision.transforms import ToTensor, ToPILImage
 
 from torchelie.loss import NeuralStyleLoss
 from torchelie.data_learning import ParameterizedImg
-from torchelie.recipes.recipebase import DataLoop
+from torchelie.recipes.recipebase import Recipe
 import torchelie.metrics.callbacks as tcb
 
 
@@ -92,7 +92,7 @@ class NeuralStyle(torch.nn.Module):
                 'img': img
             }
 
-        loop = DataLoop(forward, range(iters))
+        loop = Recipe(forward, range(iters))
         loop.register('canvas', canvas)
         loop.register('model', self)
         loop.callbacks.add_callbacks([

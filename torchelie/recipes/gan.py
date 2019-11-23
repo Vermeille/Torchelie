@@ -1,10 +1,10 @@
 import torch
 import torchelie.utils as tu
 import torchelie.metrics.callbacks as tcb
-from torchelie.recipes.recipebase import DataLoop
+from torchelie.recipes.recipebase import Recipe
 
 
-def GANLoop(G,
+def GANRecipe(G,
              D,
              G_fun,
              D_fun,
@@ -27,10 +27,10 @@ def GANLoop(G,
 
         return G_fun(batch)
 
-    D_loop = DataLoop(D_wrap, loader)
+    D_loop = Recipe(D_wrap, loader)
     D_loop.register('G', G)
     D_loop.register('D', D)
-    G_loop = DataLoop(G_wrap, range(1))
+    G_loop = Recipe(G_wrap, range(1))
     D_loop.G_loop = G_loop
     D_loop.register('G_loop', G_loop)
 
@@ -45,7 +45,7 @@ def GANLoop(G,
         [tcb.Counter()])
 
     D_loop.callbacks.add_epilogues([
-        tcb.CallDataLoop(G_loop, 1, init_fun=prepare_test, prefix='G'),
+        tcb.CallRecipe(G_loop, 1, init_fun=prepare_test, prefix='G'),
         tcb.WindowedMetricAvg('loss'),
         tcb.Log('G_metrics.loss', 'G_loss'),
         tcb.Log('G_metrics.imgs', 'G_imgs'),
