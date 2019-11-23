@@ -75,12 +75,14 @@ def Classification(model,
 
     if visdom_env is not None:
         loop.callbacks.add_epilogues([
+            tcb.ConfusionMatrix(classes),
             tcb.ImageGradientVis(),
             tcb.ClassificationInspector(30, classes),
             tcb.MetricsTable()
         ])
 
         loop.test_loop.callbacks.add_callbacks([
+            tcb.ConfusionMatrix(classes),
             tcb.ClassificationInspector(30, classes, False),
             tcb.MetricsTable(False)
         ])

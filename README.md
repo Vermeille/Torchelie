@@ -5,10 +5,6 @@
 Torchélie is a set of tools for pyTorch. It includes losses, optimizers,
 algorithms, utils, layers, models and training loops.
 
-Torchelie is currently very API unstable. Test at your own risks, and you
-should expect to update often and have many breaking changes, especially in
-high level features.
-
 Feedback is absolutely welcome.
 
 You may want to [read the detailed docs](https://readthedocs.org/projects/torchelie/)
@@ -16,6 +12,30 @@ You may want to [read the detailed docs](https://readthedocs.org/projects/torche
 # Installation
 
 `pip install git+https://github.com/vermeille/Torchelie`
+
+It depends on Pytorch (obvi), and has an optional dependency on OpenCV for some
+transforms (Canny, as of today). It also depends on Visdom for realtime
+visualizations, plotting, etc.
+
+To install visdom: `pip install visdom`. Then, you need to run a Visdom server
+with `python -m visdom.server`, direct your browser to `http://localhost:8097`.
+Now you're ready to use VisdomLogger and enjoy realtime tracking of your
+experiments.
+
+# WARNINGS
+
+Torchelie is currently very API unstable. Test at your own risks, and you
+should expect to update often and have many breaking changes, especially in
+high level features.
+
+- Recipes are likely to change as I'm still looking for the API and making
+  design decisions.
+- That's also why for recipes, documentation might be out of sync or not even
+  exist yet. Same for tests.
+- Code, README, docs and tests might be out of sync in general. Please tell me
+  if you notice anything wrong.
+- Examples are actually kinda crappy. The recipes mentioned just below are
+  actually better.
 
 ## `torchelie.recipes`
 
