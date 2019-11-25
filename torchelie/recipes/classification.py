@@ -154,44 +154,72 @@ def CrossEntropyClassification(model,
 if __name__ == '__main__':
     import argparse
 
+    from torchelie.datasets import CachedDataset
     from torchvision.datasets import ImageFolder
     from torch.utils.data import DataLoader
     import torchvision.transforms as TF
+    import torchelie.transforms as TTF
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--trainset', type=str, required=True)
     parser.add_argument('--testset', type=str, required=True)
     parser.add_argument('--batch-size', type=int, default=32)
-    parser.add_argument('--device', type=str, default='cpu')
+    parser.add_argument('--lr', type=float, default=0.01)
+    parser.add_argument('--mom', type=float, default=0.9)
+    parser.add_argument('--wd', type=float, default=1e-2)
+    parser.add_argument('--im-size', type=int, default=64)
+    parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--visdom-env', type=str)
+    parser.add_argument('--no-cache', action='store_false')
     parser.add_argument('--epochs', type=int, default=5)
     args = parser.parse_args()
 
     tfm = TF.Compose([
-        TF.Resize(128),
+        TF.RandomResizedCrop(args.im_size, (0.7, 1.1)),
+        TF.ColorJitter(0.5, 0.5, 0.4, 0.05),
+        TF.RandomHorizontalFlip(),
         TF.ToTensor(),
+        TF.Normalize([0.5] * 3, [0.5] * 3, True),
     ])
-    trainset = ImageFolder(args.trainset, transform=tfm)
-    testset = ImageFolder(args.testset, transform=tfm)
+    tfm_test = TF.Compose([
+        TTF.ResizedCrop(args.im_size, scale=1),
+        TF.Resize(args.im_size),
+        TF.ToTensor(),
+        TF.Normalize([0.5] * 3, [0.5] * 3, True)
+    ])
+
+    if args.no_cache:
+        trainset = ImageFolder(args.trainset, transform=tfm)
+        testset = ImageFolder(args.testset, transform=tfm_test)
+    else:
+        trainset = ImageFolder(args.trainset)
+        testset = ImageFolder(args.testset)
+
+        trainset = CachedDataset(trainset, transform=tfm)
+        testset = CachedDataset(testset, transform=tfm_test)
 
     trainloader = DataLoader(trainset,
                              args.batch_size,
-                             num_workers=4,
+                             num_workers=8,
                              pin_memory=True,
-                             shuffle=True)
+                             shuffle=True,
+                             drop_last=True)
     testloader = DataLoader(testset,
                             args.batch_size,
-                            num_workers=4,
-                            pin_memory=True,
-                            shuffle=True)
+                            num_workers=8,
+                            pin_memory=True)
 
-    model = tvmodels.resnet18(num_classes=len(trainset.classes))
-
+    model = tvmodels.resnet18(pretrained=False)
+    model.fc = tu.kaiming(torch.nn.Linear(512, len(testset.classes)))
     clf_recipe = CrossEntropyClassification(model,
                                             trainloader,
                                             testloader,
-                                            trainset.classes,
+                                            testset.classes,
                                             log_every=10,
+                                            test_every=50,
+                                            lr=args.lr,
+                                            mom=args.mom,
+                                            wd=args.wd,
                                             visdom_env=args.visdom_env)
 
     clf_recipe.to(args.device)
