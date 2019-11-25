@@ -65,6 +65,7 @@ Image Segmenter
 ~~~~~~~~~~~~~~~
 
 .. autofunction:: torchelie.models.UNet
+.. autoclass:: torchelie.models.Hourglass
 
 Classification heads
 ~~~~~~~~~~~~~~~~~~~~

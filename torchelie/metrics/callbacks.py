@@ -1,3 +1,9 @@
+"""
+Those are callbacks that can be attached to a recipe. They read a write from a
+shared state.
+
+WARNING: this might move to torchelie.recipes.callbacks
+"""
 import copy
 from collections import defaultdict
 import os
@@ -14,6 +20,15 @@ from .avg import *
 
 
 class WindowedMetricAvg(tu.AutoStateDict):
+    """
+    Log to the metrics a window averaged value in the current state
+
+    Args:
+        name (str): the name of the value to log
+        post_each_batch (bool): whether to post on each batch (True, default),
+            or only on epoch ends (False)
+    """
+
     def __init__(self, name, post_each_batch=True):
         super(WindowedMetricAvg, self).__init__()
         self.name = name
@@ -35,6 +50,16 @@ class WindowedMetricAvg(tu.AutoStateDict):
 
 
 class EpochMetricAvg(tu.AutoStateDict):
+    """
+    Log to the metrics a value averaged over an epoch in the current state
+
+    Args:
+        name (str): the name of the value to log
+        post_each_batch (bool): whether to post on each batch (True, default),
+            or only on epoch ends (False). Notice that posting on each batch
+            necessarily yields an approximate average.
+    """
+
     def __init__(self, name, post_each_batch=True):
         super(EpochMetricAvg, self).__init__()
         self.name = name
@@ -56,6 +81,16 @@ class EpochMetricAvg(tu.AutoStateDict):
 
 
 class AccAvg(tu.AutoStateDict):
+    """
+    Log the average accuracy to the metrics. The true classes is expected in
+    :code:`state['batch'][1]`, and the logits predictions are expected in
+    :code:`state['preds']`.
+
+    Args:
+        post_each_batch (bool): whether to post on each batch or on epoch end.
+            Default: True.
+    """
+
     def __init__(self, post_each_batch=True):
         super(AccAvg, self).__init__()
         self.post_each_batch = post_each_batch
@@ -80,6 +115,15 @@ class AccAvg(tu.AutoStateDict):
 
 
 class MetricsTable(tu.AutoStateDict):
+    """
+    Generate a HTML table with all the current metrics, to be displayed in
+    Visdom.
+
+    Args:
+        post_each_batch (bool): whether to post on each batch or on epoch end.
+            Default: True.
+    """
+
     def __init__(self, post_each_batch=True):
         super(MetricsTable, self).__init__()
         self.post_each_batch = post_each_batch
@@ -134,6 +178,19 @@ class MetricsTable(tu.AutoStateDict):
 
 
 class Optimizer(tu.AutoStateDict):
+    """
+    Apply an optimizer's :code:`step()` and :code:`zero_grad()`.
+
+    Args:
+        opt (Optimizer): the optimizer to use
+        accumulations (int): number of batches to accumulate gradients over
+        clip_grad_norm (float or None): maximal norm of gradients to clip,
+            before applying :code:`opt.step()`
+        log_lr (bool): whether to log the current learning rates in the metrics
+        log_mom (bool): whether to log the current momentum / beta1 in
+            the metrics
+    """
+
     def __init__(self,
                  opt,
                  accumulation=1,
@@ -174,6 +231,18 @@ class Optimizer(tu.AutoStateDict):
 
 
 class LRSched(tu.AutoStateDict):
+    """
+    Call :code:`lr_sched.step()`.
+
+    Args:
+        sched (Scheduler): the scheduler to run
+        metric (str or None): if :code:`step()` takes a value as an argument,
+            that value should be in the state, and named here. Otherwise, just
+            use None if it takes no argument.
+        step_each_batch (bool): whether to call :code:`step()` on each batch or
+            on each epoch.
+    """
+
     def __init__(self, sched, metric='loss', step_each_batch=False):
         super(LRSched, self).__init__()
         self.sched = sched
@@ -205,6 +274,15 @@ class LRSched(tu.AutoStateDict):
 
 
 class Log(tu.AutoStateDict):
+    """
+    Move a value from the state to the metrics.
+
+    Args:
+        from_k (str): path in the state of the value to log (as accepted by
+            :code:`torchelie.utils.dict_by_key()`
+        to (str): metrics name
+    """
+
     def __init__(self, from_k, to):
         super(Log, self).__init__()
         self.from_k = from_k
@@ -216,6 +294,16 @@ class Log(tu.AutoStateDict):
 
 
 class VisdomLogger(tu.AutoStateDict):
+    """
+    Log metrics to Visdom. It logs scalars and scalar tensors as plots, 3D and
+    4D tensors as images, and strings as HTML.
+
+    Args:
+        visdom_env (str): name of the target visdom env
+        log_every (int): batch logging freq. -1 logs on epoch ends only.
+        prefix (str): prefix for all metrics name
+    """
+
     def __init__(self, visdom_env='main', log_every=10, prefix=''):
         super(VisdomLogger, self).__init__(except_names=['vis'])
         self.vis = None
@@ -278,6 +366,14 @@ class VisdomLogger(tu.AutoStateDict):
 
 
 class StdoutLogger(tu.AutoStateDict):
+    """
+    Log metrics to stdout. It logs scalars, scalar tensors and strings.
+
+    Args:
+        log_every (int): batch logging freq. -1 logs on epoch ends only.
+        prefix (str): prefix for all metrics name
+    """
+
     def __init__(self, log_every=10, prefix=''):
         super(StdoutLogger, self).__init__()
         self.log_every = log_every
@@ -312,6 +408,11 @@ class StdoutLogger(tu.AutoStateDict):
 
 
 class ImageGradientVis:
+    """
+    Log gradients backpropagated to the input as a feature visualization mean.
+    Works only for image data.
+    """
+
     def on_batch_start(self, state):
         state['batch_gpu'][0].requires_grad = True
 
@@ -321,7 +422,8 @@ class ImageGradientVis:
         grad_img = x.grad.abs().sum(1, keepdim=True)
         b, c, h, w = grad_img.shape
         gi_flat = grad_img.view(b, c, -1)
-        cl = torch.kthvalue(gi_flat, int(grad_img[0].numel() * 0.99), dim=-1)[0]
+        cl = torch.kthvalue(gi_flat, int(grad_img[0].numel() * 0.99),
+                            dim=-1)[0]
         grad_img = torch.min(grad_img, cl.unsqueeze(-1).unsqueeze(-1))
         m = gi_flat.min(dim=-1).values.unsqueeze(-1).unsqueeze(-1)
         M = gi_flat.max(dim=-1).values.unsqueeze(-1).unsqueeze(-1)
@@ -331,7 +433,14 @@ class ImageGradientVis:
 
 
 class Checkpoint:
-    """FIXME: WIP"""
+    """
+    Save object to disk every so often.
+
+    Args:
+        filename_base (str): file will be saved as
+            :code:`filename_base + '_' + number + '.pth'`.
+        objects: what to save. It must have a :code:`state_dict()` member
+    """
 
     def __init__(self, filename_base, objects):
         self.filename_base = filename_base
@@ -365,6 +474,15 @@ class Checkpoint:
 
 
 class Polyak:
+    """
+    Polyak averaging (Exponential running average).
+
+    Args:
+        original (nn.Module): source module
+        copy (nn.Module): averaged model
+        beta (float): decay value
+    """
+
     def __init__(self, original, copy, beta=0.999):
         self.original = original
         self.copy = copy
@@ -377,6 +495,15 @@ class Polyak:
 
 
 class Counter(tu.AutoStateDict):
+    """
+    Count iterations and epochs. Mandatory as first callback as other callbacks
+    may depend on it.
+
+    It writes in the state the current epoch (as 'epoch'), the current
+    iteration within batch ('epoch_batch') and the overall iteration number
+    ('iters'):
+    """
+
     def __init__(self):
         super(Counter, self).__init__()
         self.epoch = -1
@@ -401,6 +528,18 @@ class Counter(tu.AutoStateDict):
 
 
 class ClassificationInspector:
+    """
+    For image classification tasks, create a HTML report with best classified
+    samples, worst classified samples, and samples closest to the boundary
+    decision.
+
+    Args:
+        nb_show (int): how many samples to show
+        classes (list of str): classes names
+        post_each_batch (bool) whether to generate a new report on each batch
+            or only on epoch end.
+    """
+
     def __init__(self, nb_show, classes, post_each_batch=True):
         self.vis = CIVis(nb_show, classes, 1. / len(classes))
         self.post_each_batch = post_each_batch
@@ -422,12 +561,20 @@ class ClassificationInspector:
 
 
 class ConfusionMatrix:
-    def __init__(self, labels):
+    """
+    Generate a HTML confusion matrix.
+
+    Args:
+        labels (list of str): classes name
+        normalize (bool): whether to show absolute or relative frequencies
+    """
+
+    def __init__(self, labels, normalize=False):
         self.labels = labels
+        self.normalize = normalize
 
     def reset(self, state):
-        state['cm'] = [[0] * len(self.labels)
-                       for _ in range(len(self.labels))]
+        state['cm'] = [[0] * len(self.labels) for _ in range(len(self.labels))]
 
     def on_epoch_start(self, state):
         self.reset(state)
@@ -442,7 +589,7 @@ class ConfusionMatrix:
             cm[p][t] += 1
 
     def to_html(self, cm):
-        s = "<tr><th>P\T</th><th>{}</th></tr>".format("</th><th>".join(
+        s = "<tr><th></th><th>{}</th></tr>".format("</th><th>".join(
             self.labels))
 
         for l, row in zip(self.labels, cm):
@@ -450,10 +597,11 @@ class ConfusionMatrix:
             if total == 0:
                 row_str = "".join(["<td>0</td>" for _ in range(len(row))])
             else:
-                row_str = ''.join([(
-                    '<td style="background-color:rgb({0}, {0}, {0})">{1}'
-                    '</td>').format(
-                        int(255 - x / total * 255), x) for x in row])
+                row_str = ''.join([
+                    ('<td style="background-color:rgb({0}, {0}, {0})">{1}'
+                     '</td>').format(int(255 - x / total * 255), x)
+                    for x in row
+                ])
             s += "<tr><th>{}</th>{}</tr>".format(l, row_str)
 
         return "<table>" + s + "</table>"
@@ -461,7 +609,18 @@ class ConfusionMatrix:
     def on_epoch_end(self, state):
         state['metrics']['cm'] = self.to_html(state['cm'])
 
+
 class CallRecipe(tu.AutoStateDict):
+    """
+    Call another recipe.
+
+    Args:
+        loop (Recipe): the recipe to call
+        run_every (int): how often to call that recipe
+        prefix (str): prefix of the metrics of the recipe
+        init_fun (Callable or None): a fun to call before running the recipe
+    """
+
     def __init__(self, loop, run_every=100, prefix='test', init_fun=None):
         super(CallRecipe, self).__init__(except_names=['init_fun', 'loop'])
         self.loop = loop

@@ -1,3 +1,9 @@
+"""
+That shit is shit. I wrote it because I thought I needed it. But I don't. But
+then I thought it might still be useful and can't delete it. Just in case.
+
+Don't use it, or make it useful with a PR
+"""
 import torch
 import onnx
 import caffe2.python.onnx.backend as backend

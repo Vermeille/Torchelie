@@ -6,37 +6,9 @@ import numpy as np
 
 
 class Hourglass(nn.Module):
-    def down(self, in_ch, out_ch, ks):
-        return nn.Sequential(
-            self.pad(ks // 2),
-            (nn.Conv2d(in_ch, out_ch, ks, stride=2)),
-            nn.BatchNorm2d(out_ch),
-            self.relu,
-            self.pad(ks // 2),
-            (nn.Conv2d(out_ch, out_ch, ks)),
-            nn.BatchNorm2d(out_ch),
-            self.relu,
-        )
-
-    def up(self, in_ch, out_ch, ks):
-        return nn.Sequential(
-            nn.BatchNorm2d(in_ch),
-            self.pad(ks // 2),
-            (nn.Conv2d(in_ch, out_ch, ks)),
-            nn.BatchNorm2d(out_ch),
-            self.relu,
-            #self.pad(ks // 2),
-            #(nn.Conv2d(out_ch, out_ch, 1)),
-            #nn.BatchNorm2d(out_ch),
-            #self.relu,
-        )
-
-    def skip(self, in_ch, out_ch):
-        return nn.Sequential(
-            (nn.Conv2d(in_ch, out_ch, 1)),
-            nn.BatchNorm2d(out_ch),
-            self.relu,
-        )
+    """
+    Hourglass model from Deep Image Prior.
+    """
 
     def __init__(self,
                  noise_dim=32,
@@ -58,8 +30,7 @@ class Hourglass(nn.Module):
         self.pad = pad
         self.relu = relu
         self.downs = nn.ModuleList(
-            [self.down(noise_dim, down_channels[0], down_kernel[0])] +
-            [
+            [self.down(noise_dim, down_channels[0], down_kernel[0])] + [
                 self.down(d1, d2, down_kernel[0]) for d1, d2, k in zip(
                     down_channels[:-1], down_channels[1:], down_kernel[1:])
             ])
@@ -79,6 +50,34 @@ class Hourglass(nn.Module):
         self.to_rgb = nn.Sequential(
             self.pad(up_kernel[-1] // 2),
             (nn.Conv2d(down_channels[0], 3, up_kernel[-1])), nn.BatchNorm2d(3))
+
+    def down(self, in_ch, out_ch, ks):
+        return nn.Sequential(
+            self.pad(ks // 2),
+            (nn.Conv2d(in_ch, out_ch, ks, stride=2)),
+            nn.BatchNorm2d(out_ch),
+            self.relu,
+            self.pad(ks // 2),
+            (nn.Conv2d(out_ch, out_ch, ks)),
+            nn.BatchNorm2d(out_ch),
+            self.relu,
+        )
+
+    def up(self, in_ch, out_ch, ks):
+        return nn.Sequential(
+            nn.BatchNorm2d(in_ch),
+            self.pad(ks // 2),
+            (nn.Conv2d(in_ch, out_ch, ks)),
+            nn.BatchNorm2d(out_ch),
+            self.relu,
+        )
+
+    def skip(self, in_ch, out_ch):
+        return nn.Sequential(
+            (nn.Conv2d(in_ch, out_ch, 1)),
+            nn.BatchNorm2d(out_ch),
+            self.relu,
+        )
 
     def forward(self, x):
         acts = [x]

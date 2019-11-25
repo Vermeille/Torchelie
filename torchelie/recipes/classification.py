@@ -94,6 +94,8 @@ def CrossEntropyClassification(model,
                                test_loader,
                                classes,
                                lr=3e-3,
+                               mom=0.9,
+                               wd=1e-2,
                                visdom_env=None,
                                test_every=1000,
                                log_every=100):
@@ -104,6 +106,7 @@ def CrossEntropyClassification(model,
     Args:
         model (nn.Module): a model learnable with cross entropy
         lr (float): the learning rate
+        mom (float): the momentum / beta1
         visdom_env (str): name of the visdom environment to use, or None for
             not using Visdom (default: None)
         test_every (int): testing frequency, in number of iterations (default:
@@ -137,8 +140,10 @@ def CrossEntropyClassification(model,
                           test_every=test_every,
                           log_every=log_every)
 
-
-    opt = RAdamW(model.parameters(), lr=lr)
+    opt = RAdamW(model.parameters(),
+                 lr=lr,
+                 betas=(mom, 0.999),
+                 weight_decay=wd)
     loop.callbacks.add_callbacks([
         tcb.Optimizer(opt, log_lr=True),
         tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(opt))
