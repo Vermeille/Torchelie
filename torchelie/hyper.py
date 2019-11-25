@@ -190,7 +190,7 @@ class HyperparamSearch:
         Logs hyper parameters and results.
         """
         res = self.read_hpsearch()
-        full = copy.deepcopy(res)
+        full = copy.deepcopy(hps)
         full.update({'result_' + k: self._str(v) for k, v in result.items()})
         res.append(full)
         with open('hpsearch.json', 'w') as f:
