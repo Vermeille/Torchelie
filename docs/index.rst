@@ -13,6 +13,7 @@ Welcome to Torchélie's documentation!
    data_learning
    loss
    models
+   hyper
    distributions
    datasets
    transforms

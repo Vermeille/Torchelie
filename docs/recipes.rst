@@ -22,7 +22,7 @@ Deep Dream
 
 .. automodule:: torchelie.recipes.deepdream
 
-.. autoclass:: torchelie.recipes.deepdream.DeepDreamRecipe
+.. autoclass:: torchelie.recipes.deepdream.DeepDream
    :members:
    :special-members: __call__
 
@@ -33,7 +33,7 @@ Feature visualization
 
 .. automodule:: torchelie.recipes.feature_vis
 
-.. autoclass:: torchelie.recipes.feature_vis.FeatureVisRecipe
+.. autoclass:: torchelie.recipes.feature_vis.FeatureVis
    :members:
    :special-members: __call__
 
@@ -44,6 +44,6 @@ Neural Style
 
 .. automodule:: torchelie.recipes.neural_style
 
-.. autoclass:: torchelie.recipes.neural_style.NeuralStyleRecipe
+.. autoclass:: torchelie.recipes.neural_style.NeuralStyle
    :members:
    :special-members: __call__
