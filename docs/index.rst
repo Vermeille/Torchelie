@@ -16,6 +16,7 @@ Welcome to Torchélie's documentation!
    distributions
    datasets
    transforms
+   callbacks
    metrics
 
 Torchélie aims to provide new utilities, layers, tools to pytorch users,
