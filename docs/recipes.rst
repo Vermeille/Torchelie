@@ -3,24 +3,19 @@ Recipes
 
 .. automodule:: torchelie.recipes
 
-.. autoclass:: torchelie.recipe.recipebase.Recipe
+.. autoclass:: torchelie.recipes.recipebase.Recipe
    :members:
    :inherited-members:
 
-.. autoclass:: torchelie.recipe.trainandcall.TrainAndCall
-   :members:
+.. autofunction:: torchelie.recipes.trainandcall.TrainAndCall
 
-.. autoclass:: torchelie.recipe.trainandTest.TrainAndTest
-   :members:
+.. autofunction:: torchelie.recipes.trainandTest.TrainAndTest
 
-.. autoclass:: torchelie.recipe.classification.Classification
-   :members:
+.. autofunction:: torchelie.recipes.classification.Classification
 
-.. autoclass:: torchelie.recipe.classification.CrossEntropyClassification
-   :members:
+.. autofunction:: torchelie.recipes.classification.CrossEntropyClassification
 
-.. autoclass:: torchelie.recipe.gan.GANRecipe
-   :members:
+.. autofunction:: torchelie.recipes.gan.GANRecipe
 
 (unstable)
 
