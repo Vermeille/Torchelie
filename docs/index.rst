@@ -5,6 +5,7 @@ Welcome to Torchélie's documentation!
    :caption: Algorithms and training
    :maxdepth: 1
 
+   recipe_tuto
    recipes
    callbacks
    hyper
