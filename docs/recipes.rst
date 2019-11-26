@@ -9,7 +9,7 @@ Recipes
 
 .. autofunction:: torchelie.recipes.trainandcall.TrainAndCall
 
-.. autofunction:: torchelie.recipes.trainandTest.TrainAndTest
+.. autofunction:: torchelie.recipes.trainandtest.TrainAndTest
 
 .. autofunction:: torchelie.recipes.classification.Classification
 

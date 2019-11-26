@@ -2,22 +2,26 @@ Welcome to Torchélie's documentation!
 =====================================
 
 .. toctree::
-   :maxdepth: 2
+   :caption: Algorithms and training
+   :maxdepth: 1
 
-   :caption: Reference:
+   recipes
+   callbacks
+   hyper
+
+.. toctree::
+   :caption: Pytorch Utils
+   :maxdepth: 1
 
    nn
-   recipes
    optimizers
    utils
    data_learning
    loss
    models
-   hyper
    distributions
    datasets
    transforms
-   callbacks
    metrics
 
 Torchélie aims to provide new utilities, layers, tools to pytorch users,
