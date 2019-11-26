@@ -214,7 +214,7 @@ it to log the loss
       loss.backward()
       return {'loss': loss}
 
-   recipe = torchelie.recipe.Recipe(forward_pass, data_loader)
+   recipe = torchelie.recipes.Recipe(forward_pass, data_loader)
    # there's something new here!
    recipe.callbacks.add_callbacks([
       tcb.Counter(),
@@ -262,7 +262,7 @@ familiar? Of course, it's a recipe in itself. Let's write it down.
       return {'loss': loss}
 
    # we have a test set now
-   test_recipe = torchelie.recipe.Recipe(test_pass, test_loader)
+   test_recipe = torchelie.recipes.Recipe(test_pass, test_loader)
    test_recipe.callbacks.add_callbacks([
       tcb.Counter(),
       tcb.EpochMetricAvg('loss', post_each_batch=False)
@@ -311,7 +311,7 @@ The final code looks just like that:
          model.train()
       return {'loss': loss}
 
-   test_recipe = torchelie.recipe.Recipe(test_pass, test_loader)
+   test_recipe = torchelie.recipes.Recipe(test_pass, test_loader)
    test_recipe.callbacks.add_callbacks([
       tcb.Counter(),
       tcb.EpochMetricAvg('loss', post_each_batch=False)
@@ -319,7 +319,7 @@ The final code looks just like that:
       tcb.VisdomLogger(visdom_env='main', log_every=-1, prefix='Test')
    ])
 
-   recipe = torchelie.recipe.Recipe(forward_pass, data_loader)
+   recipe = torchelie.recipes.Recipe(forward_pass, data_loader)
    recipe.register('model', model)
    recipe.register('test_recipe', test_recipe)
    recipe.callbacks.add_callbacks([
@@ -350,6 +350,40 @@ TrainAndTest
   and to disable the gradients when testing. It also includes a checkpointing
   callback that will save the recipe's state dict regularly.
 
+  Using this recipe our code reduces to:
+
+::
+
+   model = torchvision.models.resnet18(num_classes=10)
+   opt = torchelie.optim.RAdamW(model.parameters(), lr=0.01)
+
+   def forward_pass(batch):
+      x, y = batch
+      pred = model(x)
+      loss = nn.functional.cross_entropy(pred, y)
+      loss.backward()
+      return {'loss': loss}
+
+   def test_pass(batch):
+      x, y = batch
+      pred = model(x)
+      loss = nn.functional.cross_entropy(pred, y)
+      return {'loss': loss}
+
+   recipe = torchelie.recipes.TrainAndTest(model, forward_pass, test_pass,
+         data_loader, test_loader)
+
+   recipe.callbacks.add_callbacks([
+      tcb.Optimizer(opt),
+      tcb.EpochMetricAvg('loss', post_each_batch=True)
+   ])
+   recipe.test_loop.callbacks.add_callbacks([
+      tcb.EpochMetricAvg('loss', post_each_batch=False)
+   ])
+
+   recipe.cuda()
+   recipe.run(5)
+
 TrainAndCall
   Instead of testing on a test set, it gives you the opportunity to call any
   function. This is what you need if you train a generative model that doesn't
@@ -360,9 +394,51 @@ Classification
   logging, confusion matrix generation, image gradient for feature
   visualization, a visual report with best, worst and most confused samples.
 
+  Using this recipe our code reduces to less code that do even more:
+
+::
+
+   model = torchvision.models.resnet18(num_classes=10)
+   opt = torchelie.optim.RAdamW(model.parameters(), lr=0.01)
+
+   def forward_pass(batch):
+      x, y = batch
+      pred = model(x)
+      loss = nn.functional.cross_entropy(pred, y)
+      loss.backward()
+      return {'loss': loss, 'pred': pred}
+
+   def test_pass(batch):
+      x, y = batch
+      pred = model(x)
+      loss = nn.functional.cross_entropy(pred, y)
+      return {'loss': loss, 'pred': pred}
+
+   recipe = torchelie.recipes.Classification(model, forward_pass, test_pass,
+         data_loader, test_loader, trainset.classes)
+
+   recipe.callbacks.add_callbacks([
+      tcb.Optimizer(opt),
+   ])
+
+   recipe.cuda()
+   recipe.run(5)
+
 CrossEntropyClassification
   Classification recipe that already provides a forward train and test pass, a
   RAdamW optimizer and LR scheduling. Just give it your model, data, and
   hyperparameters and you're good to go without writing a single instruction.
+
+  Using this recipe our code reduces to less code that do even more:
+
+::
+
+   model = torchvision.models.resnet18(num_classes=10)
+
+   recipe = torchelie.recipes.CrossEntropyClassification(model, data_loader,
+         test_loader, trainset.classes)
+
+   recipe.cuda()
+   recipe.run(5)
 
 Please refer to the recipes' respective documentation for further explanations.

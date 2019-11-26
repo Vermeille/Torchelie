@@ -101,7 +101,7 @@ def CrossEntropyClassification(model,
                                lr=3e-3,
                                beta1=0.9,
                                wd=1e-2,
-                               visdom_env=None,
+                               visdom_env='main',
                                test_every=1000,
                                log_every=100):
     """
