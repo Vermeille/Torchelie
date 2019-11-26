@@ -3,6 +3,27 @@ Recipes
 
 .. automodule:: torchelie.recipes
 
+.. autoclass:: torchelie.recipe.recipebase.Recipe
+   :members:
+   :inherited-members:
+
+.. autoclass:: torchelie.recipe.trainandcall.TrainAndCall
+   :members:
+
+.. autoclass:: torchelie.recipe.trainandTest.TrainAndTest
+   :members:
+
+.. autoclass:: torchelie.recipe.classification.Classification
+   :members:
+
+.. autoclass:: torchelie.recipe.classification.CrossEntropyClassification
+   :members:
+
+.. autoclass:: torchelie.recipe.gan.GANRecipe
+   :members:
+
+(unstable)
+
 Model Training
 ~~~~~~~~~~~~~~
 
@@ -47,3 +68,8 @@ Neural Style
 .. autoclass:: torchelie.recipes.neural_style.NeuralStyle
    :members:
    :special-members: __call__
+
+Deep Image Prior
+~~~~~~~~~~~~~~~~
+
+.. automodule:: torchelie.recipes.image_prior

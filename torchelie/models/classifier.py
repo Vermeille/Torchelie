@@ -23,6 +23,7 @@ class Classifier(nn.Module):
             nn.AdaptiveMaxPool2d(1),
             tnn.Reshape(feature_size),
             kaiming(nn.Linear(feature_size, feature_size)),
+            #nn.Dropout(0.5),
             nn.ReLU(inplace=True),
             xavier(nn.Linear(feature_size, num_classes)),
         )

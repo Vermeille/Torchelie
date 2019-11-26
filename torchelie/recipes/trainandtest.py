@@ -1,5 +1,3 @@
-import copy
-
 import torch
 
 import torchelie.metrics.callbacks as tcb
@@ -16,27 +14,28 @@ def TrainAndTest(model,
                  log_every=10,
                  checkpoint='model'):
     """
-    Training loop, calls `model.after_train()` after every `test_every`
-    iterations. Displays Loss.
-
-    It logs the same things as TrainAndCallBase, plus whatever is returned by
-    `model.after_train()`
+    Perform training and testing on datasets. The model is
+    automatically checkpointed, VisdomLogger and StdoutLogger callbacks are
+    also already provided. The gradients are disabled and the model is
+    automatically set to evaluation mode for the evaluation procedure.
 
     Args:
         model (nn.Model): a model
-            The model must define:
-                - `model.make_optimizer()`
-                - `model.after_train()` returns a dict
-                - `model.train_step(batch, opt)` returns a dict with key loss
+        train_fun (Callabble): a function that takes a batch as a single
+            argument, performs a training step and return a dict of values to
+            populate the recipe's state.
+        test_fun (Callable): a function taking a batch as a single argument
+            then performs something to evaluate your model and returns a dict
+            to populate the state.
         train_loader (DataLoader): Training set dataloader
+        test_loader (DataLoader): Testing set dataloader
+        test_every (int): testing frequency, in number of iterations (default:
+            100)
         visdom_env (str): name of the visdom environment to use, or None for
             not using Visdom (default: None)
-        test_every (int): testing frequency, in number of iterations (default:
-            1000)
-        train_callbacks (list of Callback): additional training callbacks
-            (default: [])
-        test_callbacks (list of Callback): additional testing callbacks
-            (default: [])
+        log_every (int): logging frequency, in number of iterations (default:
+            100)
+        checkpoint (str): checkpointing path or None for no checkpointing
     """
 
     def eval_call(batch):

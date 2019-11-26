@@ -1,8 +1,8 @@
 """
 Train a classifier.
 
-It logs train and test loss and accuracy. (FIXME: add confusion matrix iff
-number of classes is tractable)
+It logs train and test loss and accuracy. It also displays confusion matrix and
+gradient based feature visualization throughout training.
 
 If you have an image training directory with a folder per class and a testing
 directory with a folder per class, you can run it with a command line.
@@ -32,27 +32,32 @@ def Classification(model,
                    test_every=1000,
                    log_every=100):
     """
-    Vanilla classification loop and testing loop. Displays Loss and accuracy.
+    Classification training and testing loop. Displays Loss, accuracy,
+    gradient based visualization of features, a classification report on worst
+    samples, best samples and confusing samples, a confusion matrix,
+    VisdomLogger, StdLogger, MetricsTable.
 
     Args:
         model (nn.Model): a model
-            The model must define:
-
-                - `model.make_optimizer()`
-                - `model.validation_step(batch)` returns a dict with key loss
-                  and pred (raw logits predictions)
-                - `model.train_step(batch, opt)` returns a dict with key loss
-                  and pred (raw logits predictions)
+        train_fun (Callabble): a function that takes a batch as a single
+            argument, performs a training forward pass and return a dict of
+            values to populate the recipe's state. It expects the logits
+            predictions under key "preds", and this batch's loss under key
+            "loss".
+        test_fun (Callable): a function taking a batch as a single argument
+            then performs something to evaluate your model and returns a dict
+            to populate the state. It expects the logits
+            predictions under key "preds", and this batch's loss under key
+            "loss".
         train_loader (DataLoader): Training set dataloader
         test_loader (DataLoader): Testing set dataloader
+        classes (list of str): classes name, in order
         visdom_env (str): name of the visdom environment to use, or None for
             not using Visdom (default: None)
         test_every (int): testing frequency, in number of iterations (default:
             1000)
-        train_callbacks (list of Callback): additional training callbacks
-            (default: [])
-        test_callbacks (list of Callback): additional testing callbacks
-            (default: [])
+        log_every (int): logging frequency, in number of iterations (default:
+            100)
     """
 
     loop = TrainAndTest(model,
@@ -94,27 +99,29 @@ def CrossEntropyClassification(model,
                                test_loader,
                                classes,
                                lr=3e-3,
-                               mom=0.9,
+                               beta1=0.9,
                                wd=1e-2,
                                visdom_env=None,
                                test_every=1000,
                                log_every=100):
     """
-    Lears a classifier with cross_entropy and adam. It just wraps together
-    Classification + CrossEntropyLearner
+    A Classification recipe with a default froward training / testing pass
+    using cross entropy, and extended with RAdamW and ReduceLROnPlateau.
 
     Args:
         model (nn.Module): a model learnable with cross entropy
+        train_loader (DataLoader): Training set dataloader
+        test_loader (DataLoader): Testing set dataloader
+        classes (list of str): classes name, in order
         lr (float): the learning rate
-        mom (float): the momentum / beta1
+        beta1 (float): RAdamW's beta1
+        wd (float): weight decay
         visdom_env (str): name of the visdom environment to use, or None for
             not using Visdom (default: None)
         test_every (int): testing frequency, in number of iterations (default:
             1000)
-        train_callbacks (list of Callback): additional training callbacks
-            (default: [])
-        test_callbacks (list of Callback): additional testing callbacks
-            (default: [])
+        log_every (int): logging frequency, in number of iterations (default:
+            1000)
     """
 
     def train_step(batch):
@@ -142,7 +149,7 @@ def CrossEntropyClassification(model,
 
     opt = RAdamW(model.parameters(),
                  lr=lr,
-                 betas=(mom, 0.999),
+                 betas=(beta1, 0.999),
                  weight_decay=wd)
     loop.callbacks.add_callbacks([
         tcb.Optimizer(opt, log_lr=True),
@@ -165,7 +172,7 @@ if __name__ == '__main__':
     parser.add_argument('--testset', type=str, required=True)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--lr', type=float, default=0.01)
-    parser.add_argument('--mom', type=float, default=0.9)
+    parser.add_argument('--beta1', type=float, default=0.9)
     parser.add_argument('--wd', type=float, default=1e-2)
     parser.add_argument('--im-size', type=int, default=64)
     parser.add_argument('--device', type=str, default='cuda')
@@ -218,7 +225,7 @@ if __name__ == '__main__':
                                             log_every=10,
                                             test_every=50,
                                             lr=args.lr,
-                                            mom=args.mom,
+                                            beta1=args.beta1,
                                             wd=args.wd,
                                             visdom_env=args.visdom_env)
 

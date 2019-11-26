@@ -80,6 +80,15 @@ class RecipeBase:
             raise AttributeError('You forgot to call ModulesAware.__init__()')
 
     def register(self, name, value):
+        """
+        Register an object into the recipe as a member. Calling
+        :code:`recipe.register('foo', bar)` registers bar, and makes it usable
+        through :code:`recipe.foo`.
+
+        Args:
+            name (str): member's name
+            value: the object to register
+        """
         self._check_init()
         self._modules.discard(name)
         self._savable.discard(name)
@@ -92,6 +101,10 @@ class RecipeBase:
         self.__dict__[name] = value
 
     def state_dict(self):
+        """
+        Returns:
+            A state dict
+        """
         sd = OrderedDict()
         for nm in self._modules:
             sd[nm] = self.__dict__[nm].state_dict()
@@ -105,6 +118,9 @@ class RecipeBase:
         return sd
 
     def load_state_dict(self, state_dict):
+        """
+        Restore a recipe
+        """
         for key, state in state_dict.items():
             val = self.__dict__[key]
             if hasattr(val, 'load_state_dict'):
@@ -114,10 +130,19 @@ class RecipeBase:
         return self
 
     def modules(self):
+        """
+        Iterate over all nn.Modules registered in the recipe
+        """
         for m in self._modules:
             yield self.__dict__[m]
 
     def to(self, device):
+        """
+        Move a recipe and all its movable registered objects to a device
+
+        Args:
+            device: a torch device
+        """
         self._check_init()
         self.device = device
 
@@ -127,18 +152,46 @@ class RecipeBase:
         for nm in self._savable:
             m = self.__dict__[nm]
             if hasattr(m, 'to'):
-                m.to(self.device)
+                self.__dict__[nm] = m.to(self.device)
 
         return self
 
     def cuda(self):
+        """
+        Move a recipe and all its movable registered objects to cuda
+        """
         return self.to('cuda')
 
     def cpu(self):
+        """
+        Move a recipe and all its movable registered objects to cpu
+        """
         return self.to('cpu')
 
 
 class Recipe(RecipeBase):
+    """
+    Basic recipe that iterates mutiple epochs over a dataset. That loop is
+    instrumented through several configurable callbacks. Callbacks can handle
+    events before and after each batch, before and after each epoch. Each batch
+    is treated with a user supplied function that manipulates it and returns a
+    dict that returns a state usable by the callbacks.
+
+    A recipe can be saved by calling its :code:`state_dict()` member. All its
+    hyper parameters and state will be saved so that it can restart, but
+    requires the exact same setting of callbacks.
+
+    You can register multiple objects to a Recipe with :code:`register()`. If
+    it has a :code:`state_dict()` member, its state will be saved into the
+    recipe's when calling the recipe's :code:`state_dict()` function. If it
+    has a member :code:`to()`, moving the recipe to another device will also
+    move those objects.
+
+    Args:
+        call_fun (Callable): A function that takes a batch as an argument and
+            returns a dict of value to feed the state
+        loader (Iterable): any iterable (most likely a DataLoader)
+    """
     def __init__(self, call_fun, loader):
         super(Recipe, self).__init__()
         self.call_fun = call_fun
@@ -148,6 +201,15 @@ class Recipe(RecipeBase):
         self.register('callbacks', self.callbacks)
 
     def run(self, epochs):
+        """
+        Run the recipe for :code:`epochs` epochs.
+
+        Args:
+            epochs (int): number of epochs
+
+        Returns:
+            The state
+        """
         self.to(self.device)
         for epoch in range(epochs):
             self.callbacks('on_epoch_start')

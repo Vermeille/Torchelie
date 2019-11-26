@@ -1,8 +1,13 @@
+"""
+Deep Image Prior as a command line tool is in this recipe, it provides
+super-resolution and denoising.
+
+:code:`python3 -m torchelie.recipes.image_prior` for the usage message
+"""
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from PIL import Image
-import torchvision.transforms as TF
+import torchvision.transforms.functional as TFF
 from torchelie.models import Hourglass
 import torchelie.transforms as ttf
 import torchelie as tch
@@ -59,8 +64,8 @@ def inpainting(img,
                lr,
                noise_std=1 / 30,
                device='cuda'):
-    im = TF.ToTensor()(img)[None].to(device)
-    mask = TF.ToTensor()(mask)[None].to(device)
+    im = TFF.to_tensor(img)[None].to(device)
+    mask = TFF.to_tensor(mask)[None].to(device)
     z = input_noise((im.shape[2], im.shape[3]), input_dim)
     z = z.to(device)
     print(hourglass)
@@ -93,7 +98,7 @@ def inpainting(img,
     loop.run(1)
     with torch.no_grad():
         hourglass.eval()
-        return TF.ToPILImage()(hourglass(z)[0].cpu())
+        return TFF.to_pil_image(hourglass(z)[0].cpu())
 
 
 def superres(img,
@@ -104,7 +109,7 @@ def superres(img,
              lr,
              noise_std=1 / 30,
              device='cuda'):
-    im = TF.ToTensor()(img)[None].to(device)
+    im = TFF.to_tensor(img)[None].to(device)
     z = input_noise((im.shape[2] * scale, im.shape[3] * scale), input_dim)
     z = z.to(device)
 
@@ -135,7 +140,7 @@ def superres(img,
     loop.run(1)
     with torch.no_grad():
         hourglass.eval()
-        return TF.ToPILImage()(hourglass(z)[0].cpu())
+        return TFF.to_pil_image(hourglass(z)[0].cpu())
 
 
 def make_loop(hourglass, body, display, num_iter, lr):
