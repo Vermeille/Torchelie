@@ -454,7 +454,11 @@ class ImageGradientVis:
         m = gi_flat.min(dim=-1).values.unsqueeze(-1).unsqueeze(-1)
         M = gi_flat.max(dim=-1).values.unsqueeze(-1).unsqueeze(-1)
         grad_img = (grad_img - m) / (M - m)
-        img = (x + 1) / 2 * grad_img + 0.5 * (1 - grad_img)
+        x = x.detach()
+        xm = x.min()
+        xM = x.max()
+        x = (x - xm) / (xM - xm)
+        img = x * grad_img + 0.5 * (1 - grad_img)
         state['metrics']['feature_vis'] = img
 
 
