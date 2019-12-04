@@ -181,7 +181,7 @@ class MetricsTable(tu.AutoStateDict):
         return html
 
     def on_batch_end(self, state):
-        if self.post_each_batch:
+        if self.post_each_batch and state.get('visdom_will_log', False):
             state['metrics']['table'] = self.make_html(state)
 
     def on_epoch_end(self, state):
@@ -324,6 +324,11 @@ class VisdomLogger(tu.AutoStateDict):
             self.vis = Visdom(env=visdom_env)
             self.vis.close()
 
+    def on_batch_start(self, state):
+        iters = state['iters']
+        state['visdom_will_log'] = (self.log_every != -1
+                                    and iters % self.log_every == 0)
+
     @torch.no_grad()
     def on_batch_end(self, state):
         iters = state['iters']
@@ -429,6 +434,9 @@ class ImageGradientVis:
 
     @torch.no_grad()
     def on_batch_end(self, state):
+        if not state.get('visdom_will_log', False):
+            return
+
         x = state['batch_gpu'][0]
         grad_img = x.grad.abs().sum(1, keepdim=True)
         b, c, h, w = grad_img.shape
@@ -564,7 +572,7 @@ class ClassificationInspector:
     def on_batch_end(self, state):
         pred, y, x = state['pred'], state['batch'][1], state['batch'][0]
         self.vis.analyze(x, pred, y)
-        if self.post_each_batch:
+        if self.post_each_batch and state.get('visdom_will_log', False):
             state['metrics']['report'] = self.vis.show()
 
     def on_epoch_end(self, state):
