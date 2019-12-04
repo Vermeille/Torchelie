@@ -6,7 +6,7 @@ loops. However, Torchélie focuses a lot on making recipes as customizable and
 flexible as possible through a declarative interface. But enough nonsense
 bullshit, let's jump to the code.
 
-NOTA: I know time is precious bro. If you just want to see what a real sample
+TL;DR: I know time is precious bro. If you just want to see what a real sample
 would look like, you can jump to the last code sample on this page, and read
 backwards for the explanations you want.
 
@@ -156,7 +156,7 @@ Let's write our very own optimizer callback!
 
       # For now, just pretend the state argument isn't there
       def on_batch_start(self, state):
-         selt.opt.zero_grads()
+         self.opt.zero_grads()
 
       # For now, just pretend the state argument isn't there
       def on_batch_end(self, state):

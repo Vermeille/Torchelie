@@ -91,12 +91,20 @@ class AccAvg(tu.AutoStateDict):
             Default: True.
     """
 
-    def __init__(self, post_each_batch=True):
+    def __init__(self, post_each_batch=True, avg_type='running'):
         super(AccAvg, self).__init__()
         self.post_each_batch = post_each_batch
+        avg = {
+            'running': RunningAvg,
+            'moving': ExponentialAvg,
+            'window': WindowAvg
+        }
+        self.avg = avg[avg_type]()
 
     def on_epoch_start(self, state):
-        self.avg = RunningAvg()
+        if isinstance(self.avg, RunningAvg):
+            self.avg = RunningAvg()
+
         if 'acc' in state['metrics']:
             del state['metrics']['acc']
 
@@ -104,8 +112,11 @@ class AccAvg(tu.AutoStateDict):
     def on_batch_end(self, state):
         pred, y = state['pred'], state['batch'][1]
         pred = tu.as_multiclass_shape(pred)
-        batch_correct = pred.argmax(1).eq(y).float().sum()
-        self.avg.log(batch_correct, pred.shape[0])
+        batch_correct = pred.argmax(1).eq(y).float()
+        if isinstance(self.avg, RunningAvg):
+            self.avg.log(batch_correct.sum(), pred.shape[0])
+        else:
+            self.avg.log(batch_correct.mean())
 
         if self.post_each_batch:
             state['metrics']['acc'] = self.avg.get()
