@@ -294,14 +294,21 @@ class Log(tu.AutoStateDict):
         to (str): metrics name
     """
 
-    def __init__(self, from_k, to):
+    def __init__(self, from_k, to, post_each_batch=True):
         super(Log, self).__init__()
         self.from_k = from_k
         self.to = to
+        self.post_each_batch = post_each_batch
 
     @torch.no_grad()
     def on_batch_end(self, state):
-        state['metrics'][self.to] = dict_by_key(state, self.from_k)
+        if self.post_each_batch:
+            state['metrics'][self.to] = dict_by_key(state, self.from_k)
+
+    @torch.no_grad()
+    def on_epoch_end(self, state):
+        if not self.post_each_batch:
+            state['metrics'][self.to] = dict_by_key(state, self.from_k)
 
 
 class VisdomLogger(tu.AutoStateDict):
