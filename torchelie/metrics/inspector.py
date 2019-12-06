@@ -87,7 +87,7 @@ class ClassificationInspector:
 
         html = ['<div style="display:flex;flex-wrap:wrap">']
         for img, p, cls, correct, path in dat:
-            img -= img.min()
+            img = img - img.min()
             img /= img.max()
             html.append(
                 ('<div onclick="javascript:prompt(\'path\', \'{}\')">'
