@@ -51,6 +51,7 @@ Convolutional
 .. autofunction:: torchelie.models.VectorCondResNetBone
 .. autofunction:: torchelie.models.ClassCondResNetBone
 .. autoclass:: torchelie.models.UNetBone
+.. autoclass:: torchelie.models.Attention56Bone
 
 Image classifiers
 ~~~~~~~~~~~~~~~~~
@@ -60,6 +61,7 @@ Image classifiers
 .. autofunction:: torchelie.models.PreactResNetDebug
 .. autofunction:: torchelie.models.VectorCondResNetDebug
 .. autofunction:: torchelie.models.ClassCondResNetDebug
+.. autofunction:: torchelie.models.attention56
 
 Image Segmenter
 ~~~~~~~~~~~~~~~
@@ -71,6 +73,10 @@ Classification heads
 ~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: torchelie.models.Classifier
+   :members:
+   :undoc-members:
+
+.. autoclass:: torchelie.models.Classifier1
    :members:
    :undoc-members:
 

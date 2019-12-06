@@ -8,3 +8,4 @@ from .unet import UNetBone, UNet
 from .autogan import AutoGAN, autogan_32, autogan_64, autogan_128
 from .snres_discr import *
 from .hourglass import Hourglass
+from .attention import Attention56Bone, attention56

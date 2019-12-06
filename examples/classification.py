@@ -73,6 +73,8 @@ def summary(Net):
 
 def train_net(Net):
     clf = Net(10, in_ch=CH)
+    clf = torchelie.models.Classifier(
+            torchelie.models.Attention56Bone(), 2048, 10)
     print(clf)
 
     clf_recipe = CrossEntropyClassification(clf,

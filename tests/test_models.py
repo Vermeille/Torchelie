@@ -72,6 +72,11 @@ def test_vgg():
     m(torch.randn(1, 8), torch.LongTensor([0]))
 
 
+def test_attention():
+    m = attention56(2)
+    m(torch.randn(1, 1, 32, 32))
+
+
 def test_autogan():
     m = AutoGAN([3, 4, 5], in_noise=4)
     m(torch.randn(16, 4))
