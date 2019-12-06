@@ -1,3 +1,6 @@
+import collections
+import functools
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -9,23 +12,44 @@ from torchelie.utils import kaiming, xavier
 
 
 def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0):
-    layer = [kaiming(Conv2d(in_ch, out_ch, ks, stride=stride), a=leak)]
+    layer = [('conv', kaiming(Conv2d(in_ch, out_ch, ks, stride=stride),
+                              a=leak))]
 
     if norm is not None:
-        layer.append(norm(out_ch))
+        layer.append(('norm', norm(out_ch)))
 
     if leak != 0:
-        layer.append(nn.LeakyReLU(leak))
+        layer.append(('relu', nn.LeakyReLU(leak)))
     else:
-        layer.append(nn.ReLU())
+        layer.append(('relu', nn.ReLU()))
 
-    return CondSeq(*layer)
+    return CondSeq(collections.OrderedDict(layer))
+
+
+class SEBlock(nn.Module):
+    def __init__(self, in_ch, reduction=16):
+        super(SEBlock, self).__init__()
+        self.proj = nn.Sequential(
+            collections.OrderedDict([
+                ('pool', nn.AdaptiveAvgPool2d(1)),
+                ('squeeze', kaiming(nn.Conv2d(in_ch, in_ch // reduction, 1))),
+                ('relu', nn.ReLU(True)),
+                ('excite', xavier(nn.Conv2d(in_ch // reduction, in_ch, 1))),
+                ('attn', HardSigmoid())
+            ]))
+
+    def forward(self, x):
+        return x * self.proj(x)
 
 
 def MConvNormReLU(in_ch, out_ch, ks, norm, center=True):
-    return CondSeq(MaskedConv2d(in_ch, out_ch, ks, center=center),
-                   *([norm(out_ch)] if norm is not None else []),
-                   nn.ReLU(inplace=True))
+    layers = [('conv', MaskedConv2d(in_ch, out_ch, ks, center=center))]
+
+    if norm is not None:
+        layers.append(('norm', norm(out_ch)))
+
+    layers.append(('relu', nn.ReLU(True)))
+    return CondSeq(collections.OrderedDict(layers))
 
 
 def MConvBNrelu(in_ch, out_ch, ks, center=True):
@@ -61,129 +85,147 @@ class Conv2dCondBNReLU(nn.Module):
         return x
 
 
-class OriginalResBlockFn:
-    @staticmethod
-    def __call__(m, x):
-        out = m.conv1(x)
-        out = m.bn1(out)
-        out = m.relu(out)
+def make_resnet_shortcut(in_ch, out_ch, stride, norm=nn.BatchNorm2d):
+    if in_ch == out_ch and stride == 1:
+        return CondSeq()
 
-        out = m.conv2(out)
-        out = m.bn2(out)
-        out += getattr(m, 'shortcut', lambda x: x)(x)
-        return m.relu(out)
+    sc = []
+    if stride != 1:
+        sc.append(('pool', nn.AvgPool2d(stride, stride, 0, ceil_mode=True)))
 
+    sc += [('conv', kaiming(Conv1x1(in_ch, out_ch))), ('norm', norm(out_ch))]
 
-class PreactResBlockFn:
-    @staticmethod
-    def __call__(m, x):
-        out = m.bn1(x)
-        out = m.relu(out)
-        x = m.shortcut(out) if hasattr(m, 'shortcut') else x
-        out = m.conv1(out)
-
-        out = m.bn2(out)
-        out = m.relu(out)
-        out = m.conv2(out)
-        return out + x
-
-
-class ConditionalResBlockFn:
-    @staticmethod
-    def condition(m, z):
-        m.bn1.condition(z)
-        m.bn2.condition(z)
-
-    @staticmethod
-    def __call__(m, x, z=None):
-        out = m.conv1(x)
-        out = m.bn1(out, z)
-        out = m.relu(out)
-
-        out = m.conv2(out)
-        out = m.bn2(out, z)
-        out += getattr(m, 'shortcut', lambda x: x)(x)
-        return m.relu(out)
-
-
-class PreactCondResBlock:
-    @staticmethod
-    def condition(m, z):
-        m.bn1.condition(z)
-        m.bn2.condition(z)
-
-    @staticmethod
-    def __call__(m, x, z=None):
-        out = m.bn1(x, z)
-        out = m.relu(out)
-        x = m.shortcut(out, z) if hasattr(m, 'shortcut') else x
-        out = m.conv1(out)
-
-        out = m.bn2(out, z)
-        out = m.relu(out)
-        out = m.conv2(out)
-        return out + x
+    return CondSeq(collections.OrderedDict(sc))
 
 
 class ResBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, stride):
+    def __init__(self,
+                 in_ch,
+                 out_ch,
+                 stride=1,
+                 norm=nn.BatchNorm2d,
+                 use_se=False,
+                 bottleneck=False):
         super(ResBlock, self).__init__()
-        self.fn = OriginalResBlockFn()
+        self.in_ch = in_ch
+        self.out_ch = out_ch
+        self.stride = stride
+        self.use_se = use_se
+        self.bottleneck = bottleneck
 
-        self.conv1 = kaiming(Conv3x3(in_ch, in_ch, stride=stride))
-        self.bn1 = nn.BatchNorm2d(in_ch)
-        self.relu = nn.ReLU()
+        if bottleneck:
+            mid = out_ch // 4
+            self.branch = CondSeq(
+                collections.OrderedDict([
+                    ('conv1', kaiming(Conv1x1(in_ch, mid))),
+                    ('bn1', norm(in_ch)),
+                    ('relu', nn.ReLU(True)),
+                    ('conv2', kaiming(Conv3x3(mid, mid, stride=stride))),
+                    ('bn2', norm(out_ch)),
+                    ('relu2', nn.ReLU(True)),
+                    ('conv3', kaiming(Conv1x1(mid, out_ch))),
+                ]))
+        else:
+            self.branch = CondSeq(
+                collections.OrderedDict([
+                    ('conv1', kaiming(Conv3x3(in_ch, in_ch, stride=stride))),
+                    ('bn1', norm(in_ch)), ('relu', nn.ReLU(True)),
+                    ('conv2', kaiming(Conv3x3(in_ch, out_ch))),
+                    ('bn2', norm(out_ch))
+                ]))
 
-        self.conv2 = kaiming(Conv3x3(in_ch, out_ch))
-        self.bn2 = nn.BatchNorm2d(out_ch)
+        if use_se:
+            self.branch.add_module('se', SEBlock(out_ch))
 
-        if in_ch != out_ch or stride != 1:
-            self.shortcut = CondSeq(kaiming(Conv1x1(in_ch, out_ch, stride)),
-                                    nn.BatchNorm2d(out_ch))
+        self.relu = nn.ReLU(True)
 
+        self.shortcut = make_resnet_shortcut(in_ch, out_ch, stride, norm)
+
+    def __repr__(self):
+        return "{}({}, {}, stride={}, norm={})".format(
+            ("SE-" if self.use_se else "") +
+            ("Bottleneck" if self.bottleneck else "ResBlock"), self.in_ch,
+            self.out_ch, self.stride, self.branch.bn1.__class__.__name__)
+
+    def condition(self, z):
+        self.branch.condition(z)
+        self.shortcut.condition(z)
+
+    def forward(self, x, z=None):
+        if z is not None:
+            self.condition(z)
+
+        return self.relu(self.branch(x) + self.shortcut(x))
+
+
+class HardSigmoid(nn.Module):
     def forward(self, x):
-        return self.fn(self, x)
+        return x.add_(0.5).clamp_(min=0, max=1)
 
 
 class PreactResBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, stride=1):
+    def __init__(self,
+                 in_ch,
+                 out_ch,
+                 stride=1,
+                 norm=nn.BatchNorm2d,
+                 use_se=False,
+                 bottleneck=False):
         super(PreactResBlock, self).__init__()
-        self.fn = PreactResBlockFn()
+        self.in_ch = in_ch
+        self.out_ch = out_ch
+        self.stride = stride
+        self.use_se = use_se
+        self.bottleneck = bottleneck
 
-        self.bn1 = nn.BatchNorm2d(in_ch)
-        self.relu = nn.ReLU()
-        self.conv1 = kaiming(Conv3x3(in_ch, in_ch, stride=stride))
+        if bottleneck:
+            mid = out_ch // 4
+            self.branch = CondSeq(
+                collections.OrderedDict([
+                    ('bn1', norm(in_ch)),
+                    ('relu', nn.ReLU(True)),
+                    ('conv1', kaiming(Conv1x1(in_ch, mid))),
+                    ('bn2', norm(out_ch)),
+                    ('relu2', nn.ReLU(True)),
+                    ('conv2', kaiming(Conv3x3(mid, mid, stride=stride))),
+                    ('bn3', norm(out_ch)),
+                    ('relu3', nn.ReLU(True)),
+                    ('conv3', kaiming(Conv1x1(mid, out_ch))),
+                ]))
+        else:
+            self.branch = CondSeq(
+                collections.OrderedDict([
+                    ('bn1', norm(in_ch)), ('relu', nn.ReLU(True)),
+                    ('conv1', kaiming(Conv3x3(in_ch, in_ch, stride=stride))),
+                    ('bn2', norm(in_ch)), ('relu2', nn.ReLU(True)),
+                    ('conv2', kaiming(Conv3x3(in_ch, out_ch)))
+                ]))
 
-        self.bn2 = nn.BatchNorm2d(in_ch)
-        self.conv2 = kaiming(Conv3x3(in_ch, out_ch))
+        if use_se:
+            self.branch.add_module('se', SEBlock(out_ch))
 
-        if in_ch != out_ch or stride != 1:
-            self.shortcut = CondSeq(kaiming(Conv1x1(in_ch, out_ch, stride)),
-                                    nn.BatchNorm2d(out_ch))
+        self.shortcut = make_resnet_shortcut(in_ch, out_ch, stride, norm)
 
-    def forward(self, x):
-        return self.fn(self, x)
-
-
-class ConditionalResBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, hidden, stride=1):
-        super(ConditionalResBlock, self).__init__()
-        self.fn = ConditionalResBlockFn()
-        self.conv1 = kaiming(Conv3x3(in_ch, in_ch, stride=stride))
-        self.bn1 = ConditionalBN2d(in_ch, hidden)
-        self.relu = nn.ReLU()
-        self.conv2 = kaiming(Conv3x3(in_ch, out_ch))
-        self.bn2 = ConditionalBN2d(out_ch, hidden)
-
-        if in_ch != out_ch or stride != 1:
-            self.shortcut = CondSeq(kaiming(Conv1x1(in_ch, out_ch, stride)),
-                                    nn.BatchNorm2d(out_ch))
+    def __repr__(self):
+        return "{}({}, {}, stride={}, norm={})".format(
+            ("SE-" if self.use_se else "") +
+            ("PreactBottleneck" if self.bottleneck else "PreactResBlock"),
+            self.in_ch, self.out_ch, self.stride,
+            self.branch.bn1.__class__.__name__)
 
     def condition(self, z):
-        self.fn.condition(self, z)
+        self.branch.condition(z)
+        self.shortcut.condition(z)
 
     def forward(self, x, z=None):
-        return self.fn(self, x, z)
+        if z is not None:
+            self.condition(z)
+
+        if len(self.shortcut) == 0:
+            return x + self.branch(x)
+        else:
+            out = self.branch.relu(self.branch.bn1(x))
+            return self.shortcut(out) + self.branch[2:](out)
 
 
 class SpadeResBlock(nn.Module):
@@ -193,7 +235,7 @@ class SpadeResBlock(nn.Module):
                  cond_channels,
                  hidden,
                  stride=1,
-                 blktype=PreactCondResBlock):
+                 blktype=PreactResBlock):
         super(SpadeResBlock, self).__init__()
         self.fn = blktype()
         self.conv1 = kaiming(Conv3x3(in_ch, in_ch, stride=stride))
@@ -227,6 +269,7 @@ class AutoGANGenBlock(nn.Module):
         ks (int): kernel size of the convolutions
         mode (str): usampling mode, 'nearest' or 'bilinear'
     """
+
     def __init__(self, in_ch, out_ch, skips_ch, ks=3, mode='nearest'):
         super(AutoGANGenBlock, self).__init__()
         assert mode in ['nearest', 'bilinear']
@@ -267,8 +310,8 @@ class AutoGANGenBlock(nn.Module):
 
         x_w_skips = x_mid
         for conv, skip in zip(self.skip_convs, skips):
-            x_w_skips += conv(F.interpolate(skip, size=x_mid.shape[-2:],
-                mode=self.mode))
+            x_w_skips += conv(
+                F.interpolate(skip, size=x_mid.shape[-2:], mode=self.mode))
 
         x = self.conv2(F.leaky_relu(x_w_skips, 0.2))
         return x + x_skip, F.leaky_relu(x_mid, 0.2)
@@ -283,6 +326,7 @@ class SNResidualDiscrBlock(torch.nn.Module):
         out_ch (int): number of output channels
         downsample (bool): whether to downsample
     """
+
     def __init__(self, in_ch, out_ch, downsample=False):
         super(SNResidualDiscrBlock, self).__init__()
         self.branch = nn.Sequential(*[

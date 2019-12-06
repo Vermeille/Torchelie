@@ -170,7 +170,7 @@ def PreactResNetDebug(num_classes, in_ch=3, debug=False):
     return Classifier(
             ResNetBone(
                 ['64:2', '64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
-                tnn.Conv2d,
+                tnn.Conv2dBNReLU,
                 tnn.PreactResBlock,
                 in_ch=in_ch,
                 debug=debug), 256, num_classes)
