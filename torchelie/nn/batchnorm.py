@@ -148,25 +148,26 @@ def make_spade(base, name):
                      channels,
                      cond_channels,
                      hidden,
-                     size=None,
                      momentum=0.8):
             super(Spade2d, self).__init__(channels, momentum)
             self.initial = kaiming(Conv3x3(cond_channels, hidden, stride=2))
             self.make_weight = xavier(Conv3x3(hidden, channels))
             self.make_bias = xavier(Conv3x3(hidden, channels))
-            self.size = size
 
         def forward(self, x, z=None):
             if z is not None:
-                self.condition(z, x.shape[2:])
+                self.z = z
+            self.make_weight_bias(self.z, x.shape[2:])
 
             m, v = self.update_moments(x)
             weight = (1 + self.weight) / (v + 1e-8)
             bias = -m * weight + self.bias
             return weight * x + bias
 
-        def condition(self, z, size=None):
-            size = self.size or size
+        def condition(self, z):
+            self.z = z
+
+        def make_weight_bias(self, z, size):
             z = F.interpolate(z,
                               size=(size[0] * 2, size[1] * 2),
                               mode='nearest')

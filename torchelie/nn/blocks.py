@@ -12,6 +12,21 @@ from torchelie.utils import kaiming, xavier
 
 
 def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0):
+    """
+    A packed block with Conv-Norm-ReLU
+
+    Args:
+        in_ch (int): input channels
+        out_ch (int): output channels
+        ks (int): kernel size
+        norm (ctor): A normalization layer constructor in the form
+            :code:`(num_layers) -> norm layer` or None
+        stride (int): stride of the conv
+        leak (float): negative slope of the LeakyReLU or 0 for ReLU
+
+    Returns:
+        A packed block with Conv-Norm-ReLU as a CondSeq
+    """
     layer = [('conv', kaiming(Conv2d(in_ch, out_ch, ks, stride=stride),
                               a=leak))]
 
@@ -27,6 +42,15 @@ def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0):
 
 
 class SEBlock(nn.Module):
+    """
+    A Squeeze-And-Excite block
+
+    Args:
+        in_ch (int): input channels
+        reduction (int): channels reduction factor for the hidden number of
+            channels
+    """
+
     def __init__(self, in_ch, reduction=16):
         super(SEBlock, self).__init__()
         self.proj = nn.Sequential(
@@ -43,6 +67,21 @@ class SEBlock(nn.Module):
 
 
 def MConvNormReLU(in_ch, out_ch, ks, norm, center=True):
+    """
+    A packed block with Masked Conv-Norm-ReLU
+
+    Args:
+        in_ch (int): input channels
+        out_ch (int): output channels
+        ks (int): kernel size
+        norm (ctor): A normalization layer constructor in the form
+            :code:`(num_layers) -> norm layer` or None
+        center (bool): whether the masked conv has access to the central pixel
+            or not
+
+    Returns:
+        A packed block with MaskedConv-Norm-ReLU as a CondSeq
+    """
     layers = [('conv', MaskedConv2d(in_ch, out_ch, ks, center=center))]
 
     if norm is not None:
@@ -53,10 +92,36 @@ def MConvNormReLU(in_ch, out_ch, ks, norm, center=True):
 
 
 def MConvBNrelu(in_ch, out_ch, ks, center=True):
+    """
+    A packed block with Masked Conv-BN-ReLU
+
+    Args:
+        in_ch (int): input channels
+        out_ch (int): output channels
+        ks (int): kernel size
+        center (bool): whether the masked conv has access to the central pixel
+            or not
+
+    Returns:
+        A packed block with MaskedConv-BN-ReLU as a CondSeq
+    """
     return MConvNormReLU(in_ch, out_ch, ks, nn.BatchNorm2d, center=center)
 
 
 def Conv2dBNReLU(in_ch, out_ch, ks, stride=1, leak=0):
+    """
+    A packed block with Conv-BN-ReLU
+
+    Args:
+        in_ch (int): input channels
+        out_ch (int): output channels
+        ks (int): kernel size
+        stride (int): stride of the conv
+        leak (float): negative slope of the LeakyReLU or 0 for ReLU
+
+    Returns:
+        A packed block with Conv-BN-ReLU as a CondSeq
+    """
     return Conv2dNormReLU(in_ch,
                           out_ch,
                           ks,
@@ -99,6 +164,22 @@ def make_resnet_shortcut(in_ch, out_ch, stride, norm=nn.BatchNorm2d):
 
 
 class ResBlock(nn.Module):
+    """
+    A Residual Block. Skip connection will be added if the number of input and
+    output channels don't match or stride > 1 is used.
+
+    Args:
+        in_ch (int): input channels
+        out_ch (int): output channels
+        stride (int): stride
+        norm (callable or None): a norm layer constructor in the form
+            :code:`(num channels) -> norm layer` or None.
+        use_se (bool): whether to use Squeeze-And-Excite after the convolutions
+            for a SE-ResBlock
+        bottleneck (bool): whether to use the standard block with two 3x3 convs
+            or the bottleneck block with 1x1 -> 3x3 -> 1x1 convs.
+    """
+
     def __init__(self,
                  in_ch,
                  out_ch,
@@ -118,10 +199,10 @@ class ResBlock(nn.Module):
             self.branch = CondSeq(
                 collections.OrderedDict([
                     ('conv1', kaiming(Conv1x1(in_ch, mid))),
-                    ('bn1', norm(in_ch)),
+                    ('bn1', norm(mid)),
                     ('relu', nn.ReLU(True)),
                     ('conv2', kaiming(Conv3x3(mid, mid, stride=stride))),
-                    ('bn2', norm(out_ch)),
+                    ('bn2', norm(mid)),
                     ('relu2', nn.ReLU(True)),
                     ('conv3', kaiming(Conv1x1(mid, out_ch))),
                 ]))
@@ -159,11 +240,40 @@ class ResBlock(nn.Module):
 
 
 class HardSigmoid(nn.Module):
+    """
+    Hard Sigmoid
+    """
+
     def forward(self, x):
         return x.add_(0.5).clamp_(min=0, max=1)
 
 
+class HardSwish(nn.Module):
+    """
+    Hard Swish
+    """
+
+    def forward(self, x):
+        return x.add(0.5).clamp_(min=0, max=1).mul_(x)
+
+
 class PreactResBlock(nn.Module):
+    """
+    A Preactivated Residual Block. Skip connection will be added if the number
+    of input and output channels don't match or stride > 1 is used.
+
+    Args:
+        in_ch (int): input channels
+        out_ch (int): output channels
+        stride (int): stride
+        norm (callable or None): a norm layer constructor in the form
+            :code:`(num channels) -> norm layer` or None.
+        use_se (bool): whether to use Squeeze-And-Excite after the convolutions
+            for a SE-ResBlock
+        bottleneck (bool): whether to use the standard block with two 3x3 convs
+            or the bottleneck block with 1x1 -> 3x3 -> 1x1 convs.
+    """
+
     def __init__(self,
                  in_ch,
                  out_ch,
@@ -185,10 +295,10 @@ class PreactResBlock(nn.Module):
                     ('bn1', norm(in_ch)),
                     ('relu', nn.ReLU(True)),
                     ('conv1', kaiming(Conv1x1(in_ch, mid))),
-                    ('bn2', norm(out_ch)),
+                    ('bn2', norm(mid)),
                     ('relu2', nn.ReLU(True)),
                     ('conv2', kaiming(Conv3x3(mid, mid, stride=stride))),
-                    ('bn3', norm(out_ch)),
+                    ('bn3', norm(mid)),
                     ('relu3', nn.ReLU(True)),
                     ('conv3', kaiming(Conv1x1(mid, out_ch))),
                 ]))
@@ -228,32 +338,22 @@ class PreactResBlock(nn.Module):
             return self.shortcut(out) + self.branch[2:](out)
 
 
-class SpadeResBlock(nn.Module):
-    def __init__(self,
-                 in_ch,
-                 out_ch,
-                 cond_channels,
-                 hidden,
-                 stride=1,
-                 blktype=PreactResBlock):
-        super(SpadeResBlock, self).__init__()
-        self.fn = blktype()
-        self.conv1 = kaiming(Conv3x3(in_ch, in_ch, stride=stride))
-        self.bn1 = Spade2d(in_ch, cond_channels, hidden)
-        self.relu = nn.ReLU()
-        self.conv2 = kaiming(Conv3x3(in_ch, out_ch))
-        self.bn2 = Spade2d(in_ch, cond_channels, hidden)
+class SpadeResBlock(PreactResBlock):
+    """
+    A Spade ResBlock from `Semantic Image Synthesis with Spatially-Adaptive
+    Normalization`
 
-        if in_ch != out_ch or stride != 1:
-            self.shortcut = CondSeq(
-                kaiming(Conv1x1(in_ch, out_ch, stride=stride)),
-                Spade2d(out_ch, cond_channels, hidden))
+    https://arxiv.org/abs/1903.07291
+    """
 
-    def condition(self, z):
-        self.fn.condition(self, z)
-
-    def forward(self, x, z=None):
-        return self.fn(self, x, z)
+    def __init__(self, in_ch, out_ch, cond_channels, hidden, stride=1):
+        norm = functools.partial(Spade2d,
+                                 cond_channels=cond_channels,
+                                 hidden=hidden)
+        super(SpadeResBlock, self).__init__(in_ch=in_ch,
+                                            out_ch=out_ch,
+                                            stride=stride,
+                                            norm=norm)
 
 
 class AutoGANGenBlock(nn.Module):

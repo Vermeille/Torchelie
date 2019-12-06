@@ -1,4 +1,5 @@
 import torch
+import torchelie as tch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision.transforms import ToPILImage
@@ -19,12 +20,20 @@ class FakeData:
         cls = 0 if i < 5 else 1
         return torch.randn(10) + cls * 3, cls
 
+class FakeImg:
+    def __len__(self):
+        return 10
+
+    def __getitem__(self, i):
+        cls = 0 if i < 5 else 1
+        return torch.randn(1, 4, 4) + cls * 3, cls
+
 
 def test_classification():
-    trainloader = DataLoader(FakeData(), 4, shuffle=True)
-    testloader = DataLoader(FakeData(), 4, shuffle=True)
+    trainloader = DataLoader(FakeImg(), 4, shuffle=True)
+    testloader = DataLoader(FakeImg(), 4, shuffle=True)
 
-    model = nn.Linear(10, 2)
+    model = nn.Sequential(tch.nn.Reshape(-1), nn.Linear(16, 2))
 
     clf_recipe = CrossEntropyClassification(model, trainloader, testloader,
     ['foo', 'bar'])

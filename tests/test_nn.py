@@ -63,9 +63,6 @@ def test_blocks():
     m = PreactResBlock(4, 8, 1)
     m(torch.randn(1, 4, 8, 8))
 
-    m = ConditionalResBlock(4, 8, 3, 1)
-    m(torch.randn(1, 4, 8, 8), torch.randn(1, 3))
-
     m = SpadeResBlock(4, 4, 3, 1)
     m(torch.randn(1, 4, 8, 8), torch.randn(1, 3, 8, 8))
 

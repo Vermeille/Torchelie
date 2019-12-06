@@ -31,13 +31,23 @@ opts = parser.parse_args()
 
 device = 'cpu' if opts.cpu else 'cuda'
 
-tfms = TF.Compose([TF.Resize(32), TF.ToTensor()])
+tfms = TF.Compose([TF.Resize(32), TF.ToTensor(),
+        TF.Normalize([0.5] * 3, [0.5] * 3, True),
+    ])
+train_tfms = TF.Compose([
+        TF.Pad(4),
+        TF.RandomCrop(32),
+        TF.ColorJitter(0.5, 0.5, 0.4, 0.05),
+        TF.RandomHorizontalFlip(),
+        TF.ToTensor(),
+        TF.Normalize([0.5] * 3, [0.5] * 3, True),
+    ])
 if opts.dataset == 'mnist':
-    ds = MNIST('~/.cache/torch/mnist/', download=True, transform=tfms)
+    ds = MNIST('~/.cache/torch/mnist/', download=True, transform=train_tfms)
     dst = MNIST('~/.cache/torch/mnist/', download=True, transform=tfms, train=False)
     CH=1
 if opts.dataset == 'cifar10':
-    ds = CIFAR10('~/.cache/torch/cifar10', download=True, transform=tfms)
+    ds = CIFAR10('~/.cache/torch/cifar10', download=True, transform=train_tfms)
     dst = CIFAR10('~/.cache/torch/cifar10', download=True, transform=tfms, train=False)
     CH=3
 dl = torch.utils.data.DataLoader(ds,
@@ -70,7 +80,10 @@ def train_net(Net):
                                             dlt,
                                             ds.classes,
                                             lr=0.01,
-                                            beta1=0.8)
+                                            beta1=0.8,
+                                            log_every=10,
+                                            wd=0.1,
+                                            visdom_env='example_clf')
 
     clf_recipe.to(device)
     acc = clf_recipe.run(opts.epochs)['test_metrics']['acc']
