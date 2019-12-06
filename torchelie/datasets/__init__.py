@@ -1,4 +1,5 @@
 import random
+import multiprocessing
 
 import torchelie.utils as tu
 from torchelie.datasets.debug import *
@@ -163,7 +164,7 @@ class CachedDataset(_Wrap):
     def __init__(self, ds, transform=None, device='cpu'):
         self.ds = ds
         self.transform = transform
-        self.cache = [None] * len(self.ds)
+        self.cache = multiprocessing.Manager().list([None] * len(self.ds))
         self.device = device
 
     def __len__(self):
