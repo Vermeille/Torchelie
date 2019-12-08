@@ -70,12 +70,12 @@ def Classification(model,
                         log_every=log_every)
     loop.callbacks.add_callbacks([
         tcb.AccAvg(),
-        tcb.EpochMetricAvg('loss'),
+        tcb.WindowedMetricAvg('loss'),
     ])
 
     loop.test_loop.callbacks.add_callbacks([
         tcb.AccAvg(post_each_batch=False),
-        tcb.EpochMetricAvg('loss', False),
+        tcb.WindowedMetricAvg('loss', False),
     ])
 
     if visdom_env is not None:

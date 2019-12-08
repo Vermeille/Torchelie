@@ -85,6 +85,7 @@ def train_net(Net):
                                             beta1=0.8,
                                             log_every=10,
                                             wd=0.1,
+                                            test_every=50,
                                             visdom_env='example_clf')
 
     clf_recipe.to(device)
