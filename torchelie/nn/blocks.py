@@ -27,8 +27,13 @@ def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0):
     Returns:
         A packed block with Conv-Norm-ReLU as a CondSeq
     """
-    layer = [('conv', kaiming(Conv2d(in_ch, out_ch, ks, stride=stride),
-                              a=leak))]
+    layer = [('conv',
+              kaiming(Conv2d(in_ch,
+                             out_ch,
+                             ks,
+                             stride=stride,
+                             bias=norm is None),
+                      a=leak))]
 
     if norm is not None:
         layer.append(('norm', norm(out_ch)))
@@ -133,7 +138,7 @@ def Conv2dBNReLU(in_ch, out_ch, ks, stride=1, leak=0):
 class Conv2dCondBNReLU(nn.Module):
     def __init__(self, in_ch, out_ch, cond_ch, ks, leak=0):
         super(Conv2dCondBNReLU, self).__init__()
-        self.conv = kaiming(Conv2d(in_ch, out_ch, ks), a=leak)
+        self.conv = kaiming(Conv2d(in_ch, out_ch, ks, bias=False), a=leak)
         self.cbn = ConditionalBN2d(out_ch, cond_ch)
         self.leak = leak
 
@@ -158,7 +163,8 @@ def make_resnet_shortcut(in_ch, out_ch, stride, norm=nn.BatchNorm2d):
     if stride != 1:
         sc.append(('pool', nn.AvgPool2d(stride, stride, 0, ceil_mode=True)))
 
-    sc += [('conv', kaiming(Conv1x1(in_ch, out_ch))), ('norm', norm(out_ch))]
+    sc += [('conv', kaiming(Conv1x1(in_ch, out_ch, bias=False))),
+           ('norm', norm(out_ch))]
 
     return CondSeq(collections.OrderedDict(sc))
 
@@ -198,20 +204,23 @@ class ResBlock(nn.Module):
             mid = out_ch // 4
             self.branch = CondSeq(
                 collections.OrderedDict([
-                    ('conv1', kaiming(Conv1x1(in_ch, mid))),
+                    ('conv1', kaiming(Conv1x1(in_ch, mid, bias=False))),
                     ('bn1', norm(mid)),
                     ('relu', nn.ReLU(True)),
-                    ('conv2', kaiming(Conv3x3(mid, mid, stride=stride))),
+                    ('conv2',
+                     kaiming(Conv3x3(mid, mid, stride=stride, bias=False))),
                     ('bn2', norm(mid)),
                     ('relu2', nn.ReLU(True)),
-                    ('conv3', kaiming(Conv1x1(mid, out_ch))),
+                    ('conv3', kaiming(Conv1x1(mid, out_ch, bias=False))),
                 ]))
         else:
             self.branch = CondSeq(
                 collections.OrderedDict([
-                    ('conv1', kaiming(Conv3x3(in_ch, in_ch, stride=stride))),
-                    ('bn1', norm(in_ch)), ('relu', nn.ReLU(True)),
-                    ('conv2', kaiming(Conv3x3(in_ch, out_ch))),
+                    ('conv1',
+                     kaiming(Conv3x3(in_ch, in_ch, stride=stride,
+                                     bias=False))), ('bn1', norm(in_ch)),
+                    ('relu', nn.ReLU(True)),
+                    ('conv2', kaiming(Conv3x3(in_ch, out_ch, bias=False))),
                     ('bn2', norm(out_ch))
                 ]))
 
@@ -236,7 +245,7 @@ class ResBlock(nn.Module):
         if z is not None:
             self.condition(z)
 
-        return self.relu(self.branch(x) + self.shortcut(x))
+        return self.relu(self.branch(x).add_(self.shortcut(x)))
 
 
 class HardSigmoid(nn.Module):
@@ -294,10 +303,11 @@ class PreactResBlock(nn.Module):
                 collections.OrderedDict([
                     ('bn1', norm(in_ch)),
                     ('relu', nn.ReLU(True)),
-                    ('conv1', kaiming(Conv1x1(in_ch, mid))),
+                    ('conv1', kaiming(Conv1x1(in_ch, mid, bias=False))),
                     ('bn2', norm(mid)),
                     ('relu2', nn.ReLU(True)),
-                    ('conv2', kaiming(Conv3x3(mid, mid, stride=stride))),
+                    ('conv2',
+                     kaiming(Conv3x3(mid, mid, stride=stride, bias=False))),
                     ('bn3', norm(mid)),
                     ('relu3', nn.ReLU(True)),
                     ('conv3', kaiming(Conv1x1(mid, out_ch))),
@@ -306,8 +316,10 @@ class PreactResBlock(nn.Module):
             self.branch = CondSeq(
                 collections.OrderedDict([
                     ('bn1', norm(in_ch)), ('relu', nn.ReLU(True)),
-                    ('conv1', kaiming(Conv3x3(in_ch, in_ch, stride=stride))),
-                    ('bn2', norm(in_ch)), ('relu2', nn.ReLU(True)),
+                    ('conv1',
+                     kaiming(Conv3x3(in_ch, in_ch, stride=stride,
+                                     bias=False))), ('bn2', norm(in_ch)),
+                    ('relu2', nn.ReLU(True)),
                     ('conv2', kaiming(Conv3x3(in_ch, out_ch)))
                 ]))
 
@@ -335,7 +347,7 @@ class PreactResBlock(nn.Module):
             return x + self.branch(x)
         else:
             out = self.branch.relu(self.branch.bn1(x))
-            return self.shortcut(out) + self.branch[2:](out)
+            return self.shortcut(out).add_(self.branch[2:](out))
 
 
 class SpadeResBlock(PreactResBlock):

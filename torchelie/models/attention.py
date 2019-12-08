@@ -38,7 +38,7 @@ class AttentionBlock(nn.Module):
         for _ in range(n_down):
             soft = UBlock(ch, soft)
         self.mask = tnn.CondSeq(soft, nn.BatchNorm2d(ch), nn.ReLU(True),
-                                tu.kaiming(tnn.Conv1x1(ch, ch)),
+                                tu.kaiming(tnn.Conv1x1(ch, ch, bias=False)),
                                 nn.BatchNorm2d(ch), nn.ReLU(True),
                                 tu.kaiming(tnn.Conv1x1(ch, ch)),
                                 tnn.HardSigmoid())
