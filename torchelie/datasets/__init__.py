@@ -126,6 +126,9 @@ class NoexceptDataset(_Wrap):
             else:
                 return self[0]
 
+    def __repr__(self):
+        return "NoexceptDataset({})".format(self.ds)
+
 
 class WithIndexDataset(_Wrap):
     """
@@ -186,3 +189,6 @@ class CachedDataset(_Wrap):
             x = self.transform(x)
 
         return [x] + y
+
+    def __repr__(self):
+        return "CachedDataset({})".format(self.ds)

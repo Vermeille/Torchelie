@@ -91,7 +91,7 @@ class AccAvg(tu.AutoStateDict):
             Default: True.
     """
 
-    def __init__(self, post_each_batch=True, avg_type='running'):
+    def __init__(self, post_each_batch=True, avg_type='window'):
         super(AccAvg, self).__init__()
         self.post_each_batch = post_each_batch
         avg = {

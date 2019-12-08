@@ -148,6 +148,7 @@ Net Blocks:
 * ResNet discriminator with spectral normalization
 * `PerceptualNet` is a VGG16 with correctly named layers for more convenient
   use with `WithSavedActivations`
+* `attention56` from Residual Attention Networks
 
 Debug models:
 
