@@ -195,3 +195,123 @@ class HyperparamSearch:
         res.append(full)
         with open('hpsearch.json', 'w') as f:
             json.dump(res, f)
+
+if __name__ == '__main__':
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+
+    with open('hpsearch.json') as f:
+        dat = json.load(f)
+
+    dat.sort(key=lambda x: x['result_lfw_loss'])
+    dat = dat
+    dimensions = []
+    for k in dat[0].keys():
+        v = dat[0][k]
+        if isinstance(v, float):
+            dimensions.append({
+                'label': k,
+                'values': [dd[k] for dd in dat]
+            })
+    print(json.dumps(dimensions))
+    html="""
+    <html>
+        <head>
+            <meta charset="UTF-8">
+            <title></title>
+            <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+            <script
+            src="https://cdn.jsdelivr.net/npm/sorttable@1.0.2/sorttable.min.js"></script>
+        <style>
+        table, th, td {
+          border: 1px solid black;
+        }
+        </style>
+        </head>
+        <body>
+            <div id="graphDiv"></div>
+            <div id="table"></div>
+    <script>
+    var DATA = """ + json.dumps(dat) + """
+    for (d in DATA) {
+        DATA[d]['idx'] = d
+    }
+
+    let DIM = Object.keys(DATA[0]).map(k => {
+            if (typeof DATA[0][k] == 'number') {
+                return {
+                    'label': k,
+                    'values': DATA.map(d => d[k])
+                };
+            } else {
+                let labels = Array.from(new Set(DATA.map(d => d[k])));
+
+                return {
+                    'label': k,
+                    'values': DATA.map(d => labels.indexOf(d[k])),
+                    'tickvals': labels.map((_, i) => i),
+                    'ticktext': labels
+                };
+            }
+        });
+    var trace = {
+      type: 'parcoords',
+      line: {
+        color: 'blue'
+      },
+
+      dimensions: DIM
+    };
+
+    var data = [trace]
+
+    Plotly.plot('graphDiv', data, {}, {showSendToCloud: true});
+
+    let make_table = (DATA) => {
+        let titles = [];
+        for (d of DATA) {
+            for (k of Object.keys(d)) {
+                titles.push(k);
+            }
+        }
+        titles = Array.from(new Set(titles));
+        console.log(titles);
+        return `
+            <table width="100%" class="sortable">
+                <tr>
+                ${titles.map(t =>
+                    `<th>${t}</th>`
+                ).join('')}
+                </tr>
+            ${DATA.map(d =>
+                `<tr>${titles.map(t =>
+                    `<td>
+                        ${(typeof d[t] == 'number')
+                            ? d[t].toFixed(3)
+                            : d[t]}
+                    </td>`
+                ).join('')}
+                </td>`).join('')}
+        </table>`;
+    };
+    table.innerHTML = make_table(DATA);
+    </script>
+    </body>
+    </html>
+    """
+    class Server(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.handle_http(200, 'text/html', html)
+
+        def handle_http(self, status, content_type, content):
+            self.send_response(status)
+            self.send_header('Content-type', content_type)
+            self.end_headers()
+            self.wfile.write(bytes(content, 'utf-8'))
+
+    httpd = HTTPServer(('0.0.0.0', 8080), Server)
+    try:
+        print('serving on localhost:8080')
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    httpd.server_close()
