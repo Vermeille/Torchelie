@@ -101,6 +101,64 @@ class _Wrap:
         return getattr(self.ds, name)
 
 
+class Subset:
+    def __init__(self, ds, ratio, remap_unused_classes=False):
+        self.ratio = ratio
+        self.ds = ds
+        indices = [
+            i for i in range(len(ds)) if random.uniform(0, 1) < ratio
+        ]
+        self.indices = indices
+
+        self.remap_classes = remap_unused_classes
+        if remap_unused_classes:
+            cls_map = {}
+            cls = []
+            cls_to_idx = {}
+            for i in self.indices:
+                c = ds.samples[i][1]
+                if c not in cls_map:
+                    new_idx = len(cls_map)
+                    cls_map[c] = new_idx
+                    cls.append(ds.classes[c])
+                    cls_to_idx[ds.classes[c]] = new_idx
+            self.cls_map = cls_map
+            self.classes = cls
+            self.class_to_idx = cls_to_idx
+        else:
+            self.classes = ds.classes
+            self.class_to_idx = self.class_to_idx
+
+        class Proxy:
+            def __len__(self):
+                return len(indices)
+
+            def __getitem__(self, i):
+                b = ds.samples[indices[i]]
+                if remap_unused_classes:
+                    b = list(b)
+                    b[1] = cls_map[b[1]]
+                return b
+        self.samples = Proxy()
+
+
+    def __repr__(self):
+        return "Subset(len={}, n_classes={}, {})".format(len(self.indices),
+                len(self.classes), self.ds)
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, i):
+        b = self.ds[self.indices[i]]
+        if self.remap_classes:
+            b = list(b)
+            b[1] = self.cls_map[b[1]]
+        return b
+
+
+
+
 class NoexceptDataset(_Wrap):
     """
     Wrap a dataset and absorbs the exceptions it raises.  Useful in case of a
