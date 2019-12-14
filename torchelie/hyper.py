@@ -198,109 +198,183 @@ class HyperparamSearch:
 
 if __name__ == '__main__':
     from http.server import HTTPServer, BaseHTTPRequestHandler
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('file', default='hpsearch.json')
+    opts = parser.parse_args()
 
-    with open('hpsearch.json') as f:
-        dat = json.load(f)
+    def make_html():
+        with open(opts.file) as f:
+            dat = json.load(f)
 
-    dat.sort(key=lambda x: x['result_lfw_loss'])
-    dat = dat
-    dimensions = []
-    for k in dat[0].keys():
-        v = dat[0][k]
-        if isinstance(v, float):
-            dimensions.append({
-                'label': k,
-                'values': [dd[k] for dd in dat]
-            })
-    print(json.dumps(dimensions))
-    html="""
-    <html>
-        <head>
-            <meta charset="UTF-8">
-            <title></title>
-            <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-            <script
-            src="https://cdn.jsdelivr.net/npm/sorttable@1.0.2/sorttable.min.js"></script>
-        <style>
-        table, th, td {
-          border: 1px solid black;
-        }
-        </style>
-        </head>
-        <body>
-            <div id="graphDiv"></div>
-            <div id="table"></div>
-    <script>
-    var DATA = """ + json.dumps(dat) + """
-    for (d in DATA) {
-        DATA[d]['idx'] = d
-    }
-
-    let DIM = Object.keys(DATA[0]).map(k => {
-            if (typeof DATA[0][k] == 'number') {
-                return {
+        dat.sort(key=lambda x: x['result_lfw_loss'])
+        dat = dat
+        dimensions = []
+        for k in dat[0].keys():
+            v = dat[0][k]
+            if isinstance(v, float):
+                dimensions.append({
                     'label': k,
-                    'values': DATA.map(d => d[k])
-                };
-            } else {
-                let labels = Array.from(new Set(DATA.map(d => d[k])));
-
-                return {
-                    'label': k,
-                    'values': DATA.map(d => labels.indexOf(d[k])),
-                    'tickvals': labels.map((_, i) => i),
-                    'ticktext': labels
-                };
+                    'values': [dd[k] for dd in dat]
+                })
+        print(json.dumps(dimensions))
+        return """
+        <html>
+            <head>
+                <meta charset="UTF-8">
+                <title></title>
+                <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+                <script
+                src="https://cdn.jsdelivr.net/npm/sorttable@1.0.2/sorttable.min.js"></script>
+            <style>
+            table, th, td {
+              border: 1px solid black;
             }
-        });
-    var trace = {
-      type: 'parcoords',
-      line: {
-        color: 'blue'
-      },
-
-      dimensions: DIM
-    };
-
-    var data = [trace]
-
-    Plotly.plot('graphDiv', data, {}, {showSendToCloud: true});
-
-    let make_table = (DATA) => {
-        let titles = [];
-        for (d of DATA) {
-            for (k of Object.keys(d)) {
-                titles.push(k);
-            }
+            </style>
+            </head>
+            <body>
+                <div id="graphOpts"></div>
+                <div id="graphDiv"></div>
+                <div id="table"></div>
+        <script>
+        var DATA = """ + json.dumps(dat) + """
+        for (d in DATA) {
+            DATA[d]['idx'] = d
         }
-        titles = Array.from(new Set(titles));
-        console.log(titles);
-        return `
-            <table width="100%" class="sortable">
+
+        let display_opts = {};
+        let hidden_rows = new Set();
+        function make_graph() {
+            let data = DATA.filter((_, i) => !hidden_rows.has(i));
+            let DIM = Object.keys(data[0])
+                .filter(k => display_opts[k] !== "Hidden")
+                .map(k => {
+                    if (typeof data[0][k] == 'number') {
+                        if (display_opts[k] == 'Visible'
+                                || display_opts[k] == undefined) {
+                            return {
+                                'label': k,
+                                'values': data.map(d => d[k])
+                            };
+                        } else if (display_opts[k] == 'Log') {
+                            return {
+                                'label': k,
+                                'values': data.map(d => Math.log10(d[k])),
+                                'tickvals': data.map(d => Math.log10(d[k])),
+                                'ticktext': data.map(d => d[k].toExponential(2))
+                            };
+                        } else if (display_opts[k] == 'Decay') {
+                            return {
+                                'label': k,
+                                'values': data.map(d => Math.log10(1/(1-d[k]))),
+                                'tickvals': data.map(d => Math.log10(1/(1-d[k]))),
+                                'ticktext': data.map(d => d[k].toExponential(2))
+                            };
+                        }
+                    } else {
+                        let labels = Array.from(new Set(data.map(d => d[k])));
+
+                        return {
+                            'label': k,
+                            'values': data.map(d => labels.indexOf(d[k])),
+                            'tickvals': labels.map((_, i) => i),
+                            'ticktext': labels
+                        };
+                    }
+                });
+            var trace = {
+              type: 'parcoords',
+              line: {
+                color: 'blue'
+              },
+
+              dimensions: DIM
+            };
+
+            var show = [trace]
+
+            Plotly.purge('graphDiv');
+            Plotly.plot('graphDiv', show, {}, {showSendToCloud: true});
+        }
+        make_graph();
+
+        function change_opts(t, val) {
+            display_opts[t]=val;
+            make_graph();
+        }
+
+        graphOpts.innerHTML = `
+            <table width="100%">
                 <tr>
-                ${titles.map(t =>
-                    `<th>${t}</th>`
-                ).join('')}
+                    ${get_titles().map(t => `<th>${t}</th>`).join('')}
                 </tr>
-            ${DATA.map(d =>
-                `<tr>${titles.map(t =>
-                    `<td>
-                        ${(typeof d[t] == 'number')
-                            ? d[t].toFixed(3)
-                            : d[t]}
-                    </td>`
-                ).join('')}
-                </td>`).join('')}
-        </table>`;
-    };
-    table.innerHTML = make_table(DATA);
-    </script>
-    </body>
-    </html>
-    """
+                <tr>
+                    ${get_titles().map(t =>
+                        `<td>
+                            <select onchange="change_opts('${t}', event.target.value)">
+                                <option default>Visible</option>
+                                <option>Hidden</option>
+                                <option>Log</option>
+                                <option>Decay</option>
+                            </select>
+                        </th>`
+                    ).join('')}
+                </tr>
+            </table>
+        `;
+
+        function get_titles() {
+            let titles = [];
+            for (d of DATA) {
+                for (k of Object.keys(d)) {
+                    titles.push(k);
+                }
+            }
+            titles = Array.from(new Set(titles));
+            return titles;
+        }
+
+        function change_visibility(r, hid) {
+            if (hid) {
+                hidden_rows.add(r);
+            } else {
+                hidden_rows.delete(r);
+            }
+            make_graph();
+        }
+        let make_table = (DATA) => {
+            let titles = get_titles();
+            return `
+                <table width="100%" class="sortable">
+                    <tr>
+                    ${titles.map(t =>
+                        `<th>${t}</th>`
+                    ).join('')}
+                    <th>Hide</th>
+                    </tr>
+                ${DATA.map((d, i) =>
+                    `<tr>${titles.map(t =>
+                        `<td>
+                            ${(typeof d[t] == 'number')
+                                ? d[t].toFixed(3)
+                                : d[t]}
+                        </td>`
+                        ).join('')}
+                        <td>H
+                            <input type="checkbox"
+                            onchange="change_visibility(${i}, event.target.checked)"/>
+                        </td>
+                    </tr>`).join('')}
+            </table>`;
+        };
+        table.innerHTML = make_table(DATA);
+        </script>
+        </body>
+        </html>
+        """
     class Server(BaseHTTPRequestHandler):
         def do_GET(self):
-            self.handle_http(200, 'text/html', html)
+            self.handle_http(200, 'text/html', make_html())
 
         def handle_http(self, status, content_type, content):
             self.send_response(status)
