@@ -1,5 +1,7 @@
 from collections import OrderedDict
 
+import torchelie as tch
+import torchelie.utils as tu
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,15 +9,54 @@ import torch.nn.functional as F
 from torchelie.transforms.differentiable import center_crop
 
 
-class UpConv(nn.Module):
-    def __init__(self, in_ch, out_ch):
-        super(UpConv, self).__init__()
-        self.conv = nn.Conv2d(in_ch, out_ch, 2)
+class UBlock(nn.Module):
+    def __init__(self, in_ch, out_ch, inner=None):
+        super(UBlock, self).__init__()
+        self.in_conv = nn.Sequential(
+            OrderedDict([
+                ('pad1', nn.ReflectionPad2d(1)),
+                ('conv1', tu.kaiming(nn.Conv2d(in_ch, out_ch, 3))),
+                ('relu1', nn.ReLU(inplace=True)),
+                ('pad2', nn.ReflectionPad2d(1)),
+                ('conv2', tu.kaiming(nn.Conv2d(out_ch, out_ch, 3))),
+                ('relu2', nn.ReLU(inplace=True)),
+            ]))
 
-    def forward(self, x):
-        y_sz = x.shape[2] * 2 + 1
-        x_sz = x.shape[3] * 2 + 1
-        return self.conv(F.interpolate(x, size=(y_sz, x_sz)))
+        self.inner = inner
+        if inner is not None:
+            self.inner = nn.Sequential(
+                    nn.MaxPool2d(2, 2),
+                    inner,
+                    nn.UpsamplingNearest2d(scale_factor=2),
+                    nn.ReflectionPad2d(1),
+                    tu.kaiming(nn.Conv2d(out_ch, out_ch, 3)),
+                )
+            self.skip = nn.Sequential(
+                    tu.kaiming(nn.Conv2d(out_ch, out_ch, 1)))
+
+        inner_ch = out_ch * (1 if inner is None else 2)
+        self.out_conv = nn.Sequential(
+            OrderedDict([
+                ('pad1', nn.ReflectionPad2d(1)),
+                ('conv1', tu.kaiming(nn.Conv2d(inner_ch, out_ch, 3))),
+                ('relu1', nn.ReLU(inplace=True)),
+                ('pad2', nn.ReflectionPad2d(1)),
+                ('conv2', tu.kaiming(nn.Conv2d(out_ch, in_ch, 3))),
+                ('relu2', nn.ReLU(inplace=True)),
+            ]))
+
+    def forward(self, x_orig):
+        x = self.in_conv(x_orig)
+        if self.inner is not None:
+            x2 = x
+            x = self.inner(x)
+            x = torch.cat([
+                x,
+                self.skip(center_crop(x2, x.shape[2:]))
+            ], dim=1)
+
+        return self.out_conv(x)
+
 
 
 class UNetBone(nn.Module):
@@ -36,24 +77,23 @@ class UNetBone(nn.Module):
 
     def __init__(self, arch, in_ch=3, out_ch=1):
         super(UNetBone, self).__init__()
-        self.arch = arch
-        layers = []
-        img_in_ch = in_ch
-        for x in arch:
-            if isinstance(x, int):
-                layers.append(self.double_conv(in_ch, x))
-                in_ch = x
-            elif x == 'D':
-                layers.append(nn.MaxPool2d(2, 2))
-            elif x == 'U':
-                layers.append(UpConv(in_ch, in_ch // 2))
-            else:
-                assert False, 'Invalid arch spec ' + str(x)
-        layers.append(nn.Conv2d(arch[-1], out_ch, 1))
-        self.convs = nn.ModuleList(layers)
-        self.pad = 0
-        pad = 512 - self.forward(torch.randn(1, img_in_ch, 512, 512)).shape[2]
-        self.pad = pad // 2
+        self.in_conv = nn.Sequential(
+                tu.kaiming(nn.Conv2d(in_ch, arch[0], 5, padding=2)),
+                nn.ReLU(True)
+            )
+        self.conv = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            tu.kaiming(nn.Conv2d(arch[-1], arch[-1], 3)),
+            nn.ReLU(True),
+            nn.ReflectionPad2d(1),
+            tu.kaiming(nn.Conv2d(arch[-1], arch[-1], 3)),
+            nn.ReLU(True),
+        )
+        for x1, x2 in zip(reversed(arch[:-1]), reversed(arch[1:])):
+            self.conv = UBlock(x1, x2, self.conv)
+        self.out_conv = nn.Sequential(
+                tu.kaiming(nn.Conv2d(arch[0], out_ch, 1)),
+            )
 
     def forward(self, x):
         """
@@ -62,27 +102,8 @@ class UNetBone(nn.Module):
         Args:
             x (tensor): input tensor, batch of images
         """
-        x = F.pad(x, [self.pad] * 4, mode='reflect')
-        maps = []
-        for f in self.convs:
-            if isinstance(f, nn.MaxPool2d):
-                maps.append(x)
-            x = f(x)
-            print(x.shape)
-            if isinstance(f, UpConv):
-                prev = maps.pop()
-                prev = center_crop(prev, (x.shape[2], x.shape[3]))
-                x = torch.cat([x, prev], dim=1)
-        return x
-
-    def double_conv(self, in_ch, out_ch):
-        return nn.Sequential(
-            OrderedDict([
-                ('conv1', nn.Conv2d(in_ch, out_ch, 3)),
-                ('relu1', nn.ReLU(inplace=True)),
-                ('conv2', nn.Conv2d(out_ch, out_ch, 3)),
-                ('relu2', nn.ReLU(inplace=True)),
-            ]))
+        out = self.out_conv(self.conv(self.in_conv(x)))
+        return out
 
 
 def UNet(in_ch=3, out_ch=1):
@@ -99,12 +120,7 @@ def UNet(in_ch=3, out_ch=1):
     Returns:
         An instantiated UNet
     """
-    return UNetBone([
-        64, 'D', 128, 'D', 256, 'D', 512, 'D', 1024, 'U', 512, 'U', 256, 'U',
-        128, 'U', 64
-    ],
-                    in_ch=in_ch,
-                    out_ch=out_ch)
+    return UNetBone([32, 64, 128, 256, 512, 512], in_ch=in_ch, out_ch=out_ch)
 
 
 if __name__ == '__main__':
