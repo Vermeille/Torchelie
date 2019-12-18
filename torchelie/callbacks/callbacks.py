@@ -13,7 +13,7 @@ from visdom import Visdom
 
 from torchelie.utils import dict_by_key, recursive_state_dict
 from torchelie.utils import load_recursive_state_dict, AutoStateDict
-from torchelie.metrics.inspector import ClassificationInspector as CIVis
+from torchelie.callbacks.inspector import ClassificationInspector as CIVis
 import torchelie.utils as tu
 
 from .avg import *
@@ -462,7 +462,7 @@ class ImageGradientVis:
         state['metrics']['feature_vis'] = img
 
 
-class Checkpoint:
+class Checkpoint(tu.AutoStateDict):
     """
     Save object to disk every so often.
 
@@ -473,6 +473,7 @@ class Checkpoint:
     """
 
     def __init__(self, filename_base, objects):
+        super(Checkpoint, self).__init__(except_names=['objects'])
         self.filename_base = filename_base
         self.objects = objects
         self.nb_saved = 0
@@ -480,24 +481,16 @@ class Checkpoint:
     def save(self, state):
         saved = recursive_state_dict(self.objects)
         try:
-            Path(self.filename()).parent.mkdir()
+            Path(self.filename(state)).parent.mkdir()
         except:
             pass
-        torch.save(saved, self.filename())
+        torch.save(saved, self.filename(state))
         self.nb_saved += 1
 
-    def filename(self):
+    def filename(self, state):
+        if 'iters' in state:
+            return self.filename_base + '_' + str(state['iters']) + '.pth'
         return self.filename_base + '_' + str(self.nb_saved) + '.pth'
-
-    def load(self, state):
-        while True:
-            try:
-                loaded = torch.load(self.filename())
-            except:
-                pass
-            self.nb_saved += 1
-
-        load_recursive_state_dict(loaded, self.objects)
 
     def on_epoch_end(self, state):
         self.save(state)
@@ -505,7 +498,7 @@ class Checkpoint:
 
 class Polyak:
     """
-    Polyak averaging (Exponential running average).
+    Polyak averaging (Exponential moving average).
 
     Args:
         original (nn.Module): source module

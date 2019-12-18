@@ -23,7 +23,6 @@ Welcome to Torchélie's documentation!
    distributions
    datasets
    transforms
-   metrics
 
 Torchélie aims to provide new utilities, layers, tools to pytorch users,
 as an extension library. It aims for minimal codependence between components,

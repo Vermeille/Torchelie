@@ -4,12 +4,12 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision.transforms import ToPILImage
 
-from torchelie.recipes.classification import CrossEntropyClassification
-from torchelie.recipes.deepdream import DeepDream
-from torchelie.recipes.feature_vis import FeatureVis
-from torchelie.recipes.neural_style import NeuralStyle
-from torchelie.recipes.trainandcall import TrainAndCall
-import torchelie.metrics.callbacks as tcb
+from torchelie.recipes import CrossEntropyClassification
+from torchelie.recipes import DeepDream
+from torchelie.recipes import FeatureVis
+from torchelie.recipes import NeuralStyle
+from torchelie.recipes import TrainAndCall
+import torchelie.callbacks as tcb
 
 
 class FakeData:
@@ -81,3 +81,24 @@ def test_trainandcall():
     ])
 
     trainer.run(1)
+
+def test_callbacks():
+    from torchelie.recipes import Recipe
+
+    def train(b):
+        x, y = b
+        return {'pred': torch.randn(y.shape[0])}
+
+    m = nn.Linear(2, 2)
+
+    r = Recipe(train, DataLoader(FakeImg(), 4))
+    r.callbacks.add_callbacks([
+        tcb.Counter(),
+        tcb.AccAvg(),
+        tcb.Checkpoint('/tmp/m', m),
+        tcb.ClassificationInspector(1, ['1', '2']),
+        tcb.ConfusionMatrix(['one', 'two']),
+        tcb.ImageGradientVis(),
+        tcb.MetricsTable(),
+    ])
+    r.run(1)

@@ -1,7 +1,7 @@
 import torch
 
-import torchelie.metrics.callbacks as tcb
-from torchelie.recipes.recipebase import Recipe
+import torchelie.callbacks as tcb
+from torchelie.recipes import Recipe
 
 
 def TrainAndTest(model,

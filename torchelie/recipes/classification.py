@@ -16,7 +16,7 @@ import torch
 import torch.optim as optim
 import torchvision.models as tvmodels
 
-import torchelie.metrics.callbacks as tcb
+import torchelie.callbacks as tcb
 import torchelie.utils as tu
 from torchelie.recipes.trainandtest import TrainAndTest
 from torchelie.optim import RAdamW

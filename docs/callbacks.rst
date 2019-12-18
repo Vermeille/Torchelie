@@ -1,5 +1,5 @@
 Callbacks for Recipes
 =====================
 
-.. automodule:: torchelie.metrics.callbacks
+.. automodule:: torchelie.callbacks
    :members:

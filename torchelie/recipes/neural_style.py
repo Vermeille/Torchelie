@@ -11,7 +11,7 @@ from torchvision.transforms import ToTensor, ToPILImage
 from torchelie.loss import NeuralStyleLoss
 from torchelie.data_learning import ParameterizedImg
 from torchelie.recipes.recipebase import Recipe
-import torchelie.metrics.callbacks as tcb
+import torchelie.callbacks as tcb
 
 
 def t2pil(t):

@@ -202,7 +202,7 @@ it to log the loss
 
 ::
 
-   import torchelie.metrics.callbacks as tcb
+   import torchelie.callbacks as tcb
 
    model = torchvision.models.resnet18(num_classes=10)
    opt = torchelie.optim.RAdamW(model.parameters(), lr=0.01)

@@ -13,7 +13,7 @@ import torchvision.transforms as TF
 
 import torchelie
 import torchelie.nn as tnn
-import torchelie.metrics.callbacks as tcb
+import torchelie.callbacks as tcb
 from torchelie.optim import DeepDreamOptim
 from torchelie.recipes.recipebase import Recipe
 from torchelie.data_learning import ParameterizedImg

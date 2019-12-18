@@ -8,7 +8,7 @@ from torchvision.datasets import CIFAR10, MNIST, FashionMNIST, SVHN
 from torch.utils.data import DataLoader
 from torchelie.optim import RAdamW
 from torchelie.recipes import TrainAndCall
-import torchelie.metrics.callbacks as tcb
+import torchelie.metrics as tcb
 
 def train(model, loader):
     def train_step(batch):

@@ -1,6 +1,7 @@
 import torch
 
 from torchelie.nn import *
+import torchelie.nn.functional as tnnf
 
 
 def test_adain():
@@ -116,3 +117,7 @@ def test_misc():
 
     m = torch.jit.script(Reshape(16))
     m(torch.randn(1, 4, 4))
+
+def test_laplacian():
+    x = torch.randn(5, 3, 32, 32)
+    tnnf.combine_laplacians(tnnf.laplacian(x))

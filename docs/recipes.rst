@@ -7,13 +7,13 @@ Recipes
    :members:
    :inherited-members:
 
-.. autofunction:: torchelie.recipes.trainandcall.TrainAndCall
+.. autofunction:: torchelie.recipes.TrainAndCall
 
-.. autofunction:: torchelie.recipes.trainandtest.TrainAndTest
+.. autofunction:: torchelie.recipes.TrainAndTest
 
-.. autofunction:: torchelie.recipes.classification.Classification
+.. autofunction:: torchelie.recipes.Classification
 
-.. autofunction:: torchelie.recipes.classification.CrossEntropyClassification
+.. autofunction:: torchelie.recipes.CrossEntropyClassification
 
 .. autofunction:: torchelie.recipes.gan.GANRecipe
 
@@ -22,14 +22,11 @@ Recipes
 Model Training
 ~~~~~~~~~~~~~~
 
-.. autoclass:: torchelie.recipes.trainandtest.TrainAndTest
-   :members:
+.. autofunction:: torchelie.recipes.trainandtest.TrainAndTest
 
-.. autoclass:: torchelie.recipes.classification.Classification
-   :members:
+.. autofunction:: torchelie.recipes.classification.Classification
 
-.. autoclass:: torchelie.recipes.classification.CrossEntropyClassification
-   :members:
+.. autofunction:: torchelie.recipes.classification.CrossEntropyClassification
 
 Deep Dream
 ~~~~~~~~~~

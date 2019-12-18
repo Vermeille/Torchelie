@@ -86,7 +86,6 @@ class Attention56Bone(nn.Module):
         return x
 
 
-#64:2 M 256 A:3 512::2 A:2 1024:2 A:1 2048:2 2048 2048
 def attention56(num_classes, in_ch=3):
     """
     Build a attention56 network

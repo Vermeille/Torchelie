@@ -12,7 +12,7 @@ from torchelie.models import Hourglass
 import torchelie.transforms as ttf
 import torchelie as tch
 from torchelie.recipes.trainandcall import TrainAndCall
-import torchelie.metrics.callbacks as tcb
+import torchelie.callbacks as tcb
 
 
 def with_patches(img, patch_size, task, *args, **kwargs):

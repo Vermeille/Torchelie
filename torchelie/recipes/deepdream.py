@@ -17,12 +17,11 @@ import torch
 import torchvision.transforms as TF
 
 import torchelie.nn as tnn
-import torchelie.metrics.callbacks as cb
 from torchelie.data_learning import ParameterizedImg
 from torchelie.loss.deepdreamloss import DeepDreamLoss
 from torchelie.optim import DeepDreamOptim
 from torchelie.recipes.recipebase import Recipe
-import torchelie.metrics.callbacks as tcb
+import torchelie.callbacks as tcb
 
 from PIL import Image
 

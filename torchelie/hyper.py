@@ -16,6 +16,11 @@ tools with random search but it may evolve later.
         results = train(**hps)
         hp_sampler.log_results(hps, results)
 
+
+After creating the json file summing up the hyper parameter search, it can be
+investigated with the viewer with
+:code:`python3 -m torchelie.hyper hpsearch.json`. Then locate your browser to
+:code:`http://localhost:8080`.
 """
 import math
 import random

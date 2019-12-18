@@ -74,7 +74,11 @@ def test_vgg():
 
 def test_attention():
     m = attention56(2)
-    m(torch.randn(1, 1, 32, 32))
+    m(torch.randn(2, 3, 32, 32))
+
+def test_hourglass():
+    m = Hourglass()
+    m(torch.randn(2, 32, 128, 128))
 
 
 def test_autogan():

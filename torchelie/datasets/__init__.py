@@ -102,6 +102,17 @@ class _Wrap:
 
 
 class Subset:
+    """
+    Create a subset that is a random ratio of a dataset.
+
+    Args:
+        ds (Dataset): the dataset to sample from. Must have a :code:`.samples`
+            member like torchvision's datasets.
+        ratio (float): a value between 0 and 1, the subsampling ratio.
+        remap_unused_classes (boolean): if True, classes not represented in the
+            subset will not be considered. Remaining classes will be numbered
+            from 0 to N.
+    """
     def __init__(self, ds, ratio, remap_unused_classes=False):
         self.ratio = ratio
         self.ds = ds

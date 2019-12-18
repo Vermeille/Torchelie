@@ -1,6 +1,6 @@
 import torch
 import torchelie.utils as tu
-import torchelie.metrics.callbacks as tcb
+import torchelie.callbacks as tcb
 from torchelie.recipes.recipebase import Recipe
 
 

@@ -14,9 +14,9 @@ import torchelie.loss.gan.hinge as gan_loss
 from torchelie.datasets import NoexceptDataset
 from torchelie.transforms import AdaptPad
 from torchelie.recipes.gan import GANRecipe
-import torchelie.metrics.callbacks as tcb
+import torchelie.callbacks as tcb
 from torch.optim import AdamW
-from torchelie.recipes.recipebase import Recipe
+from torchelie.recipes import Recipe
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--cpu', action='store_true')

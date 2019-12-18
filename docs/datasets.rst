@@ -32,6 +32,9 @@ Datasets wrappers
 .. autoclass:: torchelie.datasets.CachedDataset
    :members:
    :undoc-members:
+.. autoclass:: torchelie.datasets.Subset
+   :members:
+   :undoc-members:
 
 Functions
 ~~~~~~~~~
