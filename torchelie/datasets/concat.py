@@ -69,3 +69,37 @@ class HorizontalConcatDataset(torch.utils.data.Dataset):
     def __repr__(self):
         return "DatasetConcat(" + ", ".join([repr(d)
                                              for d in self.datasets]) + ")"
+
+class MergedDataset(torch.utils.data.Dataset):
+    def __init__(self, datasets):
+        self.datasets = datasets
+        self.classes = list(set(c for d in datasets for c in d.classes))
+        self.class_to_idx = {c: i for i, c in enumerate(self.classes)}
+
+        class MergedSamples:
+            def __len__(self2):
+                return sum(len(d) for d in self.datasets)
+
+            def __getitem__(self2, i):
+                for ds in self.datasets:
+                    if i < len(ds):
+                        x, y, *ys = ds.samples[i]
+                        return [x, self.class_to_idx[ds.classes[y]]] + ys
+                    i -= len(ds)
+                raise IndexError
+
+        self.samples = MergedSamples()
+
+    def __len__(self):
+        return sum(len(d) for d in self.datasets)
+
+    def __getitem__(self, i):
+        for ds in self.datasets:
+            if i < len(ds):
+                x, y, *ys = ds[i]
+                return [x, self.class_to_idx[ds.classes[y]]] + ys
+            i -= len(ds)
+        raise IndexError
+
+    def __repr__(self):
+        return "MergedDatasets({})".format(self.datasets)
