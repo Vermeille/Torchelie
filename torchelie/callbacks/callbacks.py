@@ -467,33 +467,39 @@ class Checkpoint(tu.AutoStateDict):
     Save object to disk every so often.
 
     Args:
-        filename_base (str): file will be saved as
-            :code:`filename_base + '_' + number + '.pth'`.
+        filename_base (str): a format string that is the filename. The format
+            string can have keyword parameters that will be indexed in the
+            state.
         objects: what to save. It must have a :code:`state_dict()` member
+        max_saves (int): maximum number of checkpoints to save. Older
+            checkpoints will be removed.
     """
 
-    def __init__(self, filename_base, objects):
+    def __init__(self, filename_base, objects, max_saves=10):
         super(Checkpoint, self).__init__(except_names=['objects'])
         self.filename_base = filename_base
         self.objects = objects
-        self.nb_saved = 0
+        self.saved_fnames = []
+        self.max_saves = max_saves
 
     def save(self, state):
         saved = recursive_state_dict(self.objects)
+        nm = self.filename(state)
         try:
-            Path(self.filename(state)).parent.mkdir()
+            Path(nm).parent.mkdir()
         except:
             pass
-        torch.save(saved, self.filename(state))
-        self.nb_saved += 1
+        torch.save(saved, nm)
+        self.saved_fnames.append(nm)
 
     def filename(self, state):
-        if 'iters' in state:
-            return self.filename_base + '_' + str(state['iters']) + '.pth'
-        return self.filename_base + '_' + str(self.nb_saved) + '.pth'
+        return self.filename_base.format(**state)
 
     def on_epoch_end(self, state):
         self.save(state)
+        while len(self.saved_fnames) > self.max_saves:
+            os.remove(self.saved_fnames[0])
+            self.saved_fnames = self.saved_fnames[1:]
 
 
 class Polyak:

@@ -113,6 +113,41 @@ def snres_discr_5l(in_ch=3, out_ch=1):
                        out_ch=out_ch)
 
 
+def snres_discr_6l(in_ch=3, out_ch=1):
+    """
+    Make a 6 layers resnet discriminator with spectral norm, using
+    `SNResidualDiscrBlock`.
+
+    Args:
+        in_ch (int): number of input channels
+        out_ch (int): number of output channels
+
+    Returns:
+        an instance
+    """
+    return snres_discr(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D',
+        512, 'D'],
+                       in_ch=in_ch,
+                       out_ch=out_ch)
+
+def snres_discr_7l(in_ch=3, out_ch=1):
+    """
+    Make a 7 layers resnet discriminator with spectral norm, using
+    `SNResidualDiscrBlock`.
+
+    Args:
+        in_ch (int): number of input channels
+        out_ch (int): number of output channels
+
+    Returns:
+        an instance
+    """
+    return snres_discr(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D',
+        512, 'D', 1024, 'D'],
+                       in_ch=in_ch,
+                       out_ch=out_ch)
+
+
 def snres_projdiscr_5l(num_classes, in_ch=3):
     """
     Make a 5 layers resnet discriminator with spectral norm and projection,

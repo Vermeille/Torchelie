@@ -25,10 +25,17 @@ def PerceptualNet(layers):
                 'conv5_4', 'relu5_4', 'maxpool5'
     ]
 
-    m = M.vgg16(pretrained=True).eval().features
+    m = M.vgg19(pretrained=True).eval().features
     m = nn.Sequential(OrderedDict(
         [(l_name, l) for l_name, l in zip(layer_names, m)]
     ))
+    print(m)
+    for nm, mod in m.named_modules():
+        if 'relu' in nm:
+            setattr(m, nm, nn.LeakyReLU(0.01, True))
+        elif 'pool' in nm:
+            setattr(m, nm,  nn.AvgPool2d(2 ,2))
+    print(m)
     m = WithSavedActivations(m, names=layers)
     return m
 

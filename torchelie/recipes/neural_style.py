@@ -8,6 +8,7 @@ torchelie.recipes.neural_style`
 import torch
 from torchvision.transforms import ToTensor, ToPILImage
 
+import torchelie as tch
 from torchelie.loss import NeuralStyleLoss
 from torchelie.data_learning import ParameterizedImg
 from torchelie.recipes.recipebase import Recipe
@@ -64,26 +65,16 @@ class NeuralStyle(torch.nn.Module):
         self.loss.set_content(pil2t(content_img).to(self.device), content_layers)
 
         canvas = ParameterizedImg(3, content_img.height,
-                                  content_img.width)
+                                  content_img.width, init_sd=0.00)
 
-        self.opt = torch.optim.LBFGS(canvas.parameters(),
-                                     lr=self.lr,
-                                     history_size=10)
+        self.opt = tch.optim.RAdamW(canvas.parameters(), 1e-2, (0.7, 0.7),
+                eps=0.00001, weight_decay=0)
 
         def forward(_):
-            losses = None
-            img = None
-
-            def make_loss():
-                nonlocal losses
-                nonlocal img
-                self.opt.zero_grad()
-                img = canvas()
-                loss, losses = self.loss(img)
-                loss.backward()
-                return loss
-
-            loss = self.opt.step(make_loss).item()
+            self.opt.zero_grad()
+            img = canvas()
+            loss, losses = self.loss(img)
+            loss.backward()
 
             return {
                 'loss': loss,
@@ -102,7 +93,11 @@ class NeuralStyle(torch.nn.Module):
             tcb.WindowedMetricAvg('style_loss'),
             tcb.Log('img', 'img'),
             tcb.VisdomLogger(visdom_env=self.visdom_env, log_every=10),
-            tcb.StdoutLogger(log_every=10)
+            tcb.StdoutLogger(log_every=10),
+            tcb.Optimizer(self.opt, log_lr=True),
+            tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(self.opt,
+                threshold=0.001, cooldown=500),
+                step_each_batch=True)
         ])
         loop.to(self.device)
         loop.run(1)

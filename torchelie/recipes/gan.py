@@ -9,7 +9,9 @@ def GANRecipe(G,
              G_fun,
              D_fun,
              loader,
+             *,
              visdom_env='main',
+             checkpoint='model',
              log_every=10):
     def D_wrap(batch):
         tu.freeze(G)
@@ -52,8 +54,13 @@ def GANRecipe(G,
         tcb.VisdomLogger(visdom_env=visdom_env,
                          log_every=log_every),
         tcb.StdoutLogger(log_every=log_every),
-        tcb.Checkpoint((visdom_env or 'model') + '/ckpt', D_loop)
+        tcb.Checkpoint((visdom_env or 'model') + '/ckpt_{iters}.pth', D_loop)
     ])
+
+    if checkpoint is not None:
+        D_loop.callbacks.add_epilogues([
+            tcb.Checkpoint(checkpoint + '/ckpt', D_loop)
+        ])
 
     G_loop.callbacks.add_epilogues([
         tcb.Log('loss', 'loss'),
