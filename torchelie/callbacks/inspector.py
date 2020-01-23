@@ -110,3 +110,31 @@ class ClassificationInspector:
         return ''.join(html)
 
 
+class SegmentationInspector(ClassificationInspector):
+    def __init__(self, topk, labels, center_value=0):
+        super().__init__(topk, labels, center_value=0)
+
+    def analyze(self, batch, pred, true, pred_label=None, paths=None):
+        pred = as_multiclass_shape(pred, as_probs=True)
+        for_label = torch.median(pred * true + (1 - pred) * (1 - true), tuple(range(1, pred.dim())) )
+        if pred_label is None:
+            pred_label = pred.argmax(dim=1)
+        if paths is None:
+            paths = [None] * len(batch)
+        this_data = list(zip(batch, for_label, true, pred_label == true,
+                             paths))
+
+        self.best += this_data
+        self.best.sort(key=lambda x: -x[1])
+        self.best = self.best[:self.topk]
+
+        self.worst += this_data
+        self.worst.sort(key=lambda x: x[1])
+        self.worst = self.worst[:self.topk]
+
+        self.confused += this_data
+        self.confused.sort(key=lambda x: abs(self.center_value - x[1]))
+        self.confused = self.confused[:self.topk]
+
+
+
