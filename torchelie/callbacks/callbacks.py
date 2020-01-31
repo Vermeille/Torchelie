@@ -7,6 +7,7 @@ WARNING: this might move to torchelie.recipes.callbacks
 import copy
 from collections import defaultdict
 import os
+from shutil import copyfile
 from pathlib import Path
 import torch
 from visdom import Visdom
@@ -474,14 +475,20 @@ class Checkpoint(tu.AutoStateDict):
         objects: what to save. It must have a :code:`state_dict()` member
         max_saves (int): maximum number of checkpoints to save. Older
             checkpoints will be removed.
+        key_best (func): key to determinte the best test. The value of the
+            key parameter should be a function that takes a single argument
+            and returns a key to use for sorting purposes.
     """
 
-    def __init__(self, filename_base, objects, max_saves=10):
-        super(Checkpoint, self).__init__(except_names=['objects'])
+    def __init__(self, filename_base, objects, max_saves=10, key_best=None):
+        super(Checkpoint, self).__init__(except_names=['objects', 'key_best'])
         self.filename_base = filename_base
         self.objects = objects
         self.saved_fnames = []
         self.max_saves = max_saves
+        self.best_save = float('-inf')
+        self.key_best = key_best
+        self.last_best_name = None
 
     def save(self, state):
         saved = recursive_state_dict(self.objects)
@@ -492,15 +499,29 @@ class Checkpoint(tu.AutoStateDict):
             pass
         torch.save(saved, nm)
         self.saved_fnames.append(nm)
+        return saved
+
+    def detach_save(self):
+        nm = self.saved_fnames[-1]
+        nm = nm.rsplit('.', 1)[0] + '_best.pth'
+        copyfile(self.saved_fnames[-1], nm)
+        try:
+            os.remove(self.last_best_name)
+        except:
+            pass
+        self.last_best_name = nm
 
     def filename(self, state):
         return self.filename_base.format(**state)
 
     def on_epoch_end(self, state):
-        self.save(state)
+        saved = self.save(state)
         while len(self.saved_fnames) > self.max_saves:
             os.remove(self.saved_fnames[0])
             self.saved_fnames = self.saved_fnames[1:]
+        if self.key_best is not None and self.key_best(saved) >= self.best_save:
+            self.best_save = self.key_best(saved)
+            self.detach_save()
 
 
 class Polyak:
@@ -589,7 +610,7 @@ class ClassificationInspector:
     def on_epoch_end(self, state):
         state['metrics']['report'] = self.vis.show()
 
-        
+
 class SegmentationInspector:
     """
     For image binnary segmentation tasks, create a HTML report with best segmented
@@ -622,7 +643,8 @@ class SegmentationInspector:
     def on_epoch_end(self, state):
         state['metrics']['report'] = self.vis.show()
 
-        
+
+
 class ConfusionMatrix:
     """
     Generate a HTML confusion matrix.
