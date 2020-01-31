@@ -73,7 +73,8 @@ def TrainAndTest(model,
 
     if checkpoint is not None:
         test_loop.callbacks.add_epilogues([
-            tcb.Checkpoint(checkpoint + '/ckpt_{iters}.pth', train_loop)
+            tcb.Checkpoint(checkpoint + '/ckpt_{iters}.pth', train_loop,
+                           key_best=lambda state: -state['test_loop']['callbacks']['state']['metrics']['loss'])
         ])
 
     return train_loop
