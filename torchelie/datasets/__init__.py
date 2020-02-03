@@ -3,7 +3,7 @@ import multiprocessing
 
 import torchelie.utils as tu
 from torchelie.datasets.debug import *
-from .concat import HorizontalConcatDataset
+from .concat import HorizontalConcatDataset, MergedDataset
 
 import torch
 
@@ -138,7 +138,7 @@ class Subset:
             self.class_to_idx = cls_to_idx
         else:
             self.classes = ds.classes
-            self.class_to_idx = self.class_to_idx
+            self.class_to_idx = ds.class_to_idx
 
         class Proxy:
             def __len__(self):

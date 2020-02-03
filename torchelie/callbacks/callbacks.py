@@ -517,8 +517,11 @@ class Checkpoint(tu.AutoStateDict):
     def on_epoch_end(self, state):
         saved = self.save(state)
         while len(self.saved_fnames) > self.max_saves:
-            os.remove(self.saved_fnames[0])
-            self.saved_fnames = self.saved_fnames[1:]
+            try:
+                os.remove(self.saved_fnames[0])
+                self.saved_fnames = self.saved_fnames[1:]
+            except:
+                pass
         if self.key_best is not None and self.key_best(saved) >= self.best_save:
             self.best_save = self.key_best(saved)
             self.detach_save()

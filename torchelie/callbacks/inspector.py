@@ -66,7 +66,7 @@ class ClassificationInspector:
         if paths is None:
             paths = [None] * len(batch)
         this_data = list(zip(batch, for_label, true, pred_label == true,
-                             paths))
+                             paths, pred_label))
 
         self.best += this_data
         self.best.sort(key=lambda x: -x[1])
@@ -86,16 +86,18 @@ class ClassificationInspector:
                 int(cos * 100))
 
         html = ['<div style="display:flex;flex-wrap:wrap">']
-        for img, p, cls, correct, path in dat:
+        for img, p, cls, correct, path, pred_label in dat:
             img = img - img.min()
             img /= img.max()
             html.append(
                 ('<div onclick="javascript:prompt(\'path\', \'{}\')">'
-                 '<div style="padding:3px;width:{}px">{}{}{}{}</div>'
+                 '<div style="padding:3px;width:{}px">{}{}{}{} ({})</div>'
                  '</div>').format(
                      path, dat[0][0].shape[2], img2html(img),
                      prob_as_bar(p.item()), '✓' if correct.item() else '✗',
                      self.labels[cls.item()].replace('_',
+                                                     ' ').replace('-', ' '),
+                     self.labels[pred_label.item()].replace('_',
                                                      ' ').replace('-', ' ')))
         html.append('</div>')
         return ''.join(html)
