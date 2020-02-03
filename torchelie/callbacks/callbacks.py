@@ -7,6 +7,7 @@ WARNING: this might move to torchelie.recipes.callbacks
 import copy
 from collections import defaultdict
 import os
+from shutil import copyfile
 from pathlib import Path
 import torch
 from visdom import Visdom
@@ -14,6 +15,7 @@ from visdom import Visdom
 from torchelie.utils import dict_by_key, recursive_state_dict
 from torchelie.utils import load_recursive_state_dict, AutoStateDict
 from torchelie.callbacks.inspector import ClassificationInspector as CIVis
+from torchelie.callbacks.inspector import SegmentationInspector as SIVis
 import torchelie.utils as tu
 
 from .avg import *
@@ -473,14 +475,20 @@ class Checkpoint(tu.AutoStateDict):
         objects: what to save. It must have a :code:`state_dict()` member
         max_saves (int): maximum number of checkpoints to save. Older
             checkpoints will be removed.
+        key_best (func): key to determinte the best test. The value of the
+            key parameter should be a function that takes a single argument
+            and returns a key to use for sorting purposes.
     """
 
-    def __init__(self, filename_base, objects, max_saves=10):
-        super(Checkpoint, self).__init__(except_names=['objects'])
+    def __init__(self, filename_base, objects, max_saves=10, key_best=None):
+        super(Checkpoint, self).__init__(except_names=['objects', 'key_best'])
         self.filename_base = filename_base
         self.objects = objects
         self.saved_fnames = []
         self.max_saves = max_saves
+        self.best_save = float('-inf')
+        self.key_best = key_best
+        self.last_best_name = None
 
     def save(self, state):
         saved = recursive_state_dict(self.objects)
@@ -491,18 +499,32 @@ class Checkpoint(tu.AutoStateDict):
             pass
         torch.save(saved, nm)
         self.saved_fnames.append(nm)
+        return saved
+
+    def detach_save(self):
+        nm = self.saved_fnames[-1]
+        nm = nm.rsplit('.', 1)[0] + '_best.pth'
+        copyfile(self.saved_fnames[-1], nm)
+        try:
+            os.remove(self.last_best_name)
+        except:
+            pass
+        self.last_best_name = nm
 
     def filename(self, state):
         return self.filename_base.format(**state)
 
     def on_epoch_end(self, state):
-        self.save(state)
+        saved = self.save(state)
         while len(self.saved_fnames) > self.max_saves:
             try:
                 os.remove(self.saved_fnames[0])
                 self.saved_fnames = self.saved_fnames[1:]
             except:
                 pass
+        if self.key_best is not None and self.key_best(saved) >= self.best_save:
+            self.best_save = self.key_best(saved)
+            self.detach_save()
 
 
 class Polyak:
@@ -590,6 +612,40 @@ class ClassificationInspector:
 
     def on_epoch_end(self, state):
         state['metrics']['report'] = self.vis.show()
+
+
+class SegmentationInspector:
+    """
+    For image binnary segmentation tasks, create a HTML report with best segmented
+    samples, worst segmented samples, and samples closest to the boundary
+    decision.
+
+    Args:
+        nb_show (int): how many samples to show
+        classes (list of str): classes names
+        post_each_batch (bool) whether to generate a new report on each batch
+            or only on epoch end.
+    """
+
+    def __init__(self, nb_show, classes, post_each_batch=True):
+        self.vis = SIVis(nb_show, classes, 0.5)
+        self.post_each_batch = post_each_batch
+
+    def on_epoch_start(self, state):
+        if 'report' in state['metrics']:
+            del state['metrics']['report']
+        self.vis.reset()
+
+    @torch.no_grad()
+    def on_batch_end(self, state):
+        pred, y, x = state['pred'], state['batch'][1], state['batch'][0]
+        self.vis.analyze(x, pred, y)
+        if self.post_each_batch and state.get('visdom_will_log', False):
+            state['metrics']['report'] = self.vis.show()
+
+    def on_epoch_end(self, state):
+        state['metrics']['report'] = self.vis.show()
+
 
 
 class ConfusionMatrix:
