@@ -138,7 +138,7 @@ class Subset:
             self.class_to_idx = cls_to_idx
         else:
             self.classes = ds.classes
-            self.class_to_idx = self.class_to_idx
+            self.class_to_idx = ds.class_to_idx
 
         class Proxy:
             def __len__(self):
