@@ -74,6 +74,7 @@ class MergedDataset(torch.utils.data.Dataset):
     def __init__(self, datasets):
         self.datasets = datasets
         self.classes = list(set(c for d in datasets for c in d.classes))
+        self.classes.sort()
         self.class_to_idx = {c: i for i, c in enumerate(self.classes)}
 
         class MergedSamples:
