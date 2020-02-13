@@ -72,7 +72,12 @@ def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
     return (lam * x1 + (1 - lam) * x2), (lam * y1 + (1 - lam) * y2)
 
 
-class MixUpDataset(PairedDataset):
+class _Wrap:
+    def __getattr__(self, name):
+        return getattr(self.ds, name)
+
+
+class MixUpDataset(_Wrap):
     """
     Linearly mixes two samples and labels from a dataset according to the MixUp
     algorithm
@@ -86,19 +91,19 @@ class MixUpDataset(PairedDataset):
     """
 
     def __init__(self, dataset, alpha=0.4):
-        super(MixUpDataset, self).__init__(dataset, dataset)
+        super(MixUpDataset, self).__init__()
+        self.ds = dataset
         alpha = torch.tensor([alpha])
         self.mixer = torch.distributions.Beta(alpha, alpha)
 
+    def __len__(self):
+        return len(self.ds)
+
     def __getitem__(self, i):
-        (x1, x2), (y1, y2) = super(MixUpDataset, self).__getitem__(i)
+        x1, y1 = self.ds[i]
+        x2, y2 = random.choice(self.ds)
 
-        return mixup(x1, x2, y1, y2, len(self.dataset1.classes), self.mixer)
-
-
-class _Wrap:
-    def __getattr__(self, name):
-        return getattr(self.ds, name)
+        return mixup(x1, x2, y1, y2, len(self.ds.classes), self.mixer)
 
 
 class Subset:
