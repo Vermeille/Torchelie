@@ -41,7 +41,7 @@ class CallbacksRunner:
         self.state = dicc['state']
 
         for nm, cb in self.named_callbacks():
-            if hasattr(cb, 'load_state_dict'):
+            if hasattr(cb, 'load_state_dict') and nm in dicc['callbacks']:
                 cb.load_state_dict(dicc['callbacks'][nm])
 
     def update_state(self, state_additions):
