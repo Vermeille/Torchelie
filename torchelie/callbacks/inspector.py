@@ -63,10 +63,11 @@ class ClassificationInspector:
         for_label = pred.gather(1, true.unsqueeze(1))
         if pred_label is None:
             pred_label = pred.argmax(dim=1)
+        best_pred = pred.gather(1, pred_label.unsqueeze(1))
         if paths is None:
             paths = [None] * len(batch)
         this_data = list(zip(batch, for_label, true, pred_label == true,
-                             paths, pred_label))
+                             paths, pred_label, best_pred))
 
         self.best += this_data
         self.best.sort(key=lambda x: -x[1])
@@ -81,24 +82,34 @@ class ClassificationInspector:
         self.confused = self.confused[:self.topk]
 
     def _report(self, dat):
-        def prob_as_bar(cos):
-            return '<div style="width:{}%;background-color:green;height:5px"></div>'.format(
-                int(cos * 100))
+        def prob_as_bar(cos, is_correct):
+            return '<div style="width:{percents}%;background-color:{color};height:5px"></div>'.format(
+                percents=int(cos * 100),
+                color='green' if is_correct else 'red')
 
         html = ['<div style="display:flex;flex-wrap:wrap">']
-        for img, p, cls, correct, path, pred_label in dat:
+        for img, p, cls, correct, path, pred_label, best_pred in dat:
             img = img - img.min()
             img /= img.max()
+
+            tlabel = self.labels[cls.item()]
+            tlabel = tlabel.replace('_', ' ').replace('-', ' ')
+
+            plabel = self.labels[pred_label.item()]
+            plabel = plabel.replace('_', ' ').replace('-', ' ')
             html.append(
-                ('<div onclick="javascript:prompt(\'path\', \'{}\')">'
-                 '<div style="padding:3px;width:{}px">{}{}{}{} ({})</div>'
+                ('<div onclick="javascript:prompt(\'path\', \'{path}\')">'
+                 '<div style="padding:3px;width:{px_sz}px">'
+                 '{img}{bar}{checkmark}{true_label} ({pred_label})'
+                 '</div>'
                  '</div>').format(
-                     path, dat[0][0].shape[2], img2html(img),
-                     prob_as_bar(p.item()), '✓' if correct.item() else '✗',
-                     self.labels[cls.item()].replace('_',
-                                                     ' ').replace('-', ' '),
-                     self.labels[pred_label.item()].replace('_',
-                                                     ' ').replace('-', ' ')))
+                     path=path,
+                     px_sz=dat[0][0].shape[2],
+                     img=img2html(img),
+                     bar=prob_as_bar(best_pred.item(), correct.item()),
+                     checkmark='✓' if correct.item() else '✗',
+                     true_label=tlabel,
+                     pred_label=plabel))
         html.append('</div>')
         return ''.join(html)
 
