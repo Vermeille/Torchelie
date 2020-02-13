@@ -379,6 +379,8 @@ class VisdomLogger(tu.AutoStateDict):
                                        title=name,
                                        store_history=name in store_history))
                 elif x.dim() == 4:
+                    x = x - x.min()
+                    x = x / x.max()
                     self.vis.images(x,
                                     win=name,
                                     opts=dict(
@@ -387,7 +389,8 @@ class VisdomLogger(tu.AutoStateDict):
                 else:
                     assert False, "incorrect tensor dim"
             else:
-                assert False, "incorrect type " + x.__class__.__name__
+                assert False, "incorrect type {} for key {}".format(
+                        x.__class__.__name__, name)
 
 
 class StdoutLogger(tu.AutoStateDict):
@@ -507,7 +510,8 @@ class Checkpoint(tu.AutoStateDict):
         copyfile(self.saved_fnames[-1], nm)
         try:
             os.remove(self.last_best_name)
-        except:
+        except Exception as e:
+            print(str(e))
             pass
         self.last_best_name = nm
 
@@ -519,9 +523,9 @@ class Checkpoint(tu.AutoStateDict):
         while len(self.saved_fnames) > self.max_saves:
             try:
                 os.remove(self.saved_fnames[0])
-                self.saved_fnames = self.saved_fnames[1:]
-            except:
-                pass
+            except Exception as e:
+                print(str(e))
+            self.saved_fnames = self.saved_fnames[1:]
         if self.key_best is not None and self.key_best(saved) >= self.best_save:
             self.best_save = self.key_best(saved)
             self.detach_save()
