@@ -10,6 +10,7 @@ or be easily experimented on by changing the model
 from torchelie.recipes.recipebase import Recipe
 from torchelie.recipes.classification import Classification
 from torchelie.recipes.classification import CrossEntropyClassification
+from torchelie.recipes.classification import MixupClassification
 from torchelie.recipes.deepdream import DeepDream
 from torchelie.recipes.feature_vis import FeatureVis
 from torchelie.recipes.neural_style import NeuralStyle

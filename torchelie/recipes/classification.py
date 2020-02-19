@@ -72,6 +72,7 @@ def Classification(model,
         tcb.AccAvg(),
         tcb.WindowedMetricAvg('loss'),
     ])
+    loop.register('classes', classes)
 
     loop.test_loop.callbacks.add_callbacks([
         tcb.AccAvg(post_each_batch=False),
@@ -165,6 +166,101 @@ def CrossEntropyClassification(model,
     return loop
 
 
+def MixupClassification(model,
+                               train_loader,
+                               test_loader,
+                               classes,
+                               lr=3e-3,
+                               beta1=0.9,
+                               wd=1e-2,
+                               visdom_env='main',
+                               test_every=1000,
+                               log_every=100):
+    """
+    A Classification recipe with a default froward training / testing pass
+    using cross entropy and mixup, and extended with RAdamW and
+    ReduceLROnPlateau.
+
+    Args:
+        model (nn.Module): a model learnable with cross entropy
+        train_loader (DataLoader): Training set dataloader. Must have soft
+            targets. Should be a DataLoader loading a MixupDataset or
+            compatible.
+        test_loader (DataLoader): Testing set dataloader. Dataset must have
+            categorical targets.
+        classes (list of str): classes name, in order
+        lr (float): the learning rate
+        beta1 (float): RAdamW's beta1
+        wd (float): weight decay
+        visdom_env (str): name of the visdom environment to use, or None for
+            not using Visdom (default: None)
+        test_every (int): testing frequency, in number of iterations (default:
+            1000)
+        log_every (int): logging frequency, in number of iterations (default:
+            1000)
+    """
+
+    from torchelie.loss import continuous_cross_entropy
+
+    def train_step(batch):
+        x, y = batch
+        pred = model(x)
+        loss = continuous_cross_entropy(pred, y)
+        loss.backward()
+        return {'loss': loss}
+
+    def validation_step(batch):
+        x, y = batch
+        pred = model(x)
+        loss = torch.nn.functional.cross_entropy(pred, y)
+        return {'loss': loss, 'pred': pred}
+
+    loop = TrainAndTest(model,
+                        train_step,
+                        validation_step,
+                        train_loader,
+                        test_loader,
+                        visdom_env=visdom_env,
+                        test_every=test_every,
+                        log_every=log_every)
+
+    loop.callbacks.add_callbacks([
+        tcb.WindowedMetricAvg('loss'),
+    ])
+    loop.register('classes', classes)
+
+    loop.test_loop.callbacks.add_callbacks([
+        tcb.AccAvg(post_each_batch=False),
+        tcb.WindowedMetricAvg('loss', False),
+    ])
+
+    if visdom_env is not None:
+        loop.callbacks.add_epilogues([
+            tcb.ImageGradientVis(),
+            tcb.MetricsTable()
+        ])
+
+    if len(classes) <= 25:
+        loop.test_loop.callbacks.add_callbacks([
+            tcb.ConfusionMatrix(classes),
+        ])
+
+    loop.test_loop.callbacks.add_callbacks([
+        tcb.ClassificationInspector(30, classes, False),
+        tcb.MetricsTable(False)
+    ])
+
+    opt = RAdamW(model.parameters(),
+                 lr=lr,
+                 betas=(beta1, 0.999),
+                 weight_decay=wd)
+    loop.callbacks.add_callbacks([
+        tcb.Optimizer(opt, log_lr=True),
+        tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(opt))
+    ])
+    return loop
+
+
 if __name__ == '__main__':
     import argparse
 
@@ -186,6 +282,7 @@ if __name__ == '__main__':
     parser.add_argument('--visdom-env', type=str)
     parser.add_argument('--no-cache', action='store_false')
     parser.add_argument('--epochs', type=int, default=5)
+    parser.add_argument('--mixup', action='store_true')
     args = parser.parse_args()
 
     tfm = TF.Compose([
@@ -212,6 +309,10 @@ if __name__ == '__main__':
         trainset = CachedDataset(trainset, transform=tfm)
         testset = CachedDataset(testset, transform=tfm_test)
 
+    if args.mixup:
+        from torchelie.datasets import MixUpDataset
+        trainset = MixUpDataset(trainset)
+
     trainloader = DataLoader(trainset,
                              args.batch_size,
                              num_workers=8,
@@ -225,16 +326,29 @@ if __name__ == '__main__':
 
     model = tvmodels.resnet18(pretrained=False)
     model.fc = tu.kaiming(torch.nn.Linear(512, len(testset.classes)))
-    clf_recipe = CrossEntropyClassification(model,
-                                            trainloader,
-                                            testloader,
-                                            testset.classes,
-                                            log_every=10,
-                                            test_every=50,
-                                            lr=args.lr,
-                                            beta1=args.beta1,
-                                            wd=args.wd,
-                                            visdom_env=args.visdom_env)
+
+    if args.mixup:
+        clf_recipe = MixupClassification(model,
+                                                trainloader,
+                                                testloader,
+                                                testset.classes,
+                                                log_every=10,
+                                                test_every=50,
+                                                lr=args.lr,
+                                                beta1=args.beta1,
+                                                wd=args.wd,
+                                                visdom_env=args.visdom_env)
+    else:
+        clf_recipe = CrossEntropyClassification(model,
+                                                trainloader,
+                                                testloader,
+                                                testset.classes,
+                                                log_every=10,
+                                                test_every=50,
+                                                lr=args.lr,
+                                                beta1=args.beta1,
+                                                wd=args.wd,
+                                                visdom_env=args.visdom_env)
 
     clf_recipe.to(args.device)
     clf_recipe.run(args.epochs)
