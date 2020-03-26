@@ -40,10 +40,20 @@ def focal_loss(input, target, gamma=0):
     return loss.mean()
 
 
-def continuous_cross_entropy(pred, soft_targets):
+def continuous_cross_entropy(pred, soft_targets, weights=None, reduction='mean'):
     r"""
     Compute the cross entropy between the logits `pred` and a normalized
     distribution `soft_targets`. If `soft_targets` is a one-hot vector, this is
     equivalent to `nn.functional.cross_entropy` with a label
     """
-    return torch.mean(torch.sum(-soft_targets * F.log_softmax(pred, 1), 1))
+    if weights is None:
+        ce = torch.sum(-soft_targets * F.log_softmax(pred, 1), 1)
+    else:
+        ce = torch.sum(-weights * soft_targets * F.log_softmax(pred, 1), 1)
+
+    if reduction == 'mean':
+        return ce.mean()
+    if reduction == 'sum':
+        return ce.sum()
+    if reduction == 'none':
+        return ce
