@@ -124,7 +124,10 @@ class RecipeBase:
         for key, state in state_dict.items():
             val = self.__dict__[key]
             if hasattr(val, 'load_state_dict'):
-                val.load_state_dict(state)
+                if isinstance(val, torch.nn.Module):
+                    print(val.load_state_dict(state, strict=False))
+                else:
+                    val.load_state_dict(state)
             else:
                 self.__dict__[key] = val
         return self
