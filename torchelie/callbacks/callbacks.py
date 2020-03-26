@@ -484,7 +484,8 @@ class Checkpoint(tu.AutoStateDict):
     """
 
     def __init__(self, filename_base, objects, max_saves=10, key_best=None):
-        super(Checkpoint, self).__init__(except_names=['objects', 'key_best'])
+        super(Checkpoint, self).__init__(except_names=['objects', 'key_best',
+            'max_saves', 'key_best'])
         self.filename_base = filename_base
         self.objects = objects
         self.saved_fnames = []
@@ -702,7 +703,7 @@ class ConfusionMatrix:
         state['metrics']['cm'] = self.to_html(state['cm'])
 
 
-class CallRecipe(tu.AutoStateDict):
+class CallRecipe:
     """
     Call another recipe.
 
@@ -714,7 +715,6 @@ class CallRecipe(tu.AutoStateDict):
     """
 
     def __init__(self, loop, run_every=100, prefix='test', init_fun=None):
-        super(CallRecipe, self).__init__(except_names=['init_fun', 'loop'])
         self.loop = loop
         self.run_every = run_every
         self.prefix = prefix
