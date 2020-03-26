@@ -346,6 +346,34 @@ def ilerp(a, b, t):
     return (t - a) / (b - a)
 
 
+def slerp(z1, z2, t):
+    r"""
+    Spherical linear interpolate between `z1` and `z2` according to `t`.
+
+    Args:
+        z1 (z dim): z1
+        z2 (z dim): z2
+        t (float): t between 0 and 1
+
+    Returns:
+        result between a and b
+    """
+    z1_l = z1.pow(2).sum(dim=-1, keepdim=True).sqrt()
+    z1_n = z1 / z1_l
+
+    z2_l = z2.pow(2).sum(dim=-1, keepdim=True).sqrt()
+    z2_n = z2 / z2_l
+
+    dot = torch.sum(z1_n * z2_n, dim=-1).clamp(-1, 1)
+    theta_0 = torch.acos(dot)
+    theta = t * theta_0
+
+    z3 = z2_n - dot * z1_n
+    z3 = z3 / z3.pow(2).sum(dim=-1, keepdim=True).sqrt()
+
+    return lerp(z1_l, z2_l, t) * (z1_n * torch.cos(theta) + z3 * torch.sin(theta))
+
+
 def as_multiclass_shape(preds, as_probs=False):
     """
     Manipulate an array of logit predictions so that binary prediction is not a
