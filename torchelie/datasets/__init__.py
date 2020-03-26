@@ -191,14 +191,15 @@ class NoexceptDataset(_Wrap):
         return len(self.ds)
 
     def __getitem__(self, i):
-        try:
-            return self.ds[i]
-        except Exception as e:
-            print(e)
-            if i < len(self):
-                return self[i + 1]
+        while True:
+            try:
+                return self.ds[i]
+            except Exception as e:
+                print(e)
+            if i < len(self) - 1:
+                i += 1
             else:
-                return self[0]
+                i = 0
 
     def __repr__(self):
         return "NoexceptDataset({})".format(self.ds)
