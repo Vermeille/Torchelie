@@ -71,6 +71,8 @@ class SpectralImage(nn.Module):
         self.register_buffer('spertum_scale', spertum_scale)
 
         if init_img is not None:
+            if init_img.shape[2] % 2 == 1:
+                init_img = nn.functional.pad(init_img, (1, 0, 0, 0))
             fft = torch.rfft(init_img * 4, 2, onesided=True, normalized=False)
             self.spectrum_var.data.copy_(fft / spertum_scale)
 
