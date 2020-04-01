@@ -19,7 +19,7 @@ class NeuralStyleLoss(nn.Module):
     def __init__(self):
         super(NeuralStyleLoss, self).__init__()
         self.style_layers = [
-            'conv1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1'
+            'conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'conv5_1'
         ]
         self.content_layers = ['conv3_2']
         self.net = PerceptualNet(self.style_layers + self.content_layers)
@@ -95,7 +95,7 @@ class NeuralStyleLoss(nn.Module):
 
         style_loss = 0
         for j in style_acts:
-            this_loss = F.mse_loss(bgram(style_acts[j]),
+            this_loss = F.l1_loss(bgram(style_acts[j]),
                                    self.style_grams[j],
                                    reduction='sum')
 
@@ -103,7 +103,7 @@ class NeuralStyleLoss(nn.Module):
 
         content_loss = 0
         for j in content_acts:
-            content_loss += F.mse_loss(content_acts[j],
+            content_loss += F.l1_loss(content_acts[j],
                                        self.photo_activations[j])
 
         return content_loss + self.ratio * style_loss, {
