@@ -39,6 +39,7 @@ class NeuralStyle(torch.nn.Module):
     def __init__(self, lr=0.01, device="cpu", visdom_env='style'):
         super(NeuralStyle, self).__init__()
         self.loss = NeuralStyleLoss()
+        self.loss2 = NeuralStyleLoss()
         self.device = device
         self.lr = lr
         self.visdom_env = visdom_env
@@ -64,16 +65,24 @@ class NeuralStyle(torch.nn.Module):
         self.loss.set_style(pil2t(style_img).to(self.device), style_ratio)
         self.loss.set_content(pil2t(content_img).to(self.device), content_layers)
 
-        canvas = ParameterizedImg(3, content_img.height,
-                                  content_img.width, init_sd=0.00)
+        self.loss2.to(self.device)
+        self.loss2.set_style(torch.nn.functional.interpolate(
+            pil2t(style_img)[None], scale_factor=0.5, mode='bilinear')[0].to(self.device), style_ratio)
+        self.loss2.set_content(torch.nn.functional.interpolate(
+            pil2t(content_img)[None], scale_factor=0.5, mode='bilinear')[0].to(self.device), content_layers)
 
-        self.opt = tch.optim.RAdamW(canvas.parameters(), 1e-2, (0.7, 0.7),
-                eps=0.00001, weight_decay=0)
+        canvas = ParameterizedImg(3, content_img.height,
+                                  content_img.width,
+                                  init_img=pil2t(content_img))
+
+        self.opt = tch.optim.RAdamW(canvas.parameters(), 3e-2)
 
         def forward(_):
-            self.opt.zero_grad()
             img = canvas()
             loss, losses = self.loss(img)
+            loss.backward()
+            loss, losses = self.loss2(torch.nn.functional.interpolate(canvas(),
+                scale_factor=0.5, mode='bilinear'))
             loss.backward()
 
             return {
@@ -95,9 +104,6 @@ class NeuralStyle(torch.nn.Module):
             tcb.VisdomLogger(visdom_env=self.visdom_env, log_every=10),
             tcb.StdoutLogger(log_every=10),
             tcb.Optimizer(self.opt, log_lr=True),
-            tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(self.opt,
-                threshold=0.001, cooldown=500),
-                step_each_batch=True)
         ])
         loop.to(self.device)
         loop.run(1)

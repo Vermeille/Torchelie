@@ -5,7 +5,7 @@ import torchvision.models as M
 from torchelie.nn import WithSavedActivations
 
 
-def PerceptualNet(layers):
+def PerceptualNet(layers, use_avg_pool=True):
     """
     Make a VGG16 with appropriately named layers that records intermediate
     activations.
@@ -32,8 +32,8 @@ def PerceptualNet(layers):
     print(m)
     for nm, mod in m.named_modules():
         if 'relu' in nm:
-            setattr(m, nm, nn.LeakyReLU(0.01, True))
-        elif 'pool' in nm:
+            setattr(m, nm, nn.ReLU(True))
+        elif 'pool' in nm and use_avg_pool:
             setattr(m, nm,  nn.AvgPool2d(2 ,2))
     print(m)
     m = WithSavedActivations(m, names=layers)
