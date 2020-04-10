@@ -451,7 +451,12 @@ class ImageGradientVis:
             return
 
         x = state['batch_gpu'][0]
-        grad_img = x.grad.abs().sum(1, keepdim=True)
+        img = self.compute_image(x)
+        state['metrics']['feature_vis'] = img
+
+    @torch.no_grad()
+    def compute_image(self, x):
+        grad_img = x.grad.pow(2).sum(1, keepdim=True)
         b, c, h, w = grad_img.shape
         gi_flat = grad_img.view(b, c, -1)
         cl = torch.kthvalue(gi_flat, int(grad_img[0].numel() * 0.99),
@@ -465,7 +470,7 @@ class ImageGradientVis:
         xM = x.max()
         x = (x - xm) / (xM - xm)
         img = x * grad_img + 0.5 * (1 - grad_img)
-        state['metrics']['feature_vis'] = img
+        return img
 
 
 class Checkpoint(tu.AutoStateDict):
