@@ -150,7 +150,7 @@ class ParameterizedImg(nn.Module):
         super(ParameterizedImg, self).__init__()
 
         if init_img is not None:
-            init_img = init_img.clamp(0.0001, 0.999)
+            init_img = init_img.clamp(0.01, 0.99)
             init_img = -torch.log(((1 - init_img) / init_img))
 
         assert colors in ['uncorr', 'corr']

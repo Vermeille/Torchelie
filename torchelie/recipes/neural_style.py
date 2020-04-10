@@ -73,7 +73,8 @@ class NeuralStyle(torch.nn.Module):
 
         canvas = ParameterizedImg(3, content_img.height,
                                   content_img.width,
-                                  init_img=pil2t(content_img))
+                                  init_img=pil2t(content_img)
+                                  )
 
         self.opt = tch.optim.RAdamW(canvas.parameters(), 3e-2)
 
