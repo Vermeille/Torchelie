@@ -417,9 +417,12 @@ class AutoStateDict:
 
     def load_state_dict(self, state_dict):
         for nm, v in state_dict.items():
-            if hasattr(self.__dict__[nm], 'load_state_dict'):
-                self.__dict__[nm].load_state_dict(v)
-            else:
-                self.__dict__[nm] = v
+            try:
+                if hasattr(self.__dict__[nm], 'load_state_dict'):
+                    self.__dict__[nm].load_state_dict(v)
+                else:
+                    self.__dict__[nm] = v
+            except KeyError as ke:
+                print('no key', ke, 'for', self.__class__.__name__)
 
 

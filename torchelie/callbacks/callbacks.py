@@ -66,6 +66,7 @@ class EpochMetricAvg(tu.AutoStateDict):
         super(EpochMetricAvg, self).__init__()
         self.name = name
         self.post_each_batch = post_each_batch
+        self.avg = RunningAvg()
 
     def on_epoch_start(self, state):
         self.avg = RunningAvg()
