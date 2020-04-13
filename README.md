@@ -7,7 +7,7 @@ algorithms, utils, layers, models and training loops.
 
 Feedback is absolutely welcome.
 
-You may want to [read the detailed docs](https://readthedocs.org/projects/torchelie/)
+You may want to [read the detailed docs](https://torchelie.readthedocs.io/en/latest/)
 
 # Installation
 
