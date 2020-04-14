@@ -2,15 +2,6 @@ Welcome to Torchélie's documentation!
 =====================================
 
 .. toctree::
-   :caption: Algorithms and training
-   :maxdepth: 1
-
-   recipe_tuto
-   recipes
-   callbacks
-   hyper
-
-.. toctree::
    :caption: Pytorch Utils
    :maxdepth: 1
 
@@ -23,6 +14,15 @@ Welcome to Torchélie's documentation!
    distributions
    datasets
    transforms
+
+.. toctree::
+   :caption: Algorithms and training
+   :maxdepth: 1
+
+   recipe_tuto
+   recipes
+   callbacks
+   hyper
 
 Torchélie aims to provide new utilities, layers, tools to pytorch users,
 as an extension library. It aims for minimal codependence between components,

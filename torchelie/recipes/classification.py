@@ -28,14 +28,53 @@ def Classification(model,
                    train_loader,
                    test_loader,
                    classes,
+                   *,
                    visdom_env=None,
                    test_every=1000,
                    log_every=100):
     """
-    Classification training and testing loop. Displays Loss, accuracy,
-    gradient based visualization of features, a classification report on worst
-    samples, best samples and confusing samples, a confusion matrix,
-    VisdomLogger, StdLogger, MetricsTable.
+    Classification training and testing loop. Both forward functions must
+    return a per-batch loss and logits predictions. It expands from
+    :code:`TrainAndTest`. Both :code:`train_fun` and :code:`test_fun` must
+    :code:`return {'loss': batch_loss, 'preds': logits_predictions}`. The model
+    is automatically registered and checkpointed as :code:`checkpoint['model']`,
+    and put in eval mode when testing. The list of classes is checkpointed as
+    well in :code:`checkpoint['classes']`.
+
+
+    Training callbacks:
+
+    - AccAvg for displaying accuracy
+    - WindowedMetricAvg for displaying loss
+    - ConfusionMatrix if len(classes) <= 25
+    - ClassificationInspector
+    - MetricsTable
+    - ImageGradientVis
+
+    Inherited training callbacks:
+
+    - Counter for counting iterations, connected to the testing loop as well
+    - VisdomLogger
+    - StdoutLogger
+
+    Testing:
+
+    Testing loop is in :code:`.test_loop`.
+
+    Testing callbacks:
+
+    - AccAvg
+    - WindowedMetricAvg
+    - ConfusionMatrix if :code:`len(classes) <= 25`
+    - ClassificationInspector
+    - MetricsTable
+
+    Inherited testing callbacks:
+
+    - VisdomLogger
+    - StdoutLogger
+    - Checkpoint saving the best testing loss
+
 
     Args:
         model (nn.Model): a model
@@ -60,6 +99,9 @@ def Classification(model,
             100)
     """
 
+    key_best = (lambda state: -state['test_loop']['callbacks']['state']
+            ['metrics']['loss'])
+
     loop = TrainAndTest(model,
                         train_fun,
                         test_fun,
@@ -67,7 +109,9 @@ def Classification(model,
                         test_loader,
                         visdom_env=visdom_env,
                         test_every=test_every,
-                        log_every=log_every)
+                        log_every=log_every,
+                        key_best=key_best)
+
     loop.callbacks.add_callbacks([
         tcb.AccAvg(),
         tcb.WindowedMetricAvg('loss'),
@@ -113,8 +157,40 @@ def CrossEntropyClassification(model,
                                test_every=1000,
                                log_every=100):
     """
-    A Classification recipe with a default froward training / testing pass
-    using cross entropy, and extended with RAdamW and ReduceLROnPlateau.
+    Extends Classification with default cross entropy forward passes. Also adds
+    RAdamW and ReduceLROnPlateau.
+
+    Inherited training callbacks:
+
+    - AccAvg for displaying accuracy
+    - WindowedMetricAvg for displaying loss
+    - ConfusionMatrix if len(classes) <= 25
+    - ClassificationInspector
+    - MetricsTable
+    - ImageGradientVis
+    - Counter for counting iterations, connected to the testing loop as well
+    - VisdomLogger
+    - StdoutLogger
+
+    Training callbacks:
+
+    - Optimizer with RAdamW
+    - LRSched with ReduceLROnPlateau
+
+    Testing:
+
+    Testing loop is in :code:`.test_loop`.
+
+    Inherited testing callbacks:
+
+    - AccAvg
+    - WindowedMetricAvg
+    - ConfusionMatrix if :code:`len(classes) <= 25`
+    - ClassificationInspector
+    - MetricsTable
+    - VisdomLogger
+    - StdoutLogger
+    - Checkpoint saving the best testing loss
 
     Args:
         model (nn.Module): a model learnable with cross entropy
@@ -170,6 +246,7 @@ def MixupClassification(model,
                                train_loader,
                                test_loader,
                                classes,
+                               *,
                                lr=3e-3,
                                beta1=0.9,
                                wd=1e-2,

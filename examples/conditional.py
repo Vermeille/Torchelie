@@ -12,6 +12,7 @@ import torchvision.transforms as TF
 
 import torchelie.nn as tnn
 import torchelie.models
+import torchelie as tch
 from torchelie.models import ClassCondResNetDebug
 from torchelie.utils import nb_parameters
 from torchelie.recipes.classification import Classification
@@ -33,6 +34,7 @@ device = 'cpu' if opts.cpu else 'cuda'
 class TrueOrFakeLabelDataset:
     def __init__(self, dataset):
         self.dataset = dataset
+        self.classes = ['Fake', 'True']
 
     def __len__(self):
         return len(self.dataset)
@@ -83,43 +85,34 @@ def summary(Net):
     print('Nb parameters: {}'.format(nb_parameters(clf)))
 
 
-class ConditionalClassification(nn.Module):
-    def __init__(self, model):
-        super(ConditionalClassification, self).__init__()
-        self.model = model
-
-    def forward(self, x, z):
-        return self.model(x, z).squeeze()
-
-    def make_optimizer(self):
-        return RAdamW(self.model.parameters(), lr=1e-2)
-
-    def train_step(self, batch, opt):
-        x, y, z = batch
-        x = x.expand(-1, 3, -1, -1)
-
-        opt.zero_grad()
-        out = self(x, z)
-        loss = F.cross_entropy(out, y)
-        loss.backward()
-        opt.step()
-
-        return {'loss': loss, 'pred': out}
-
-    def validation_step(self, batch):
-        x, y, z = batch
-        x = x.expand(-1, 3, -1, -1)
-
-        out = self(x, z)
-        loss = F.cross_entropy(out, y)
-        return {'loss': loss, 'pred': out}
-
 
 def train_net(Net):
     model = Net(2, 10, in_ch=3)
-    clf = Classification(ConditionalClassification(model)).to(device)
-    _, res = clf(dl, dlt)
-    print(res['acc'])
+    def train_step(batch):
+        x, y, z = batch
+        x = x.expand(-1, 3, -1, -1)
+
+        out = model(x, z)
+        loss = F.cross_entropy(out, y)
+        loss.backward()
+
+        return {'loss': loss, 'pred': out}
+
+    def validation_step(batch):
+        x, y, z = batch
+        x = x.expand(-1, 3, -1, -1)
+
+        out = model(x, z)
+        loss = F.cross_entropy(out, y)
+        return {'loss': loss, 'pred': out}
+
+    clf = Classification(model, train_step, validation_step, dl, dlt,
+            ds.classes).to(device)
+    clf.callbacks.add_callbacks([
+        tch.callbacks.Optimizer(tch.optim.RAdamW(model.parameters()))
+    ])
+    res = clf.run(2)
+    print(res['test_metrics']['acc'])
 
 
 for Net in nets:

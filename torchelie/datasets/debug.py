@@ -1,8 +1,9 @@
 import torch
 import torchvision.transforms as TF
+from torch.utils.data import Dataset
 
 
-class ColoredColumns(torch.utils.data.Dataset):
+class ColoredColumns(Dataset):
     """
     A dataset of precedurally generated images of columns randomly colorized.
 
@@ -26,7 +27,7 @@ class ColoredColumns(torch.utils.data.Dataset):
         return self.transform(img), 0
 
 
-class ColoredRows(torch.utils.data.Dataset):
+class ColoredRows(Dataset):
     """
     A dataset of precedurally generated images of rows randomly colorized.
 

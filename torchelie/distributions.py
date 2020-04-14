@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
+from torch.distributions import TransformedDistribution
 
-
-class Logistic(torch.distributions.TransformedDistribution):
+class Logistic(TransformedDistribution):
     """
     Logistic distribution
 

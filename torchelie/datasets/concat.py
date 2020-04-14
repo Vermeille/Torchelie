@@ -1,4 +1,5 @@
 import torch
+from torch.utils.data import Dataset
 
 
 class CatedSamples:
@@ -36,7 +37,7 @@ class CatedLists:
         raise IndexError
 
 
-class HorizontalConcatDataset(torch.utils.data.Dataset):
+class HorizontalConcatDataset(Dataset):
     """
     Concatenates multiple datasets. However, while torchvision's ConcatDataset
     just concatenates samples, torchelie's also relabels classes. While a
@@ -70,7 +71,7 @@ class HorizontalConcatDataset(torch.utils.data.Dataset):
         return "DatasetConcat(" + ", ".join([repr(d)
                                              for d in self.datasets]) + ")"
 
-class MergedDataset(torch.utils.data.Dataset):
+class MergedDataset(Dataset):
     def __init__(self, datasets):
         self.datasets = datasets
         self.classes = list(set(c for d in datasets for c in d.classes))

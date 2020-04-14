@@ -8,12 +8,28 @@ def TrainAndCall(model,
                  test_every=100,
                  visdom_env='main',
                  checkpoint='model',
-                 log_every=10):
+                 log_every=10,
+                 key_best=None):
     """
     Train a model and evaluate it with a custom function. The model is
-    automatically checkpointed, VisdomLogger and StdoutLogger callbacks are
-    also already provided. The gradients are disabled and the model is
-    automatically set to evaluation mode for the evaluation procedure.
+    automatically registered and checkpointed as :code:`checkpoint['model']`,
+    and put in eval mode when testing.
+
+    Training callbacks:
+
+    - Counter for counting iterations, connected to the testing loop as well
+    - VisdomLogger
+    - StdoutLogger
+
+    Testing:
+
+    Testing loop is in :code:`.test_loop`.
+
+    Testing callbacks:
+
+    - VisdomLogger
+    - StdoutLogger
+    - Checkpoint
 
     Args:
         model (nn.Model): a model
@@ -31,6 +47,8 @@ def TrainAndCall(model,
         checkpoint (str): checkpointing path or None for no checkpointing
         log_every (int): logging frequency, in number of iterations (default:
             10)
+        key_best (function or None): a key function for comparing states.
+            Checkpointing the greatest.
 
     Returns:
         a configured Recipe
@@ -47,4 +65,5 @@ def TrainAndCall(model,
                         test_every=test_every,
                         visdom_env=visdom_env,
                         checkpoint=checkpoint,
-                        log_every=log_every)
+                        log_every=log_every,
+                        key_best=key_best)

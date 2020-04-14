@@ -31,7 +31,11 @@ opts = parser.parse_args()
 
 device = 'cpu' if opts.cpu else 'cuda'
 
+def ThreeChannels(x):
+    return x.expand(3, -1, -1).clone()
+
 tfms = TF.Compose([TF.Resize(32), TF.ToTensor(),
+        ThreeChannels,
         TF.Normalize([0.5] * 3, [0.5] * 3, True),
     ])
 train_tfms = TF.Compose([
@@ -40,6 +44,7 @@ train_tfms = TF.Compose([
         TF.ColorJitter(0.5, 0.5, 0.4, 0.05),
         TF.RandomHorizontalFlip(),
         TF.ToTensor(),
+        ThreeChannels,
         TF.Normalize([0.5] * 3, [0.5] * 3, True),
     ])
 if opts.dataset == 'mnist':

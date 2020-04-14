@@ -100,7 +100,7 @@ def train_net(Gen, Discr):
     polyak_test.callbacks.add_callbacks([
         tcb.Log('imgs', 'imgs')
     ])
-    loop = GANRecipe(G, D, G_fun, D_fun, dl, log_every=100).to(device)
+    loop = GANRecipe(G, D, G_fun, D_fun, G_polyak_fun, dl, log_every=100).to(device)
     loop.G_loop.callbacks.add_callbacks([
         tcb.Optimizer(AdamW(G.parameters(), lr=1e-4, betas=(0., 0.99))),
     ])
@@ -114,7 +114,7 @@ def train_net(Gen, Discr):
         tcb.WindowedMetricAvg('fake_loss'),
         tcb.Optimizer(AdamW(D.parameters(), lr=4e-4, betas=(0., 0.99))),
     ])
-    loop.to(device).run(1000)
+    loop.to(device).run(1)
 
 
 if opts.shapes_only:
