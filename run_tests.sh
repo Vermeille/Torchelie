@@ -28,10 +28,8 @@ python3 -m torchelie.recipes.feature_vis \
     --neuron 0 \
     $RUN
 
-python3 examples/classification.py
-python3 examples/condgan.py
+python3 examples/mnist.py
 python3 examples/conditional.py
 python3 examples/gan.py
-python3 examples/img2img.py
 python3 examples/pixelcnn.py
 
