@@ -1,5 +1,4 @@
 visdom==0.1.8.8
 crayons==0.2.0
 Pillow==6.2.0
-onnx==1.5.0
 sphinx-rtd-theme

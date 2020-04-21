@@ -11,6 +11,5 @@ setup(
             'torchvision>=0.4',
             'numpy>=1.16',
             'Pillow>=6',
-            'onnx>=1.5',
         ]
 )

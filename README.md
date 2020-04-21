@@ -24,18 +24,11 @@ experiments.
 
 # WARNINGS
 
-Torchelie is currently very API unstable. Test at your own risks, and you
-should expect to update often and have many breaking changes, especially in
-high level features.
+- Torchelie API is beta and can be a bit unstable. Minor breaking changes can
+  happen.
 
-- Recipes are likely to change as I'm still looking for the API and making
-  design decisions.
-- That's also why for recipes, documentation might be out of sync or not even
-  exist yet. Same for tests.
 - Code, README, docs and tests might be out of sync in general. Please tell me
   if you notice anything wrong.
-- Examples are actually kinda crappy. The recipes mentioned just below are
-  actually better.
 
 ## `torchelie.recipes`
 
@@ -270,12 +263,6 @@ Modules:
 * `CorrelateColors` assumes the input is an image with decorrelated color
   components. It correlates back the color using some ImageNet precomputed
   correlation statistics to ease optimization.
-
-## `torchelie.industry`
-
-* `ONNXModel` wraps the boilerplate code to load an ONNX model and run it.
-* `TorchONNXModel` wraps an `ONNXModel` and transforms inputs and outputs from
-  numpy to torch.
 
 # Testing
 
