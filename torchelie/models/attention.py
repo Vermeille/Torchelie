@@ -41,13 +41,13 @@ class AttentionBlock(nn.Module):
                                 tu.kaiming(tnn.Conv1x1(ch, ch, bias=False)),
                                 nn.BatchNorm2d(ch), nn.ReLU(True),
                                 tu.kaiming(tnn.Conv1x1(ch, ch)),
-                                tnn.HardSigmoid())
+                                nn.Sigmoid(),
+                                )
 
     def forward(self, x):
         x = self.pre(x)
         t = self.trunk(x)
-        m = self.mask(x)
-        m.add_(1)
+        m = self.mask(x) + 1
         return self.post(t * m)
 
 

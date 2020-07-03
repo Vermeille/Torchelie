@@ -456,15 +456,13 @@ class ImageGradientVis:
 
     @torch.no_grad()
     def compute_image(self, x):
-        grad_img = x.grad.pow(2).sum(1, keepdim=True)
+        grad_img = x.grad.abs().sum(1, keepdim=True)
         b, c, h, w = grad_img.shape
         gi_flat = grad_img.view(b, c, -1)
         cl = torch.kthvalue(gi_flat, int(grad_img[0].numel() * 0.99),
                             dim=-1)[0]
-        grad_img = torch.min(grad_img, cl.unsqueeze(-1).unsqueeze(-1))
-        m = gi_flat.min(dim=-1).values.unsqueeze(-1).unsqueeze(-1)
-        M = gi_flat.max(dim=-1).values.unsqueeze(-1).unsqueeze(-1)
-        grad_img = (grad_img - m) / (M - m)
+        cl = cl.unsqueeze(-1).unsqueeze(-1)
+        grad_img = torch.min(grad_img, cl) / cl
         x = x.detach()
         xm = x.min()
         xM = x.max()
