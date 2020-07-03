@@ -237,6 +237,12 @@ class Optimizer(tu.AutoStateDict):
 
     def on_batch_end(self, state):
         if (state['iters'] + 1) % self.accumulation == 0:
+            if self.accumulation != 1:
+                for pg in self.opt.param_groups:
+                    for p in pg['params']:
+                        if p.grad is not None:
+                            print('g', p.grad.abs().mean().item())
+                            p.grad.data /= self.accumulation
             if self.clip_grad_norm is not None:
                 state['metrics']['grad_norm'] = torch.nn.utils.clip_grad_norm_(
                     (p for pg in self.opt.param_groups for p in pg['params']),
