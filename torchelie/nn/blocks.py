@@ -163,8 +163,10 @@ def make_resnet_shortcut(in_ch, out_ch, stride, norm=nn.BatchNorm2d):
     if stride != 1:
         sc.append(('pool', nn.AvgPool2d(stride, stride, 0, ceil_mode=True)))
 
-    sc += [('conv', kaiming(Conv1x1(in_ch, out_ch, bias=False))),
-           ('norm', norm(out_ch))]
+    sc += [('conv', kaiming(Conv1x1(in_ch, out_ch, bias=norm is not None)))]
+
+    if norm:
+        sc += [('norm', norm(out_ch))]
 
     return CondSeq(collections.OrderedDict(sc))
 
@@ -326,7 +328,7 @@ class PreactResBlock(nn.Module):
         if use_se:
             self.branch.add_module('se', SEBlock(out_ch))
 
-        self.shortcut = make_resnet_shortcut(in_ch, out_ch, stride, norm)
+        self.shortcut = make_resnet_shortcut(in_ch, out_ch, stride, norm=None)
 
     def __repr__(self):
         return "{}({}, {}, stride={}, norm={})".format(
