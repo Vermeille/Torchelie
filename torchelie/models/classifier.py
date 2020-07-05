@@ -20,7 +20,7 @@ class Classifier(nn.Module):
         self.bone = feat_extractor
 
         self.head = nn.Sequential(
-            nn.AdaptiveMaxPool2d(1),
+            nn.AdaptiveAvgPool2d(1),
             tnn.Reshape(feature_size),
             kaiming(nn.Linear(feature_size, feature_size)),
             #nn.Dropout(0.5),
@@ -49,16 +49,15 @@ class Classifier1(nn.Module):
             feature extractor
         num_classes (int): the number of output classes
     """
-    def __init__(self, feat_extractor, feature_size, num_classes):
+    def __init__(self, feat_extractor, feature_size, num_classes, dropout=0.5):
         super(Classifier1, self).__init__()
         self.bone = feat_extractor
 
         self.head = nn.Sequential(
-            nn.AdaptiveMaxPool2d(1),
+            nn.AdaptiveAvgPool2d(1),
             tnn.Reshape(feature_size),
-            #nn.Dropout(0.5),
+            nn.Dropout(dropout),
             kaiming(nn.Linear(feature_size, num_classes)),
-            nn.BatchNorm1d(num_classes)
         )
 
     def forward(self, *xs):

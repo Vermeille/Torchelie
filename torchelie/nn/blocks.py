@@ -8,7 +8,7 @@ from .layers import Conv2d, Conv3x3, Conv1x1
 from .batchnorm import ConditionalBN2d, Spade2d
 from .condseq import CondSeq
 from .maskedconv import MaskedConv2d
-from torchelie.utils import kaiming, xavier
+from torchelie.utils import kaiming, xavier, normal_init, constant_init
 
 
 def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0):
@@ -161,9 +161,9 @@ def make_resnet_shortcut(in_ch, out_ch, stride, norm=nn.BatchNorm2d):
 
     sc = []
     if stride != 1:
-        sc.append(('pool', nn.AvgPool2d(stride, stride, 0, ceil_mode=True)))
+        sc.append(('pool', nn.AvgPool2d(3, stride, 1)))
 
-    sc += [('conv', kaiming(Conv1x1(in_ch, out_ch, bias=norm is not None)))]
+    sc += [('conv', kaiming(Conv1x1(in_ch, out_ch, bias=norm is None)))]
 
     if norm:
         sc += [('norm', norm(out_ch))]
@@ -218,11 +218,10 @@ class ResBlock(nn.Module):
         else:
             self.branch = CondSeq(
                 collections.OrderedDict([
-                    ('conv1',
-                     kaiming(Conv3x3(in_ch, in_ch, stride=stride,
-                                     bias=False))), ('bn1', norm(in_ch)),
+                    ('conv1', (Conv3x3(in_ch, out_ch, stride=stride, bias=False))),
+                    ('bn1', norm(out_ch)),
                     ('relu', nn.ReLU(True)),
-                    ('conv2', kaiming(Conv3x3(in_ch, out_ch, bias=False))),
+                    ('conv2', (Conv3x3(out_ch, out_ch, bias=False))),
                     ('bn2', norm(out_ch))
                 ]))
 
@@ -298,6 +297,7 @@ class PreactResBlock(nn.Module):
         self.stride = stride
         self.use_se = use_se
         self.bottleneck = bottleneck
+        bias = norm is None
 
         if bottleneck:
             mid = out_ch // 4
@@ -305,24 +305,26 @@ class PreactResBlock(nn.Module):
                 collections.OrderedDict([
                     ('bn1', norm(in_ch)),
                     ('relu', nn.ReLU(True)),
-                    ('conv1', kaiming(Conv1x1(in_ch, mid, bias=False))),
+                    ('conv1', kaiming(Conv1x1(in_ch, mid, bias=bias))),
                     ('bn2', norm(mid)),
                     ('relu2', nn.ReLU(True)),
                     ('conv2',
-                     kaiming(Conv3x3(mid, mid, stride=stride, bias=False))),
+                     kaiming(Conv3x3(mid, mid, stride=stride, bias=bias))),
                     ('bn3', norm(mid)),
                     ('relu3', nn.ReLU(True)),
-                    ('conv3', kaiming(Conv1x1(mid, out_ch))),
+                    ('conv3', normal_init(Conv1x1(mid, out_ch), std=0)),
                 ]))
         else:
             self.branch = CondSeq(
                 collections.OrderedDict([
-                    ('bn1', norm(in_ch)), ('relu', nn.ReLU(True)),
+                    ('bn1', constant_init(norm(in_ch), 1)),
+                    ('relu', nn.ReLU(True)),
                     ('conv1',
-                     kaiming(Conv3x3(in_ch, in_ch, stride=stride,
-                                     bias=False))), ('bn2', norm(in_ch)),
+                     kaiming(Conv3x3(in_ch, out_ch, stride=stride,
+                                     bias=bias))),
+                    ('bn2', constant_init(norm(out_ch), 1)),
                     ('relu2', nn.ReLU(True)),
-                    ('conv2', kaiming(Conv3x3(in_ch, out_ch)))
+                    ('conv2', normal_init(Conv3x3(out_ch, out_ch), std=0))
                 ]))
 
         if use_se:
@@ -476,3 +478,4 @@ class SNResidualDiscrBlock(torch.nn.Module):
             x = F.avg_pool2d(x, 2, 2, 0)
             res = F.avg_pool2d(res, 2, 2, 0)
         return x + res
+

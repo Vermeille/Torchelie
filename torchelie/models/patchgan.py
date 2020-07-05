@@ -1,7 +1,7 @@
 import torch.nn as nn
 
 import torchelie.nn as tnn
-from torchelie.utils import kaiming, n002, xavier
+from torchelie.utils import kaiming, xavier
 from .classifier import Classifier, ProjectionDiscr
 
 

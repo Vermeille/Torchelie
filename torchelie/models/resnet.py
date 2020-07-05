@@ -2,7 +2,7 @@ import functools
 import torch.nn as nn
 import torchelie.nn as tnn
 
-from .classifier import Classifier
+from .classifier import Classifier, Classifier1
 
 
 def VectorCondResNetBone(arch, head, hidden, in_ch=3, debug=False):
@@ -37,7 +37,7 @@ def VectorCondResNetDebug(vector_size, in_ch=3, debug=False):
         a resnet instance
     """
     return VectorCondResNetBone(
-            ['64:2', '64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
+            ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
             tnn.Conv2d,
             vector_size,
             in_ch=in_ch,
@@ -86,7 +86,7 @@ def ClassCondResNetDebug(num_classes, num_cond_classes, in_ch=3, debug=False):
     """
     return Classifier(
         ClassCondResNetBone(
-            ['64:2', '64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
+            ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
             tnn.Conv2dBNReLU,
             64,
             num_cond_classes,
@@ -123,11 +123,11 @@ def ResNetBone(arch, head, block, in_ch=3, debug=False):
         layers.append(tnn.Debug('Input'))
 
     ch, s = parse(arch[0])
-    layers.append(head(in_ch, ch, 7, stride=s))
+    layers.append(head(in_ch, ch))
     if debug:
         layers.append(tnn.Debug('Head'))
     in_ch = ch
-    for i, (ch, s) in enumerate(map(parse, arch[1:])):
+    for i, (ch, s) in enumerate(map(parse, arch)):
         layers.append(block(in_ch, ch, stride=s))
         in_ch = ch
         if debug:
@@ -150,7 +150,7 @@ def ResNetDebug(num_classes, in_ch=3, debug=False):
     """
     return Classifier(
             ResNetBone(
-                ['64:2', '64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
+                ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
                 tnn.Conv2dBNReLU,
                 tnn.ResBlock,
                 in_ch=in_ch,
@@ -171,8 +171,8 @@ def PreactResNetDebug(num_classes, in_ch=3, debug=False):
     """
     return Classifier(
             ResNetBone(
-                ['64:2', '64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
-                tnn.Conv2dBNReLU,
+                ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
+                functools.partial(tnn.Conv2dBNReLU, ks=3, stride=1),
                 tnn.PreactResBlock,
                 in_ch=in_ch,
                 debug=debug), 256, num_classes)

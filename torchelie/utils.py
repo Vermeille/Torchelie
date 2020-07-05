@@ -41,7 +41,7 @@ def entropy(out, dim=1, reduce='mean'):
         return h.sum()
 
 
-def kaiming(m, a=0, nonlinearity='relu'):
+def kaiming(m, a=0, nonlinearity='relu', mode='fan_out'):
     """
     Initialize a module with kaiming normal init
 
@@ -59,7 +59,7 @@ def kaiming(m, a=0, nonlinearity='relu'):
         else:
             nonlinearity = 'leaky_relu'
 
-    nn.init.kaiming_normal_(m.weight, a=a, nonlinearity=nonlinearity)
+    nn.init.kaiming_normal_(m.weight, a=a, nonlinearity=nonlinearity, mode=mode)
     if hasattr(m, 'biais') and m.bias is not None:
         nn.init.constant_(m.bias, 0)
     return m
@@ -81,9 +81,9 @@ def xavier(m):
     return m
 
 
-def n002(m):
+def normal_init(m, std=0.02):
     """
-    Initialize a module with gaussian weights of standard deviation 0.02
+    Initialize a module with gaussian weights of standard deviation std
 
     Args:
         m (nn.Module): the module to init
@@ -91,7 +91,23 @@ def n002(m):
     Returns:
         the initialized module
     """
-    nn.init.normal_(m.weight, 0, 0.02)
+    nn.init.normal_(m.weight, 0, std)
+    if hasattr(m, 'biais') and m.bias is not None:
+        nn.init.constant_(m.bias, 0)
+    return m
+
+
+def constant_init(m, val):
+    """
+    Initialize a module with gaussian weights of standard deviation std
+
+    Args:
+        m (nn.Module): the module to init
+
+    Returns:
+        the initialized module
+    """
+    nn.init.constant_(m.weight, val)
     if hasattr(m, 'biais') and m.bias is not None:
         nn.init.constant_(m.bias, 0)
     return m
