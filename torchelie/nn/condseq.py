@@ -27,7 +27,7 @@ class CondSeq(nn.Sequential):
                 left None
         """
         for m in self._modules.values():
-            if hasattr(m, 'condition'):
+            if hasattr(m, 'condition') and z is not None:
                 x = m(x, z)
             else:
                 x = m(x)

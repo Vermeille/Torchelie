@@ -201,28 +201,30 @@ class ResBlock(nn.Module):
         self.stride = stride
         self.use_se = use_se
         self.bottleneck = bottleneck
+        bias = norm is None
 
         if bottleneck:
             mid = out_ch // 4
             self.branch = CondSeq(
                 collections.OrderedDict([
-                    ('conv1', kaiming(Conv1x1(in_ch, mid, bias=False))),
-                    ('bn1', norm(mid)),
+                    ('conv1', kaiming(Conv1x1(in_ch, mid, bias=bias))),
+                    ('bn1', constant_init(norm(mid)), 1),
                     ('relu', nn.ReLU(True)),
                     ('conv2',
-                     kaiming(Conv3x3(mid, mid, stride=stride, bias=False))),
-                    ('bn2', norm(mid)),
+                     kaiming(Conv3x3(mid, mid, stride=stride, bias=bias))),
+                    ('bn2', constant_init(norm(mid), 1)),
                     ('relu2', nn.ReLU(True)),
-                    ('conv3', kaiming(Conv1x1(mid, out_ch, bias=False))),
+                    ('conv3', constant_init(Conv1x1(mid, out_ch), 0)),
                 ]))
         else:
             self.branch = CondSeq(
                 collections.OrderedDict([
-                    ('conv1', (Conv3x3(in_ch, out_ch, stride=stride, bias=False))),
-                    ('bn1', norm(out_ch)),
+                    ('conv1', kaiming(Conv3x3(in_ch, out_ch, stride=stride,
+                        bias=bias))),
+                    ('bn1', constant_init(norm(out_ch), 1)),
                     ('relu', nn.ReLU(True)),
-                    ('conv2', (Conv3x3(out_ch, out_ch, bias=False))),
-                    ('bn2', norm(out_ch))
+                    ('conv2', kaiming(Conv3x3(out_ch, out_ch, bias=False))),
+                    ('bn2', constant_init(norm(out_ch), 0))
                 ]))
 
         if use_se:
@@ -303,16 +305,16 @@ class PreactResBlock(nn.Module):
             mid = out_ch // 4
             self.branch = CondSeq(
                 collections.OrderedDict([
-                    ('bn1', norm(in_ch)),
+                    ('bn1', constant_init(norm(in_ch), 1)),
                     ('relu', nn.ReLU(True)),
                     ('conv1', kaiming(Conv1x1(in_ch, mid, bias=bias))),
-                    ('bn2', norm(mid)),
+                    ('bn2', constant_init(norm(mid)), 1),
                     ('relu2', nn.ReLU(True)),
                     ('conv2',
                      kaiming(Conv3x3(mid, mid, stride=stride, bias=bias))),
-                    ('bn3', norm(mid)),
+                    ('bn3', constant_init(norm(mid), 1)),
                     ('relu3', nn.ReLU(True)),
-                    ('conv3', normal_init(Conv1x1(mid, out_ch), std=0)),
+                    ('conv3', constant_init(Conv1x1(mid, out_ch), 0)),
                 ]))
         else:
             self.branch = CondSeq(
@@ -324,7 +326,7 @@ class PreactResBlock(nn.Module):
                                      bias=bias))),
                     ('bn2', constant_init(norm(out_ch), 1)),
                     ('relu2', nn.ReLU(True)),
-                    ('conv2', normal_init(Conv3x3(out_ch, out_ch), std=0))
+                    ('conv2', constant_init(Conv3x3(out_ch, out_ch), 0))
                 ]))
 
         if use_se:

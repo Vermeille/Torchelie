@@ -39,11 +39,12 @@ class AdaIN2d(nn.Module):
             self.condition(z)
 
         m = x.mean(dim=(2, 3), keepdim=True)
-        s = x.std(dim=(2, 3), keepdim=True)
+        s = torch.sqrt(x.var(dim=(2, 3), keepdim=True)+1e-8)
 
-        weight = (1 + self.weight) / (s + 1e-8)
+        weight = self.weight / (s + 1e-5)
         bias = -m * weight + self.bias
-        return weight * x + bias
+        out = weight * x + bias
+        return out
 
     def condition(self, z):
         """

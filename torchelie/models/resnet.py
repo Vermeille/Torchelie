@@ -176,3 +176,26 @@ def PreactResNetDebug(num_classes, in_ch=3, debug=False):
                 tnn.PreactResBlock,
                 in_ch=in_ch,
                 debug=debug), 256, num_classes)
+
+
+def resnet20_cifar(num_classes, in_ch=3, debug=False):
+    return Classifier1(
+            ResNetBone(
+                ['16:1', '16:1', '16:1',
+                    '32:2', '32:1', '32:1',
+                    '64:2', '64:1', '64:1'],
+                functools.partial(tnn.Conv2dBNReLU, ks=3, stride=1),
+                tnn.PreactResBlock,
+                in_ch=in_ch,
+                debug=debug), 64, num_classes, dropout=0)
+
+
+def resnet18(num_classes, in_ch=3, debug=False):
+    return Classifier1(
+            ResNetBone(
+                ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1', '512:2',
+                    '512:1'],
+                functools.partial(tnn.Conv2dBNReLU, ks=3, stride=2),
+                tnn.PreactResBlock,
+                in_ch=in_ch,
+                debug=debug), 512, num_classes, dropout=0)
