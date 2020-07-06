@@ -323,7 +323,7 @@ class PreactResBlock(nn.Module):
                     ('bn1', constant_init(norm(in_ch), 1)),
                     ('relu', nn.ReLU(True)),
                     ('conv1', kaiming(Conv1x1(in_ch, mid, bias=bias))),
-                    ('bn2', constant_init(norm(mid)), 1),
+                    ('bn2', constant_init(norm(mid), 1)),
                     ('relu2', nn.ReLU(True)),
                     ('conv2',
                      kaiming(Conv3x3(mid, mid, stride=stride, bias=bias))),
