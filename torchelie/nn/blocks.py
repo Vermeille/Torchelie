@@ -171,6 +171,20 @@ def make_resnet_shortcut(in_ch, out_ch, stride, norm=nn.BatchNorm2d):
     return CondSeq(collections.OrderedDict(sc))
 
 
+def make_preact_resnet_shortcut(in_ch, out_ch, stride):
+    if in_ch == out_ch and stride == 1:
+        return CondSeq()
+
+    sc = []
+    if stride != 1:
+        sc.append(('pool', nn.AvgPool2d(3, stride, 1)))
+
+    sc.append(('conv', kaiming(Conv1x1(in_ch, out_ch))))
+
+
+    return CondSeq(collections.OrderedDict(sc))
+
+
 class ResBlock(nn.Module):
     """
     A Residual Block. Skip connection will be added if the number of input and
@@ -232,7 +246,8 @@ class ResBlock(nn.Module):
 
         self.relu = nn.ReLU(True)
 
-        self.shortcut = make_resnet_shortcut(in_ch, out_ch, stride, norm)
+        self.shortcut = make_resnet_shortcut(in_ch, out_ch, stride,
+                norm=None)
 
     def __repr__(self):
         return "{}({}, {}, stride={}, norm={})".format(
@@ -332,7 +347,7 @@ class PreactResBlock(nn.Module):
         if use_se:
             self.branch.add_module('se', SEBlock(out_ch))
 
-        self.shortcut = make_resnet_shortcut(in_ch, out_ch, stride, norm=None)
+        self.shortcut = make_preact_resnet_shortcut(in_ch, out_ch, stride)
 
     def __repr__(self):
         return "{}({}, {}, stride={}, norm={})".format(
@@ -352,6 +367,7 @@ class PreactResBlock(nn.Module):
         if len(self.shortcut) == 0:
             return x + self.branch(x)
         else:
+            # TODO: try without sharing for non bottleneck
             out = self.branch.relu(self.branch.bn1(x))
             return self.shortcut(out).add_(self.branch[2:](out))
 

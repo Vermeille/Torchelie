@@ -1,6 +1,7 @@
 import functools
 import torch.nn as nn
 import torchelie.nn as tnn
+import torchelie.utils as tu
 
 from .classifier import Classifier, Classifier1
 
@@ -94,7 +95,7 @@ def ClassCondResNetDebug(num_classes, num_cond_classes, in_ch=3, debug=False):
             debug=debug), 256, num_classes)
 
 
-def ResNetBone(arch, head, block, in_ch=3, debug=False):
+def ResNetBone(head, head_ch, arch, block, activate_end=False, debug=False):
     """
     A resnet
 
@@ -105,10 +106,10 @@ def ResNetBone(arch, head, block, in_ch=3, debug=False):
     2 and 64 output channels.
 
     Args:
+        head (Module): head module at the start of the net
+        head_ch (int): number of output channels of the head
         arch (list): the architecture specification
-        head (fn): the module ctor to build for the first conv
         block (fn): the residual block to use ctor
-        in_ch (int): number of input channels, 3 for RGB images
         debug (bool): should insert debug layers between each layer
 
     Returns:
@@ -117,22 +118,21 @@ def ResNetBone(arch, head, block, in_ch=3, debug=False):
     def parse(l):
         return [int(x) for x in l.split(':')]
 
-    layers = []
+    layers = [head]
 
-    if debug:
-        layers.append(tnn.Debug('Input'))
-
-    ch, s = parse(arch[0])
-    layers.append(head(in_ch, ch))
     if debug:
         layers.append(tnn.Debug('Head'))
-    in_ch = ch
+    in_ch = head_ch
     for i, (ch, s) in enumerate(map(parse, arch)):
         layers.append(block(in_ch, ch, stride=s))
         in_ch = ch
         if debug:
             layer_name = 'layer_{}_{}'.format(layers[-1].__class__.__name__, i)
             layers.append(tnn.Debug(layer_name))
+
+    if activate_end:
+        layers.append(nn.BatchNorm2d(ch))
+        layers.append(nn.ReLU(True))
     return tnn.CondSeq(*layers)
 
 
@@ -150,8 +150,8 @@ def ResNetDebug(num_classes, in_ch=3, debug=False):
     """
     return Classifier(
             ResNetBone(
+                tnn.Conv2dBNReLU(in_ch, 64, ks=7, stride=2), 64
                 ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
-                tnn.Conv2dBNReLU,
                 tnn.ResBlock,
                 in_ch=in_ch,
                 debug=debug), 256, num_classes)
@@ -185,17 +185,28 @@ def resnet20_cifar(num_classes, in_ch=3, debug=False):
                     '32:2', '32:1', '32:1',
                     '64:2', '64:1', '64:1'],
                 functools.partial(tnn.Conv2dBNReLU, ks=3, stride=1),
-                tnn.PreactResBlock,
+                tnn.ResBlock,
                 in_ch=in_ch,
                 debug=debug), 64, num_classes, dropout=0)
 
 
 def resnet18(num_classes, in_ch=3, debug=False):
+    head = tnn.Conv2dBNReLU(3, 64, ks=7, stride=2)
     return Classifier1(
-            ResNetBone(
+            ResNetBone(head, 64,
                 ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1', '512:2',
                     '512:1'],
-                functools.partial(tnn.Conv2dBNReLU, ks=3, stride=2),
+                tnn.ResBlock,
+                debug=debug)
+            , 512, num_classes, dropout=0)
+
+def preact_resnet18(num_classes, in_ch=3, debug=False):
+    head = tnn.Conv2d(3, 64, ks=7, stride=2)
+    return Classifier1(
+            ResNetBone(head, 64,
+                ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1', '512:2',
+                    '512:1'],
                 tnn.PreactResBlock,
-                in_ch=in_ch,
-                debug=debug), 512, num_classes, dropout=0)
+                activate_end=True,
+                debug=debug)
+            , 512, num_classes, dropout=0)
