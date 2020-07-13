@@ -36,9 +36,7 @@ def build_transforms():
         TF.Normalize([0.5] * 3, [0.5] * 3, True),
     ])
     train_tfms = TF.Compose([
-        TF.Pad(4),
-        TF.RandomCrop(32),
-        TF.ColorJitter(0.5, 0.5, 0.4, 0.05),
+        TF.RandomCrop(32, padding=4),
         TF.RandomHorizontalFlip(),
         TF.ToTensor(),
         TF.Normalize([0.5] * 3, [0.5] * 3, True),
@@ -50,8 +48,8 @@ def get_datasets():
     tfms, train_tfms = build_transforms()
     ds = CIFAR10('~/.cache/torch/cifar10', download=True, transform=train_tfms)
     dst = CIFAR10('~/.cache/torch/cifar10',
+            transform=tfms,
                   download=True,
-                  transform=tfms,
                   train=False)
     return ds, dst
 
@@ -68,17 +66,18 @@ def train():
     dlt = torch.utils.data.DataLoader(dst,
                                       num_workers=4,
                                       batch_size=256,
-                                      pin_memory=True)
+                                      pin_memory=True
+                                      )
     recipe = CrossEntropyClassification(model,
                                         dl,
                                         dlt,
                                         ds.classes,
                                         lr=opts.lr,
-                                        wd=0.0001,
+                                        wd=0.1,
                                         beta1=0.9,
-                                        log_every=10,
-                                        test_every=50,
-                                        visdom_env='example_clf')
+                                        log_every=100,
+                                        test_every=500,
+                                        visdom_env='cifar_preactresnet20')
 
     recipe.to(opts.device)
     recipe.run(opts.epochs)

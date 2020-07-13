@@ -4,6 +4,7 @@ shared state.
 
 WARNING: this might move to torchelie.recipes.callbacks
 """
+import time
 import copy
 from collections import defaultdict
 import os
@@ -320,7 +321,7 @@ class Log(tu.AutoStateDict):
             state['metrics'][self.to] = dict_by_key(state, self.from_k)
 
 
-class VisdomLogger(tu.AutoStateDict):
+class VisdomLogger:
     """
     Log metrics to Visdom. It logs scalars and scalar tensors as plots, 3D and
     4D tensors as images, and strings as HTML.
@@ -332,7 +333,6 @@ class VisdomLogger(tu.AutoStateDict):
     """
 
     def __init__(self, visdom_env='main', log_every=10, prefix=''):
-        super(VisdomLogger, self).__init__(except_names=['vis'])
         self.vis = None
         self.log_every = log_every
         self.prefix = prefix
@@ -457,7 +457,7 @@ class ImageGradientVis:
             return
 
         x = state['batch_gpu'][0]
-        img = self.compute_image(x)
+        img = self.compute_image(x).cpu()
         state['metrics']['feature_vis'] = img
 
     @torch.no_grad()
@@ -678,6 +678,8 @@ class ConfusionMatrix:
 
     def reset(self, state):
         state['cm'] = [[0] * len(self.labels) for _ in range(len(self.labels))]
+        if 'f1' in state['metrics']:
+            del state['metrics']['f1']
 
     def on_epoch_start(self, state):
         self.reset(state)
@@ -707,10 +709,19 @@ class ConfusionMatrix:
                 ])
             s += "<tr><th>{}</th>{}</tr>".format(l, row_str)
 
-        return "<table>" + s + "</table>"
+        html = "<table>" + s + "</table>"
+        return html
 
     def on_epoch_end(self, state):
-        state['metrics']['cm'] = self.to_html(state['cm'])
+        cm = state['cm']
+        html = self.to_html(cm)
+        if len(cm) == 2:
+            precision = cm[0][0] / (cm[0][0] + cm[0][1] + 1e-8)
+            recall = cm[0][0] / (cm[0][0] + cm[1][0] + 1e-8)
+            f1 = 2 * (precision * recall) / (precision + recall + 1e-8)
+            state['metrics']['f1'] = f1
+            html += '<p>F1: {:.2f}</p>'.format(f1)
+        state['metrics']['cm'] = html
 
 
 class CallRecipe:
@@ -736,3 +747,40 @@ class CallRecipe:
                 self.init_fun(state)
             out = self.loop.run(1)
             state[self.prefix + '_metrics'] = copy.deepcopy(out['metrics'])
+
+
+class Throughput:
+    """
+    For debugging and benchmarking purposes: compute the througput (samples/s)
+    of both the forward pass and the full iteration.
+
+    It creates 4 new metrics:
+
+    - :code:`iter_time`: number of seconds between two consecutives batch_start
+        event.
+    - :code:`iter_throughput` imgs/s for the whole iteration as
+        :code:`batch_size / iter_time`
+    - :code:`forward_time`: number of seconds between batch_start and batch_end
+        events.
+    - :code:`forward_throughput` imgs/s for the forward pass as
+        :code:`batch_size / forward_time`
+    """
+    def __init__(self):
+        self.b_start = None
+        self.forward_avg = WindowAvg(10)
+        self.it_avg = WindowAvg()
+
+    def on_batch_start(self, state):
+        now = time.time()
+        if self.b_start:
+            t = now - self.b_start
+            self.it_avg.log(t)
+            state['metrics']['iter_time'] = t
+            state['metrics']['iter_throughput'] = len(state['batch'][0]) / t
+        self.b_start = now
+
+    def on_batch_end(self, state):
+        t = time.time() - self.b_start
+        self.forward_avg.log(t)
+        state['metrics']['forward_time'] = t
+        state['metrics']['forward_throughput'] = len(state['batch'][0]) / t

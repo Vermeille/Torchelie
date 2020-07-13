@@ -25,6 +25,9 @@ Logging
 .. autoclass:: torchelie.callbacks.Counter
    :members:
 
+.. autoclass:: torchelie.callbacks.Throughput
+   :members:
+
 Visualization
 -------------
 
