@@ -168,9 +168,6 @@ class RAdamW(Optimizer):
                 if p.grad is None:
                     continue
 
-                # Perform stepweight decay
-                p.data.mul_(1 - group['lr'] * group['weight_decay'])
-
                 # Perform optimization step
                 grad = p.grad.data
                 if grad.is_sparse:
@@ -204,6 +201,9 @@ class RAdamW(Optimizer):
                 exp_avg.mul_(beta1).add_(1 - beta1, grad)
                 exp_avg_no_bias = exp_avg / (1 - beta1**t)
                 rho_t = rho_inf - ((2 * t * (beta2**t)) / (1 - beta2**t))
+
+                # Perform stepweight decay
+                p.data.mul_(1 - group['lr'] * group['weight_decay'])
 
                 if rho_t > 4:
                     var = exp_avg_sq / (1 - beta2**t)
