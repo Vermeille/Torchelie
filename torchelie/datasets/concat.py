@@ -71,6 +71,22 @@ class HorizontalConcatDataset(Dataset):
         return "DatasetConcat(" + ", ".join([repr(d)
                                              for d in self.datasets]) + ")"
 
+class MergedSamples:
+    def __init__(self, ds):
+        self.ds = ds
+
+    def __len__(self):
+        return sum(len(d) for d in self.ds.datasets)
+
+    def __getitem__(self, i):
+        for ds in self.ds.datasets:
+            if i < len(ds):
+                x, y, *ys = ds.samples[i]
+                return [x, self.ds.class_to_idx[ds.classes[y]]] + ys
+            i -= len(ds)
+        raise IndexError
+
+
 class MergedDataset(Dataset):
     def __init__(self, datasets):
         self.datasets = datasets
@@ -78,19 +94,8 @@ class MergedDataset(Dataset):
         self.classes.sort()
         self.class_to_idx = {c: i for i, c in enumerate(self.classes)}
 
-        class MergedSamples:
-            def __len__(self2):
-                return sum(len(d) for d in self.datasets)
 
-            def __getitem__(self2, i):
-                for ds in self.datasets:
-                    if i < len(ds):
-                        x, y, *ys = ds.samples[i]
-                        return [x, self.class_to_idx[ds.classes[y]]] + ys
-                    i -= len(ds)
-                raise IndexError
-
-        self.samples = MergedSamples()
+        self.samples = MergedSamples(self)
 
     def __len__(self):
         return sum(len(d) for d in self.datasets)

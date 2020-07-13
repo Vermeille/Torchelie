@@ -73,8 +73,8 @@ def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
 
 
 class _Wrap:
-    def __getattr__(self, name):
-        return getattr(self.ds, name)
+    def __init__(self, instance):
+        self.__dict__.update(instance.__dict__)
 
 
 class MixUpDataset(_Wrap):
@@ -91,7 +91,7 @@ class MixUpDataset(_Wrap):
     """
 
     def __init__(self, dataset, alpha=0.4):
-        super(MixUpDataset, self).__init__()
+        super(MixUpDataset, self).__init__(dataset)
         self.ds = dataset
         alpha = torch.tensor([alpha])
         self.mixer = torch.distributions.Beta(alpha, alpha)
@@ -185,6 +185,7 @@ class NoexceptDataset(_Wrap):
     """
 
     def __init__(self, ds):
+        super(NoexceptDataset, self).__init__(ds)
         self.ds = ds
 
     def __len__(self):
@@ -214,6 +215,7 @@ class WithIndexDataset(_Wrap):
         ds (Dataset): A dataset
     """
     def __init__(self, ds):
+        super(WithIndexDataset, self).__init__(ds)
         self.ds = ds
 
     def __getitem__(self, i):
@@ -240,6 +242,7 @@ class CachedDataset(_Wrap):
         device: the device on which the cache is allocated
     """
     def __init__(self, ds, transform=None, device='cpu'):
+        super(CachedDataset, self).__init__(ds)
         self.ds = ds
         self.transform = transform
         self.cache = multiprocessing.Manager().list([None] * len(self.ds))
