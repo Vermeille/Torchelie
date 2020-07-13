@@ -20,6 +20,9 @@ class Debug(nn.Module):
         print(crayons.yellow(self.name))
         print(crayons.yellow('----'))
         print('Shape {}'.format(x.shape))
+        if x.ndim == 2:
+            print("Stats mean {:.2f} var {:.2f}".format(x.mean().item(),
+                x.std().item()))
         if x.ndim == 4:
             print("Stats mean {:.2f} {:.2f} var s{:.2f} {:.2f}".format(
                 x.mean(dim=[0, 2, 3]).mean().item(),
