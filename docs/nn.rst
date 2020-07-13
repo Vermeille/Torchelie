@@ -75,6 +75,10 @@ FIXME: Document it in `torchelie.nn` namespace
    :members:
    :undoc-members:
 
+.. automodule:: torchelie.nn.AdaptiveConcatPool2d
+   :members:
+   :undoc-members:
+
 Sequential
 ~~~~~~~~~~
 
