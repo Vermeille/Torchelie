@@ -65,7 +65,7 @@ class OneCycle(CurriculumScheduler):
         mom (2-tuple): momentum range
         last_iter (int): last_iteration index
     """
-    def __init__(self, opt, lr, num_iters, mom=(0.95, 0.9), log=False, last_iter=-1):
+    def __init__(self, opt, lr, num_iters, mom=(0.95, 0.85), log=False, last_iter=-1):
         self.log = log
 
         if log:
@@ -90,7 +90,7 @@ class OneCycle(CurriculumScheduler):
             if 'momentum' in group:
                 group['momentum'] = math.exp(group['momentum'])
             elif 'betas' in group:
-                group['betas'] = (math.exp(group['momentum']), group['betas'][1])
+                group['betas'] = (math.exp(group['betas'][0]), group['betas'][1])
 
     def __repr__(self):
         return 'OneCycle({})'.format(self.schedule)
