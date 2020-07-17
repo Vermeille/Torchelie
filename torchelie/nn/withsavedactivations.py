@@ -2,7 +2,7 @@ import functools
 
 import torch
 import torch.nn as nn
-from torchelie.utils import layer_by_name
+from torchelie.utils import layer_by_name, freeze
 
 
 class WithSavedActivations(nn.Module):
@@ -14,21 +14,27 @@ class WithSavedActivations(nn.Module):
         self.model = model
         self.activations = {}
         self.detach = True
+        self.handles = []
 
         self.set_keep_layers(types, names)
 
 
     def set_keep_layers(self, types=(nn.Conv2d, nn.Linear), names=None):
+        for h in self.handles:
+            h.remove()
+
         if names is None:
             for name, layer in self.model.named_modules():
                 if isinstance(layer, types):
-                    layer.register_forward_hook(functools.partial(
+                    h = layer.register_forward_hook(functools.partial(
                         self._save, name))
+                    self.handles.append(h)
         else:
             for name in names:
                 layer = layer_by_name(self.model, name)
-                layer.register_forward_hook(functools.partial(
+                h = layer.register_forward_hook(functools.partial(
                     self._save, name))
+                self.handles.append(h)
 
 
     def _save(self, name, module, input, output):
