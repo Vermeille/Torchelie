@@ -70,6 +70,40 @@ class Classifier1(nn.Module):
         out = self.head(self.bone(*xs))
         return out
 
+
+class ConcatPoolClassifier1(nn.Module):
+    """
+    A one layer classification head added on top of a feature extraction model.
+    it includes ConcatPool.
+
+    Args:
+        feat_extractor (nn.Module): a feature extraction model
+        feature_size (int): the number of features in the last layer of the
+            feature extractor
+        num_classes (int): the number of output classes
+    """
+    def __init__(self, feat_extractor, feature_size, num_classes, dropout=0.5):
+        super(ConcatPoolClassifier1, self).__init__()
+        self.bone = feat_extractor
+
+        self.head = nn.Sequential(
+            tnn.AdaptiveConcatPool2d(1),
+            tnn.Reshape(feature_size * 2),
+            nn.Dropout(dropout),
+            kaiming(nn.Linear(feature_size * 2, num_classes)),
+        )
+
+    def forward(self, *xs):
+        """
+        Forward pass
+
+        Args:
+            *xs: arguments for `feat_extractor`
+        """
+        out = self.head(self.bone(*xs))
+        return out
+
+
 class ProjectionDiscr(nn.Module):
     """
     A classification head for conditional GANs discriminators using a
