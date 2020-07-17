@@ -21,19 +21,19 @@ class BatchNorm2dBase_(nn.Module):
     def update_moments(self, x):
         if self.training:
             m = x.mean(dim=(0, 2, 3), keepdim=True)
-            v = x.var(dim=(0, 2, 3), keepdim=True)
+            v = torch.sqrt(x.var(dim=(0, 2, 3), keepdim=True) + 1e-8)
 
             self.running_mean.copy_((self.momentum * self.running_mean +
-                                     (1 - self.momentum) * m).detach())
+                                     (1 - self.momentum) * m))
 
             self.running_var.copy_((self.momentum * self.running_var +
-                                    (1 - self.momentum) * v).detach())
+                                    (1 - self.momentum) * v))
 
             self.step += 1
         else:
             m = self.running_mean
             v = self.running_var
-        return m, torch.sqrt(v)
+        return m, v
 
 
 __all__.append('BatchNorm2dBase_')
@@ -117,19 +117,24 @@ def make_cbn(base, name):
         def __init__(self, channels, cond_channels, momentum=0.8):
             super(ConditionalBN2d, self).__init__(channels, momentum)
             self.make_weight = nn.Linear(cond_channels, channels)
+            nn.init.kaiming_normal_(self.make_weight.weight)
+            nn.init.zeros_(self.make_weight.bias)
             self.make_bias = nn.Linear(cond_channels, channels)
+            nn.init.kaiming_normal_(self.make_bias.weight)
+            nn.init.zeros_(self.make_bias.bias)
 
         def forward(self, x, z=None):
             if z is not None:
                 self.condition(z)
 
             m, v = self.update_moments(x)
-            weight = (1 + self.weight) / (v + 1e-8)
+            weight = self.weight / (v + 1e-6)
             bias = -m * weight + self.bias
-            return weight * x + bias
+            out = x.mul_(weight).add_(bias)
+            return out
 
         def condition(self, z):
-            self.weight = self.make_weight(z)[:, :, None, None]
+            self.weight = self.make_weight(z)[:, :, None, None]+1
             self.bias = self.make_bias(z)[:, :, None, None]
 
     ConditionalBN2d.__name__ = name
@@ -153,6 +158,7 @@ def make_spade(base, name):
             self.initial = kaiming(Conv3x3(cond_channels, hidden, stride=2))
             self.make_weight = xavier(Conv3x3(hidden, channels))
             self.make_bias = xavier(Conv3x3(hidden, channels))
+            self.register_buffer('weight', torch.ones(channels))
 
         def forward(self, x, z=None):
             if z is not None:

@@ -58,13 +58,14 @@ class SEBlock(nn.Module):
 
     def __init__(self, in_ch, reduction=16):
         super(SEBlock, self).__init__()
+        reduc = in_ch // reduction
         self.proj = nn.Sequential(
             collections.OrderedDict([
                 ('pool', nn.AdaptiveAvgPool2d(1)),
-                ('squeeze', kaiming(nn.Conv2d(in_ch, in_ch // reduction, 1))),
+                ('squeeze', kaiming(nn.Conv2d(in_ch, reduc, 1))),
                 ('relu', nn.ReLU(True)),
-                ('excite', xavier(nn.Conv2d(in_ch // reduction, in_ch, 1))),
-                ('attn', HardSigmoid())
+                ('excite', constant_init(nn.Conv2d(reduc, in_ch, 1), 0)),
+                ('attn', nn.Sigmoid())
             ]))
 
     def forward(self, x):
@@ -177,7 +178,7 @@ def make_preact_resnet_shortcut(in_ch, out_ch, stride):
 
     sc = []
     if stride != 1:
-        sc.append(('pool', nn.AvgPool2d(3, stride, 1)))
+        sc.append(('pool', nn.MaxPool2d(3, stride, 1)))
 
     sc.append(('conv', kaiming(Conv1x1(in_ch, out_ch))))
 
@@ -215,7 +216,7 @@ class ResBlock(nn.Module):
         self.stride = stride
         self.use_se = use_se
         self.bottleneck = bottleneck
-        bias = norm is None
+        bias = False
 
         if bottleneck:
             mid = out_ch // 4
@@ -307,21 +308,22 @@ class PreactResBlock(nn.Module):
                  stride=1,
                  norm=nn.BatchNorm2d,
                  use_se=False,
-                 bottleneck=False):
+                 bottleneck=False, first_layer=False):
         super(PreactResBlock, self).__init__()
         self.in_ch = in_ch
         self.out_ch = out_ch
         self.stride = stride
         self.use_se = use_se
         self.bottleneck = bottleneck
-        bias = norm is None
+        self.first_layer = first_layer
+        bias = False
 
         if bottleneck:
             mid = out_ch // 4
             self.branch = CondSeq(
                 collections.OrderedDict([
                     ('bn1', constant_init(norm(in_ch), 1)),
-                    ('relu', nn.ReLU(True)),
+                    ('relu', nn.ReLU(not first_layer)),
                     ('conv1', kaiming(Conv1x1(in_ch, mid, bias=bias))),
                     ('bn2', constant_init(norm(mid), 1)),
                     ('relu2', nn.ReLU(True)),
@@ -335,7 +337,7 @@ class PreactResBlock(nn.Module):
             self.branch = CondSeq(
                 collections.OrderedDict([
                     ('bn1', constant_init(norm(in_ch), 1)),
-                    ('relu', nn.ReLU(True)),
+                    ('relu', nn.ReLU(not first_layer)),
                     ('conv1',
                      kaiming(Conv3x3(in_ch, out_ch, stride=stride,
                                      bias=bias))),
@@ -349,12 +351,14 @@ class PreactResBlock(nn.Module):
 
         self.shortcut = make_preact_resnet_shortcut(in_ch, out_ch, stride)
 
-    def __repr__(self):
-        return "{}({}, {}, stride={}, norm={})".format(
+    def __repr_fuck__(self):
+        return "{}({}, {}, stride={}, norm={}{})".format(
             ("SE-" if self.use_se else "") +
             ("PreactBottleneck" if self.bottleneck else "PreactResBlock"),
             self.in_ch, self.out_ch, self.stride,
-            self.branch.bn1.__class__.__name__)
+            self.branch.bn1.__class__.__name__,
+            " share_norm_relu" if self.first_layer or len(self.shortcut) > 0
+            else "")
 
     def condition(self, z):
         self.branch.condition(z)
@@ -364,12 +368,14 @@ class PreactResBlock(nn.Module):
         if z is not None:
             self.condition(z)
 
-        if len(self.shortcut) == 0:
-            return x + self.branch(x)
-        else:
-            # TODO: try without sharing for non bottleneck
+        if len(self.shortcut) > 0:
             out = self.branch.relu(self.branch.bn1(x))
             return self.shortcut(out).add_(self.branch[2:](out))
+        elif self.first_layer:
+            out = self.branch.relu(self.branch.bn1(x))
+            return self.shortcut(out) + self.branch[2:](out)
+        else:
+            return x + self.branch(x)
 
 
 class SpadeResBlock(PreactResBlock):

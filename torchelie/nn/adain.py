@@ -54,7 +54,7 @@ class AdaIN2d(nn.Module):
         Args:
             z (2D tensor, optional): conditioning vector
         """
-        self.weight = self.make_weight(z)[:, :, None, None]
+        self.weight = self.make_weight(z)[:, :, None, None] + 1
         self.bias = self.make_bias(z)[:, :, None, None]
 
 
