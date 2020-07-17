@@ -95,7 +95,7 @@ def ClassCondResNetDebug(num_classes, num_cond_classes, in_ch=3, debug=False):
             debug=debug), 256, num_classes)
 
 
-def ResNetBone(head, head_ch, arch, block, activate_end=False, debug=False):
+def ResNetBone(head, head_ch, arch, block, debug=False):
     """
     A resnet
 
@@ -130,11 +130,47 @@ def ResNetBone(head, head_ch, arch, block, activate_end=False, debug=False):
             layer_name = 'layer_{}_{}'.format(layers[-1].__class__.__name__, i)
             layers.append(tnn.Debug(layer_name))
 
-    if activate_end:
-        layers.append(nn.BatchNorm2d(ch))
-        layers.append(nn.ReLU(True))
     return tnn.CondSeq(*layers)
 
+
+def PreactResNetBone(head, head_ch, arch, block, debug=False):
+    """
+    A resnet
+
+    How to specify an architecture:
+
+    It's a list of block specifications. Each element is a string of the form
+    "output channels:stride". For instance "64:2" is a block with input stride
+    2 and 64 output channels.
+
+    Args:
+        head (Module): head module at the start of the net
+        head_ch (int): number of output channels of the head
+        arch (list): the architecture specification
+        block (fn): the residual block to use ctor
+        debug (bool): should insert debug layers between each layer
+
+    Returns:
+        A Resnet instance
+    """
+    def parse(l):
+        return [int(x) for x in l.split(':')]
+
+    layers = [head]
+
+    if debug:
+        layers.append(tnn.Debug('Head'))
+    in_ch = head_ch
+    for i, (ch, s) in enumerate(map(parse, arch)):
+        layers.append(block(in_ch, ch, stride=s, first_layer=(i == 0)))
+        in_ch = ch
+        if debug:
+            layer_name = 'layer_{}_{}'.format(layers[-1].__class__.__name__, i)
+            layers.append(tnn.Debug(layer_name))
+
+    layers.append(nn.BatchNorm2d(ch))
+    layers.append(nn.ReLU(True))
+    return tnn.CondSeq(*layers)
 
 def ResNetDebug(num_classes, in_ch=3, debug=False):
     """
@@ -181,32 +217,76 @@ def PreactResNetDebug(num_classes, in_ch=3, debug=False):
 def resnet20_cifar(num_classes, in_ch=3, debug=False):
     return Classifier1(
             ResNetBone(
+                tnn.Conv2dBNReLU(in_ch, 16, ks=3, stride=1),
+                16,
                 ['16:1', '16:1', '16:1',
                     '32:2', '32:1', '32:1',
                     '64:2', '64:1', '64:1'],
-                functools.partial(tnn.Conv2dBNReLU, ks=3, stride=1),
                 tnn.ResBlock,
-                in_ch=in_ch,
                 debug=debug), 64, num_classes, dropout=0)
+
+def _preact_head(in_ch, out_ch, input_size=128):
+    if input_size <= 64:
+        return tu.kaiming(tnn.Conv2d(in_ch, out_ch, ks=3))
+    elif input_size <= 128:
+        return tu.kaiming(tnn.Conv2d(in_ch, out_ch, ks=5, stride=2))
+    else:
+        return tnn.CondSeq(
+                tu.kaiming(tnn.Conv2d(in_ch, out_ch, ks=7, stride=2)),
+                nn.MaxPool2d(3, 2, 1)
+            )
+
+def preact_resnet20_cifar(num_classes, in_ch=3, debug=False, **kwargs):
+    return Classifier1(
+            PreactResNetBone(tnn.Conv2d(in_ch, 16,  ks=3), 16,
+                ['16:1', '16:1', '16:1',
+                    '32:2', '32:1', '32:1',
+                    '64:2', '64:1', '64:1'],
+                functools.partial(tnn.PreactResBlock, **kwargs),
+                debug=debug,
+                ), 64, num_classes, dropout=0)
 
 
 def resnet18(num_classes, in_ch=3, debug=False):
-    head = tnn.Conv2dBNReLU(3, 64, ks=7, stride=2)
     return Classifier1(
-            ResNetBone(head, 64,
+            ResNetBone(
+                tnn.Conv2dBNReLU(3, 64, ks=7, stride=2),
+                64,
                 ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1', '512:2',
                     '512:1'],
                 tnn.ResBlock,
                 debug=debug)
             , 512, num_classes, dropout=0)
 
-def preact_resnet18(num_classes, in_ch=3, debug=False):
-    head = tnn.Conv2d(3, 64, ks=7, stride=2)
+
+def preact_resnet18(num_classes, in_ch=3, input_size=224, debug=False):
+    head = _preact_head(in_ch, 64, input_size)
     return Classifier1(
-            ResNetBone(head, 64,
+            PreactResNetBone(head, 64,
                 ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1', '512:2',
                     '512:1'],
                 tnn.PreactResBlock,
-                activate_end=True,
                 debug=debug)
             , 512, num_classes, dropout=0)
+
+
+def preact_resnet26_reduce(num_classes, in_ch=3, input_size=224, debug=False):
+    head = _preact_head(in_ch, 64, input_size)
+    return Classifier1(
+            PreactResNetBone(head, 64,
+                ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1', '512:2',
+                    '512:1', '512:2', '512:1', '512:2', '512:1'],
+                tnn.PreactResBlock,
+                debug=debug)
+            , 512, num_classes, dropout=0)
+
+
+def preact_resnet18_exp(num_classes, in_ch=3, debug=False):
+    head = tu.kaiming(tnn.Conv2d(3, 64, ks=5, stride=2))
+    return Classifier1(
+            PreactResNetBone(head, 64,
+                ['128:1', '128:1', '256:2', '256:1', '512:2', '512:1', '1024:2',
+                    '1024:1'],
+                tnn.PreactResBlock,
+                debug=debug)
+            , 1024, num_classes, dropout=0)
