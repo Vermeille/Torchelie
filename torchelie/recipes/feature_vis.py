@@ -65,7 +65,7 @@ class FeatureVis(torch.nn.Module):
         Returns:
             the optimized image
         """
-        canvas = ParameterizedImg(3, self.input_size[0] + 10,
+        canvas = ParameterizedImg(1, 3, self.input_size[0] + 10,
                                        self.input_size[1] + 10)
 
 
