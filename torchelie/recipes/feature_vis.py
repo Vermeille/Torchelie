@@ -28,8 +28,8 @@ class FeatureVis(torch.nn.Module):
     Args:
         model (nn.Module): the trained model to use
         layer (str): the layer to use on which activations will be maximized
-        input_size (int): the size of the square image the model accepts as
-            input
+        input_size (int, or (int, int)): the size of the image the model
+            accepts as input
         lr (float, optional): the learning rate
         device (device): where to run the computation
         visdom_env (str or None): the name of the visdom env to use, or None
@@ -42,11 +42,14 @@ class FeatureVis(torch.nn.Module):
                  lr=1e-3,
                  device='cpu',
                  visdom_env='feature_vis'):
-        super(FeatureVis, self).__init__()
+        super().__init__()
         self.device = device
         self.model = tnn.WithSavedActivations(model, names=[layer])
         self.layer = layer
-        self.input_size = input_size
+        if isinstance(input_size, (list, tuple)):
+            self.input_size = input_size
+        else:
+            self.input_size = (input_size, input_size)
         self.norm = tnn.ImageNetInputNorm()
         self.lr = lr
         self.visdom_env = visdom_env
@@ -62,8 +65,8 @@ class FeatureVis(torch.nn.Module):
         Returns:
             the optimized image
         """
-        canvas = ParameterizedImg(3, self.input_size + 10,
-                                       self.input_size + 10)
+        canvas = ParameterizedImg(3, self.input_size[0] + 10,
+                                       self.input_size[1] + 10)
 
 
         def forward(_):
@@ -71,8 +74,8 @@ class FeatureVis(torch.nn.Module):
             rnd = random.randint(0, cim.shape[2] // 10)
             im = cim[:, :, rnd:, rnd:]
             im = torch.nn.functional.interpolate(im,
-                                                 size=(self.input_size,
-                                                       self.input_size),
+                                                 size=(self.input_size[0],
+                                                       self.input_size[1]),
                                                  mode='bilinear')
             _, acts = self.model(self.norm(im), detach=False)
             fmap = acts[self.layer]
