@@ -2,7 +2,7 @@ import math
 import torchelie.utils as tu
 
 
-class CurriculumScheduler(tu.AutoStateDict):
+class CurriculumScheduler:
     """
     Allow to pre-specify learning rate and momentum changes
 
@@ -16,10 +16,15 @@ class CurriculumScheduler(tu.AutoStateDict):
     """
 
     def __init__(self, optimizer, schedule, last_iter=-1):
-        super(CurriculumScheduler, self).__init__(except_names=['optimizer'])
         self.optimizer = optimizer
         self.schedule = schedule
         self.last_iter = last_iter
+
+    def state_dict(self):
+        return {'last_iter': self.last_iter}
+
+    def load_state_dict(self, state):
+        self.last_iter = state['last_iter']
 
     def step(self, *unused):
         """
