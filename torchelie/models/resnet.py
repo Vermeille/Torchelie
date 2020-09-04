@@ -133,7 +133,7 @@ def ResNetBone(head, head_ch, arch, block, debug=False):
     return tnn.CondSeq(*layers)
 
 
-def PreactResNetBone(head, head_ch, arch, block, debug=False):
+def PreactResNetBone(head, head_ch, arch, block, widen=1, debug=False):
     """
     A resnet
 
@@ -160,8 +160,9 @@ def PreactResNetBone(head, head_ch, arch, block, debug=False):
 
     if debug:
         layers.append(tnn.Debug('Head'))
-    in_ch = head_ch
+    in_ch = head_ch*widen
     for i, (ch, s) in enumerate(map(parse, arch)):
+        ch *= widen
         layers.append(block(in_ch, ch, stride=s, first_layer=(i == 0)))
         in_ch = ch
         if debug:
@@ -237,14 +238,16 @@ def _preact_head(in_ch, out_ch, input_size=128):
             )
 
 def preact_resnet20_cifar(num_classes, in_ch=3, debug=False, **kwargs):
+    widen = kwargs.pop('widen', 1)
     return Classifier1(
-            PreactResNetBone(tnn.Conv2d(in_ch, 16,  ks=3), 16,
+            PreactResNetBone(tnn.Conv2d(in_ch, 16*widen,  ks=3), 16,
                 ['16:1', '16:1', '16:1',
                     '32:2', '32:1', '32:1',
                     '64:2', '64:1', '64:1'],
                 functools.partial(tnn.PreactResBlock, **kwargs),
                 debug=debug,
-                ), 64, num_classes, dropout=0)
+                widen=widen
+                ), 64*widen, num_classes, dropout=0)
 
 
 def resnet18(num_classes, in_ch=3, debug=False):
