@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from .layers import Conv2d, Conv3x3, Conv1x1
+from .debug import Dummy
 from .batchnorm import ConditionalBN2d, Spade2d
 from .condseq import CondSeq
 from .maskedconv import MaskedConv2d
@@ -179,9 +180,7 @@ def make_preact_resnet_shortcut(in_ch, out_ch, stride):
     sc = []
     if stride != 1:
         sc.append(('pool', nn.MaxPool2d(3, stride, 1)))
-
     sc.append(('conv', kaiming(Conv1x1(in_ch, out_ch))))
-
 
     return CondSeq(collections.OrderedDict(sc))
 
@@ -216,18 +215,18 @@ class ResBlock(nn.Module):
         self.stride = stride
         self.use_se = use_se
         self.bottleneck = bottleneck
-        bias = False
+        bias = norm is None
 
         if bottleneck:
             mid = out_ch // 4
             self.branch = CondSeq(
                 collections.OrderedDict([
                     ('conv1', kaiming(Conv1x1(in_ch, mid, bias=bias))),
-                    ('bn1', constant_init(norm(mid)), 1),
+                    ('bn1', constant_init(norm(mid), 1) if norm else Dummy()),
                     ('relu', nn.ReLU(True)),
                     ('conv2',
                      kaiming(Conv3x3(mid, mid, stride=stride, bias=bias))),
-                    ('bn2', constant_init(norm(mid), 1)),
+                    ('bn2', constant_init(norm(mid), 1) if norm else Dummy()),
                     ('relu2', nn.ReLU(True)),
                     ('conv3', constant_init(Conv1x1(mid, out_ch), 0)),
                 ]))
@@ -236,10 +235,10 @@ class ResBlock(nn.Module):
                 collections.OrderedDict([
                     ('conv1', kaiming(Conv3x3(in_ch, out_ch, stride=stride,
                         bias=bias))),
-                    ('bn1', constant_init(norm(out_ch), 1)),
+                    ('bn1', constant_init(norm(out_ch), 1) if norm else Dummy()),
                     ('relu', nn.ReLU(True)),
-                    ('conv2', kaiming(Conv3x3(out_ch, out_ch, bias=False))),
-                    ('bn2', constant_init(norm(out_ch), 0))
+                    ('conv2', kaiming(Conv3x3(out_ch, out_ch, bias=bias))),
+                    ('bn2', constant_init(norm(out_ch), 0) if norm else Dummy())
                 ]))
 
         if use_se:
@@ -254,7 +253,8 @@ class ResBlock(nn.Module):
         return "{}({}, {}, stride={}, norm={})".format(
             ("SE-" if self.use_se else "") +
             ("Bottleneck" if self.bottleneck else "ResBlock"), self.in_ch,
-            self.out_ch, self.stride, self.branch.bn1.__class__.__name__)
+            self.out_ch, self.stride,
+            self.branch.bn1.__class__.__name__)
 
     def condition(self, z):
         self.branch.condition(z)
@@ -322,26 +322,26 @@ class PreactResBlock(nn.Module):
             mid = out_ch // 4
             self.branch = CondSeq(
                 collections.OrderedDict([
-                    ('bn1', constant_init(norm(in_ch), 1)),
+                    ('bn1', constant_init(norm(in_ch), 1) if norm else Dummy()),
                     ('relu', nn.ReLU(not first_layer)),
                     ('conv1', kaiming(Conv1x1(in_ch, mid, bias=bias))),
-                    ('bn2', constant_init(norm(mid), 1)),
+                    ('bn2', constant_init(norm(mid), 1) if norm else Dummy()),
                     ('relu2', nn.ReLU(True)),
                     ('conv2',
                      kaiming(Conv3x3(mid, mid, stride=stride, bias=bias))),
-                    ('bn3', constant_init(norm(mid), 1)),
+                    ('bn3', constant_init(norm(mid), 1) if norm else Dummy()),
                     ('relu3', nn.ReLU(True)),
-                    ('conv3', constant_init(Conv1x1(mid, out_ch), 0)),
+                    ('conv3', constant_init(Conv1x1(mid, out_ch), 0))
                 ]))
         else:
             self.branch = CondSeq(
                 collections.OrderedDict([
-                    ('bn1', constant_init(norm(in_ch), 1)),
+                    ('bn1', constant_init(norm(in_ch), 1) if norm else Dummy()),
                     ('relu', nn.ReLU(not first_layer)),
                     ('conv1',
                      kaiming(Conv3x3(in_ch, out_ch, stride=stride,
                                      bias=bias))),
-                    ('bn2', constant_init(norm(out_ch), 1)),
+                    ('bn2', constant_init(norm(out_ch), 1) if norm else Dummy()),
                     ('relu2', nn.ReLU(True)),
                     ('conv2', constant_init(Conv3x3(out_ch, out_ch), 0))
                 ]))
@@ -351,7 +351,7 @@ class PreactResBlock(nn.Module):
 
         self.shortcut = make_preact_resnet_shortcut(in_ch, out_ch, stride)
 
-    def __repr_fuck__(self):
+    def __repr__(self):
         return "{}({}, {}, stride={}, norm={}{})".format(
             ("SE-" if self.use_se else "") +
             ("PreactBottleneck" if self.bottleneck else "PreactResBlock"),
