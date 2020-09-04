@@ -394,7 +394,7 @@ class VisdomLogger:
                                         title=name,
                                         store_history=name in store_history))
                 else:
-                    assert False, "incorrect tensor dim"
+                    assert False, "incorrect tensor shape {} for {}".format(repr(x.shape), name)
             else:
                 assert False, "incorrect type {} for key {}".format(
                         x.__class__.__name__, name)
@@ -775,12 +775,12 @@ class Throughput:
         if self.b_start:
             t = now - self.b_start
             self.it_avg.log(t)
-            state['metrics']['iter_time'] = t
-            state['metrics']['iter_throughput'] = len(state['batch'][0]) / t
+            state['metrics']['iter_time'] = self.it_avg.get()
+            state['metrics']['iter_throughput'] = len(state['batch'][0]) / self.it_avg.get()
         self.b_start = now
 
     def on_batch_end(self, state):
         t = time.time() - self.b_start
         self.forward_avg.log(t)
-        state['metrics']['forward_time'] = t
-        state['metrics']['forward_throughput'] = len(state['batch'][0]) / t
+        state['metrics']['forward_time'] = self.forward_avg.get()
+        state['metrics']['forward_throughput'] = len(state['batch'][0]) / self.forward_avg.get()
