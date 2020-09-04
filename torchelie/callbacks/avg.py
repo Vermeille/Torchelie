@@ -30,6 +30,8 @@ class RunningAvg(tu.AutoStateDict):
         """
         Get the average so far
         """
+        if self.count == 0:
+            return float('nan')
         return self.val / self.count
 
 
