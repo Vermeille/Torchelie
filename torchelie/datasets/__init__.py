@@ -74,7 +74,18 @@ def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
 
 class _Wrap:
     def __init__(self, instance):
-        self.__dict__.update(instance.__dict__)
+        # FIXME: NOT WORKING WHEN SETTING MEMBERS
+        #self.__dict__ = instance.__dict__
+        self.ds = instance
+
+    def __getattr__(self, attr):
+        return getattr(self.ds, attr)
+
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
 
 
 class MixUpDataset(_Wrap):
@@ -105,6 +116,23 @@ class MixUpDataset(_Wrap):
 
         return mixup(x1, x2, y1, y2, len(self.ds.classes), self.mixer)
 
+
+class _Proxy:
+    def __init__(self, ds, indices, remap_unused_classes, cls_map):
+        self.ds = ds
+        self.indices = indices
+        self.remap_unused_classes = remap_unused_classes
+        self.cls_map = cls_map
+
+    def __len__(self):
+        return len(indices)
+
+    def __getitem__(self, i):
+        b = self.ds.samples[self.indices[i]]
+        if self.remap_unused_classes:
+            b = list(b)
+            b[1] = self.cls_map[b[1]]
+        return b
 
 class Subset:
     """
@@ -142,20 +170,12 @@ class Subset:
             self.classes = cls
             self.class_to_idx = cls_to_idx
         else:
+            cls_map = {}
             self.classes = ds.classes
             self.class_to_idx = ds.class_to_idx
 
-        class Proxy:
-            def __len__(self):
-                return len(indices)
-
-            def __getitem__(self, i):
-                b = ds.samples[indices[i]]
-                if remap_unused_classes:
-                    b = list(b)
-                    b[1] = cls_map[b[1]]
-                return b
-        self.samples = Proxy()
+        self.samples = _Proxy(ds, indices, remap_unused_classes, cls_map)
+        self.imgs = self.samples
 
 
     def __repr__(self):
