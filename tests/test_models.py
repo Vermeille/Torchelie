@@ -52,6 +52,12 @@ def test_resnet():
     m = snres_projdiscr([2, 'D', 3], in_ch=3, num_classes=4)
     m(torch.randn(1, 3, 8, 8), torch.LongTensor([1]))
 
+    resnet18(1)(torch.randn(1, 3, 32, 32))
+    preact_resnet18(1)(torch.randn(1, 3, 64, 64))
+    preact_resnet34(1)(torch.randn(1, 3, 64, 64))
+    preact_resnet20_cifar(1)(torch.randn(1, 3, 64, 64))
+    resnet20_cifar(1)(torch.randn(1, 3, 32, 32))
+
 
 def test_unet():
     m = UNet()

@@ -117,25 +117,37 @@ def make_cbn(base, name):
         def __init__(self, channels, cond_channels, momentum=0.8):
             super(ConditionalBN2d, self).__init__(channels, momentum)
             self.make_weight = nn.Linear(cond_channels, channels)
-            nn.init.kaiming_normal_(self.make_weight.weight)
+            nn.init.normal_(self.make_weight.weight, 0.002)
             nn.init.zeros_(self.make_weight.bias)
             self.make_bias = nn.Linear(cond_channels, channels)
-            nn.init.kaiming_normal_(self.make_bias.weight)
+            nn.init.normal_(self.make_bias.weight, 0.002)
             nn.init.zeros_(self.make_bias.bias)
+            self.bn = nn.BatchNorm2d(channels, affine=False)
+
+        @property
+        def weight(self):
+            """Dummy member for initialization functions"""
+            return torch.tensor([0])
+
+        @weight.setter
+        def weight(self, _):
+            pass
 
         def forward(self, x, z=None):
             if z is not None:
                 self.condition(z)
+            return self.bn(x) * self.weight + self.bias
 
             m, v = self.update_moments(x)
             weight = self.weight / (v + 1e-6)
             bias = -m * weight + self.bias
-            out = x.mul_(weight).add_(bias)
+            out = x * weight + bias
+            print(out.mean().item(), out.std().item())
             return out
 
         def condition(self, z):
-            self.weight = self.make_weight(z)[:, :, None, None]+1
-            self.bias = self.make_bias(z)[:, :, None, None]
+            self.weight = (self.make_weight(z)[:, :, None, None])+1
+            self.bias = (self.make_bias(z)[:, :, None, None])
 
     ConditionalBN2d.__name__ = name
     return ConditionalBN2d
