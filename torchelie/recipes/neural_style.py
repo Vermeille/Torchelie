@@ -10,7 +10,7 @@ from torchvision.transforms import ToTensor, ToPILImage
 
 import torchelie as tch
 from torchelie.loss import NeuralStyleLoss
-from torchelie.data_learning import ParameterizedImg
+from torchelie.data_learning import ParameterizedImg, PixelImage, SpectralImage
 from torchelie.recipes.recipebase import Recipe
 import torchelie.callbacks as tcb
 
@@ -49,7 +49,10 @@ class NeuralStyle(torch.nn.Module):
             content_img,
             style_img,
             style_ratio,
-            content_layers=None):
+            *,
+            second_scale_ratio=1,
+            content_layers=None,
+            init_with_content=False):
         """
         Run the recipe
 
@@ -63,34 +66,49 @@ class NeuralStyle(torch.nn.Module):
         """
         self.loss.to(self.device)
         self.loss.set_style(pil2t(style_img).to(self.device), style_ratio)
-        self.loss.set_content(pil2t(content_img).to(self.device), content_layers)
+        self.loss.set_content(
+            pil2t(content_img).to(self.device), content_layers)
 
         self.loss2.to(self.device)
-        self.loss2.set_style(torch.nn.functional.interpolate(
-            pil2t(style_img)[None], scale_factor=0.5, mode='bilinear')[0].to(self.device), style_ratio)
-        self.loss2.set_content(torch.nn.functional.interpolate(
-            pil2t(content_img)[None], scale_factor=0.5, mode='bilinear')[0].to(self.device), content_layers)
+        self.loss2.set_style(
+            torch.nn.functional.interpolate(pil2t(style_img)[None],
+                                            scale_factor=0.5,
+                                            mode='bilinear')[0].to(
+                                                self.device), style_ratio)
+        self.loss2.set_content(
+            torch.nn.functional.interpolate(pil2t(content_img)[None],
+                                            scale_factor=0.5,
+                                            mode='bilinear')[0].to(
+                                                self.device), content_layers)
 
-        canvas = ParameterizedImg(3, content_img.height,
+        canvas = ParameterizedImg(1,
+                                  3,
+                                  content_img.height,
                                   content_img.width,
-                                  init_img=pil2t(content_img)
-                                  )
+                                  init_img=pil2t(content_img)#.unsqueeze(0)
+                                  if init_with_content else None)
 
-        self.opt = tch.optim.RAdamW(canvas.parameters(), 3e-2)
+        self.opt = tch.optim.RAdamW(canvas.parameters(),
+                                    3e-2,
+                                    betas=(0.9, 0.99),
+                                    weight_decay=0)
 
         def forward(_):
             img = canvas()
             loss, losses = self.loss(img)
             loss.backward()
-            loss, losses = self.loss2(torch.nn.functional.interpolate(canvas(),
-                scale_factor=0.5, mode='bilinear'))
-            loss.backward()
+            loss, losses = self.loss2(
+                torch.nn.functional.interpolate(canvas(),
+                                                scale_factor=0.5,
+                                                mode='bilinear'))
+            (second_scale_ratio * loss).backward()
 
             return {
                 'loss': loss,
                 'content_loss': losses['content_loss'],
                 'style_loss': losses['style_loss'],
-                'img': img
+                'hists_loss': losses['hists_loss'],
+                'img': img,
             }
 
         loop = Recipe(forward, range(iters))
@@ -101,6 +119,7 @@ class NeuralStyle(torch.nn.Module):
             tcb.WindowedMetricAvg('loss'),
             tcb.WindowedMetricAvg('content_loss'),
             tcb.WindowedMetricAvg('style_loss'),
+            tcb.WindowedMetricAvg('hists_loss'),
             tcb.Log('img', 'img'),
             tcb.VisdomLogger(visdom_env=self.visdom_env, log_every=10),
             tcb.StdoutLogger(log_every=10),

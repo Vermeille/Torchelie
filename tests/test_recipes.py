@@ -58,7 +58,8 @@ def test_neuralstyle():
     content = ToPILImage()(torch.randn(3, 64, 64))
     style_img = ToPILImage()(torch.randn(3, 64, 64))
 
-    result = stylizer.fit(1, content, style_img, 1, ['conv1_1'])
+    result = stylizer.fit(1, content, style_img, 1, second_scale_ratio=1,
+            content_layers=['conv1_1'])
 
 def test_trainandcall():
     model = nn.Linear(10, 2)

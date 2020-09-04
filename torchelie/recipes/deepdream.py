@@ -50,10 +50,10 @@ class DeepDream(torch.nn.Module):
             visdom_env (str or None): the name of the visdom env to use, or None
                 to disable Visdom
         """
-        ref_tensor = TF.ToTensor()(ref)
-        canvas = ParameterizedImg(3,
-                                  ref_tensor.shape[1],
+        ref_tensor = TF.ToTensor()(ref).unsqueeze(0)
+        canvas = ParameterizedImg(1, 3,
                                   ref_tensor.shape[2],
+                                  ref_tensor.shape[3],
                                   init_img=ref_tensor,
                                   space='spectral',
                                   colors='uncorr')

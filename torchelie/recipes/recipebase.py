@@ -70,10 +70,10 @@ class CallbacksRunner:
 
     def __repr__(self):
         return "Prologue:\n{}\nCallbacks:\n{}\nEpilogue:\n{}".format(
-                "\n".join(["  " + l for l in repr(self.cbs[0]).split("\n")]),
-                "\n".join(["  " + l for l in repr(self.cbs[1]).split("\n")]),
-                "\n".join(["  " + l for l in repr(self.cbs[2]).split("\n")]),
-            )
+            "\n".join(["  " + l for l in repr(self.cbs[0]).split("\n")]),
+            "\n".join(["  " + l for l in repr(self.cbs[1]).split("\n")]),
+            "\n".join(["  " + l for l in repr(self.cbs[2]).split("\n")]),
+        )
 
 
 class RecipeBase:
@@ -114,7 +114,12 @@ class RecipeBase:
         """
         sd = OrderedDict()
         for nm in self._modules:
-            sd[nm] = self.__dict__[nm].state_dict()
+            mod = self.__dict__[nm]
+            if isinstance(mod, (torch.nn.parallel.DistributedDataParallel,
+                                torch.nn.parallel.DataParallel)):
+                sd[nm] = mod.module.state_dict()
+            else:
+                sd[nm] = mod.state_dict()
 
         for nm in self._savable:
             val = self.__dict__[nm]
@@ -132,7 +137,14 @@ class RecipeBase:
             val = self.__dict__[key]
             if hasattr(val, 'load_state_dict'):
                 if isinstance(val, torch.nn.Module):
-                    print(val.load_state_dict(state, strict=False))
+                    if isinstance(
+                            val,
+                        (torch.nn.parallel.DistributedDataParallel,
+                            torch.nn.parallel.DataParallel)):
+                        sd[nm] = mod.module.state_dict()
+                        print(val.module.load_state_dict(state, strict=False))
+                    else:
+                        print(val.load_state_dict(state, strict=False))
                 else:
                     val.load_state_dict(state)
             else:
@@ -237,5 +249,3 @@ class Recipe(RecipeBase):
                 self.callbacks('on_batch_end')
             self.callbacks('on_epoch_end')
         return self.callbacks.state
-
-
