@@ -138,12 +138,14 @@ class ResizedCrop(object):
         interpolation: Default: PIL.Image.BILINEAR
     """
 
-    def __init__(self, size, scale=0.54, interpolation=Image.BILINEAR):
+    def __init__(self, size, scale=0.54, ratio=1,
+            interpolation=Image.BILINEAR):
         if isinstance(size, tuple):
             self.size = size
         else:
             self.size = (size, size)
 
+        self.ratio = ratio
         self.interpolation = interpolation
         self.scale = scale
 
@@ -157,7 +159,7 @@ class ResizedCrop(object):
             raise TypeError("Unexpected type {}".format(type(img)))
 
     @staticmethod
-    def get_params(img, scale):
+    def get_params(img, scale, ratio=1):
         """Get parameters for ``crop``.
         Args:
             img (PIL Image): Image to be cropped.
@@ -166,7 +168,6 @@ class ResizedCrop(object):
             tuple: params (i, j, h, w) to be passed to ``crop``.
         """
         scale = math.sqrt(scale)
-        ratio = 1
         width, height = ResizedCrop._get_image_size(img)
         area = height * width
 
@@ -192,7 +193,7 @@ class ResizedCrop(object):
         Returns:
             PIL Image: Randomly cropped and resized image.
         """
-        i, j, h, w = self.get_params(img, self.scale)
+        i, j, h, w = self.get_params(img, self.scale, self.ratio)
         return F.resized_crop(img, i, j, h, w, self.size, self.interpolation)
 
     def __repr__(self):
