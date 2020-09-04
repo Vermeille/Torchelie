@@ -14,7 +14,8 @@ def GANRecipe(G,
               visdom_env='main',
               checkpoint='model',
               test_every=1000,
-              log_every=10):
+              log_every=10,
+              g_every=1):
     def D_wrap(batch):
         tu.freeze(G)
         G.eval()
@@ -67,10 +68,10 @@ def GANRecipe(G,
     D_loop.callbacks.add_prologues([tcb.Counter()])
 
     D_loop.callbacks.add_epilogues([
-        tcb.CallRecipe(G_loop, 1, init_fun=G_test, prefix='G'),
+        tcb.CallRecipe(G_loop, g_every, init_fun=G_test, prefix='G'),
         tcb.WindowedMetricAvg('loss'),
         tcb.Log('G_metrics.loss', 'G_loss'),
-        tcb.Log('G_metrics.imgs', 'G_imgs'),
+        tcb.Log('imgs', 'G_imgs'),
         tcb.VisdomLogger(visdom_env=visdom_env, log_every=log_every),
         tcb.StdoutLogger(log_every=log_every),
         tcb.CallRecipe(test_loop,
@@ -81,7 +82,6 @@ def GANRecipe(G,
 
     G_loop.callbacks.add_epilogues([
         tcb.Log('loss', 'loss'),
-        tcb.Log('imgs', 'imgs'),
         tcb.WindowedMetricAvg('loss')
     ])
 
