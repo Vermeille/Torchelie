@@ -9,46 +9,81 @@ Block = functools.partial(tnn.PreactResBlock, bottleneck=True)
 
 
 class UBlock(nn.Module):
-    def __init__(self, ch, inner):
+    def __init__(self, ch, inner, with_skip=True):
         super(UBlock, self).__init__()
         self.inner = inner
-        if inner is not None:
+        if with_skip and inner is not None:
             self.skip = Block(ch, ch)
-        self.encode = tnn.CondSeq(nn.MaxPool2d(3, 2, 1), Block(ch, ch))
+        else:
+            self.skip = None
+        self.encode = tnn.CondSeq(nn.MaxPool2d(3, 1, 1),
+                                  nn.UpsamplingBilinear2d(scale_factor=0.5),
+                                  Block(ch, ch))
         self.decode = tnn.CondSeq(Block(ch, ch),
                                   nn.UpsamplingBilinear2d(scale_factor=2))
 
     def forward(self, x):
         e = self.encode(x)
         if self.inner is not None:
-            e2 = self.inner(e) + self.skip(e)
+            e2 = self.inner(e)
         else:
             e2 = e
+
+        if self.skip is not None:
+            e2 += self.skip(e)
+
         return self.decode(e2)
 
 
-class AttentionBlock(nn.Module):
-    def __init__(self, ch, n_down):
-        super(AttentionBlock, self).__init__()
-        self.pre = Block(ch, ch)
-        self.post = Block(ch, ch)
-        self.trunk = tnn.CondSeq(Block(ch, ch), Block(ch, ch))
+class UBlock1(nn.Module):
+    def __init__(self, ch):
+        super(UBlock1, self).__init__()
+        self.inner = tnn.CondSeq(nn.MaxPool2d(3, 1, 1),
+                                 nn.UpsamplingBilinear2d(scale_factor=0.5),
+                                 Block(ch, ch),
+                                 nn.UpsamplingBilinear2d(scale_factor=2))
 
-        soft = None
-        for _ in range(n_down):
-            soft = UBlock(ch, soft)
-        self.mask = tnn.CondSeq(soft, nn.BatchNorm2d(ch), nn.ReLU(True),
-                                tu.kaiming(tnn.Conv1x1(ch, ch, bias=False)),
-                                nn.BatchNorm2d(ch), nn.ReLU(True),
-                                tu.kaiming(tnn.Conv1x1(ch, ch)),
-                                nn.Sigmoid(),
-                                )
+    def forward(self, x):
+        return self.inner(x)
+
+
+class AttentionBlock(nn.Module):
+    def __init__(self,
+                 ch,
+                 n_down,
+                 n_trunk=2,
+                 n_post=1,
+                 n_pre=1,
+                 n_att_conv=2,
+                 with_skips=True):
+        super(AttentionBlock, self).__init__()
+        self.pre = tnn.CondSeq(*[Block(ch, ch) for _ in range(n_pre)])
+        self.post = tnn.CondSeq(*[Block(ch, ch) for _ in range(n_post)])
+        self.trunk = tnn.CondSeq(*[Block(ch, ch) for _ in range(n_trunk)])
+
+        soft = UBlock1(ch)
+        for _ in range(n_down - 1):
+            soft = UBlock(ch, soft, with_skip=with_skips)
+        if n_down >= 0:
+            conv1 = [soft]
+            for i in range(n_att_conv):
+                conv1 += [
+                    nn.BatchNorm2d(ch),
+                    nn.ReLU(True),
+                    tu.kaiming(tnn.Conv1x1(ch, ch, bias=(i != n_att_conv - 1)))
+                ]
+            conv1.append(nn.Sigmoid())
+
+            self.mask = tnn.CondSeq(*conv1)
+        else:
+            self.mask = None
 
     def forward(self, x):
         x = self.pre(x)
         t = self.trunk(x)
-        m = self.mask(x) + 1
-        return self.post(t * m)
+        if self.mask is not None:
+            t = t * (self.mask(x) + 1)
+        return self.post(t)
 
 
 class Attention56Bone(nn.Module):
