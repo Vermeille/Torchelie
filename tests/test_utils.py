@@ -9,7 +9,7 @@ def test_net():
     unfreeze(m)
     kaiming(m)
     xavier(m)
-    n002(m)
+    normal_init(m, 0.02)
     nb_parameters(m)
     assert m is layer_by_name(torch.nn.Sequential(m), '0')
     assert layer_by_name(torch.nn.Sequential(m), 'test') is None
