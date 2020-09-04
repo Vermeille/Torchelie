@@ -57,7 +57,8 @@ def get_datasets():
 def train():
     opts = get_args()
     ds, dst = get_datasets()
-    model = tch.models.attention56(num_classes=10, in_ch=3)
+    model = tch.models.preact_resnet20_cifar(num_classes=10)
+    print(model)
     dl = torch.utils.data.DataLoader(ds,
                                      num_workers=4,
                                      batch_size=128,
