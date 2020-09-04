@@ -30,6 +30,7 @@ def Classification(model,
                    classes,
                    *,
                    visdom_env=None,
+                   checkpoint=None,
                    test_every=1000,
                    log_every=100):
     """
@@ -110,6 +111,7 @@ def Classification(model,
                         visdom_env=visdom_env,
                         test_every=test_every,
                         log_every=log_every,
+                        checkpoint=checkpoint,
                         key_best=key_best)
 
     loop.callbacks.add_callbacks([
@@ -119,7 +121,7 @@ def Classification(model,
     loop.register('classes', classes)
 
     loop.test_loop.callbacks.add_callbacks([
-        tcb.AccAvg(post_each_batch=False),
+        tcb.AccAvg(post_each_batch=False, avg_type='running'),
         tcb.WindowedMetricAvg('loss', False),
     ])
 
