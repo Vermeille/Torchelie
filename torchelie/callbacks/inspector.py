@@ -52,6 +52,8 @@ class ClassificationInspector:
         self.center_value = center_value
         self.topk = topk
         self.reset()
+        self.m = float('inf')
+        self.M = float('-inf')
 
     def reset(self):
         self.best = []
@@ -89,8 +91,10 @@ class ClassificationInspector:
 
         html = ['<div style="display:flex;flex-wrap:wrap">']
         for img, p, cls, correct, path, pred_label, best_pred in dat:
-            img = img - img.min()
-            img /= img.max()
+            self.m = min(self.m, img.min())
+            img = img - self.m
+            self.M = max(self.M, img.max())
+            img /= self.M
 
             tlabel = self.labels[cls.item()]
             tlabel = tlabel.replace('_', ' ').replace('-', ' ')

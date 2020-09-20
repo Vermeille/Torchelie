@@ -694,7 +694,7 @@ class ConfusionMatrix:
             cm[p][t] += 1
 
     def to_html(self, cm):
-        s = "<tr><th></th><th>{}</th></tr>".format("</th><th>".join(
+        s = "<tr><th>Pred\\True</th><th>{}</th></tr>".format("</th><th>".join(
             self.labels))
 
         for l, row in zip(self.labels, cm):

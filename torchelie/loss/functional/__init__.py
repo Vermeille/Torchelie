@@ -11,7 +11,7 @@ def ortho(w):
 
     :math:`R_{\beta}(W)= ||W^T W  \odot (1 - I)||_F^2`
     """
-    cosine = torch.mm(w, w.t())
+    cosine = torch.einsum('ij,ji->ij', w, w)
     no_diag = (1 - torch.eye(w.shape[0], device=w.device))
     return (cosine * no_diag).pow(2).sum(dim=1).mean()
 
