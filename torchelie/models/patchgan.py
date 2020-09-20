@@ -2,7 +2,7 @@ import torch.nn as nn
 
 import torchelie.nn as tnn
 from torchelie.utils import kaiming, xavier
-from .classifier import Classifier, ProjectionDiscr
+from .classifier import Classifier2, ProjectionDiscr
 
 
 def base_patch_discr(arch, in_ch=3, out_ch=1, norm=None):
@@ -47,7 +47,7 @@ def patch_discr(arch, in_ch=3, out_ch=1, norm=None):
     Returns:
         the specified patchGAN as CondSeq
     """
-    return Classifier(base_patch_discr(arch, in_ch=in_ch, out_ch=out_ch, norm=norm),
+    return Classifier2(base_patch_discr(arch, in_ch=in_ch, out_ch=out_ch, norm=norm),
                       arch[-1], out_ch)
 
 

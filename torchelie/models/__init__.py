@@ -1,4 +1,4 @@
-from .classifier import Classifier, Classifier1, ProjectionDiscr
+from .classifier import Classifier2, Classifier1, ProjectionDiscr
 from .vgg import *
 from .resnet import *
 from .patchgan import *

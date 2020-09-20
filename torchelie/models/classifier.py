@@ -5,7 +5,7 @@ import torchelie.nn as tnn
 from torchelie.utils import kaiming, xavier
 
 
-class Classifier(nn.Module):
+class Classifier2(nn.Module):
     """
     A classification head added on top of a feature extraction model.
 
@@ -16,14 +16,14 @@ class Classifier(nn.Module):
         num_classes (int): the number of output classes
     """
     def __init__(self, feat_extractor, feature_size, num_classes):
-        super(Classifier, self).__init__()
+        super(Classifier2, self).__init__()
         self.bone = feat_extractor
 
         self.head = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             tnn.Reshape(feature_size),
             kaiming(nn.Linear(feature_size, feature_size)),
-            #nn.Dropout(0.5),
+            nn.Dropout(0.5),
             nn.ReLU(inplace=True),
             xavier(nn.Linear(feature_size, num_classes)),
         )

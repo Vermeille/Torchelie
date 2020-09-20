@@ -124,14 +124,8 @@ def make_cbn(base, name):
             nn.init.zeros_(self.make_bias.bias)
             self.bn = nn.BatchNorm2d(channels, affine=False)
 
-        @property
-        def weight(self):
-            """Dummy member for initialization functions"""
-            return torch.tensor([0])
-
-        @weight.setter
-        def weight(self, _):
-            pass
+            self.weight = torch.tensor([0])
+            self.bias = torch.tensor([0])
 
         def forward(self, x, z=None):
             if z is not None:

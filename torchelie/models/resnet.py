@@ -9,7 +9,7 @@ import torchelie.utils as tu
 from typing import List, Callable
 from typing_extensions import Protocol
 
-from .classifier import Classifier, Classifier1
+from .classifier import Classifier2, Classifier1
 
 
 class BlockBuilder(Protocol):
@@ -107,7 +107,7 @@ def ClassCondResNetDebug(num_classes, num_cond_classes, in_ch=3, debug=False):
     Returns:
         a resnet instance
     """
-    return Classifier(
+    return Classifier1(
         ClassCondResNetBone(
             ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
             tnn.Conv2dBNReLU(in_ch, 64, ks=7, stride=2),
@@ -212,7 +212,7 @@ def ResNetDebug(num_classes, in_ch=3, debug=False):
     Returns:
         a resnet instance
     """
-    return Classifier(
+    return Classifier1(
         ResNetBone(tnn.Conv2dBNReLU(in_ch, 64, ks=7, stride=2),
                    64, ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
                    tnn.ResBlock,
@@ -231,14 +231,14 @@ def PreactResNetDebug(num_classes, in_ch=3, debug=False):
     Returns:
         a resnet instance
     """
-    return Classifier(
+    return Classifier1(
         ResNetBone(tnn.Conv2dBNReLU(in_ch, 64, ks=5, stride=2),
                    64, ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
                    tnn.PreactResBlock,
                    debug=debug), 256, num_classes)
 
 
-def resnet20_cifar(num_classes, in_ch=3, debug=False):
+def resnet20_cifar(num_classes, in_ch=3, dropout=0.2, debug=False):
     return Classifier1(ResNetBone(tnn.Conv2dBNReLU(in_ch, 16, ks=3, stride=1),
                                   16, [
                                       '16:1', '16:1', '16:1', '32:2', '32:1',
@@ -247,8 +247,7 @@ def resnet20_cifar(num_classes, in_ch=3, debug=False):
                                   tnn.ResBlock,
                                   debug=debug),
                        64,
-                       num_classes,
-                       dropout=0)
+                       num_classes)
 
 
 def _preact_head(in_ch, out_ch, input_size=128):
@@ -300,7 +299,7 @@ def preact_resnet18(num_classes, in_ch=3, input_size=224, debug=False):
         debug=debug),
                        512,
                        num_classes,
-                       dropout=0)
+                       dropout=0.)
 
 
 def preact_resnet34(num_classes, in_ch=3, input_size=224, debug=False):

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torchelie.nn as tnn
-from .classifier import Classifier, ProjectionDiscr
+from .classifier import Classifier2, ProjectionDiscr
 
 
 def _parse_snres(arch, in_ch):
@@ -31,7 +31,7 @@ def snres_discr(arch, in_ch=3, out_ch=1):
         an instance
     """
     bone, in_ch = _parse_snres(arch, in_ch)
-    clf = Classifier(bone, in_ch, out_ch)
+    clf = Classifier2(bone, in_ch, out_ch)
 
     for m in clf.head.modules():
         if isinstance(m, nn.Linear):

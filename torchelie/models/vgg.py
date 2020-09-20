@@ -2,7 +2,7 @@ import torch.nn as nn
 import torchelie.nn as tnn
 from torchelie.utils import kaiming, xavier
 
-from .classifier import Classifier
+from .classifier import Classifier2
 
 
 def VggBNBone(arch, in_ch=3, leak=0, block=tnn.Conv2dBNReLU, debug=False):
@@ -60,7 +60,7 @@ def VggDebug(num_classes, in_ch=1, debug=False):
     Returns:
         a VGG instance
     """
-    return Classifier(
+    return Classifier2(
         VggBNBone([64, 64, 'M', 128, 'M', 128, 'M', 256, 256],
                   in_ch=in_ch,
                   debug=debug), 256, num_classes)
