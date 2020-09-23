@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Function
 
+from typing import Union, Tuple
+
 from .functional import quantize
 
 
@@ -20,15 +22,14 @@ class VQ(nn.Module):
         return_indices (bool): whether to return the indices of the quantized
             code points
     """
-
     def __init__(self,
-                 latent_dim,
-                 num_tokens,
-                 dim=1,
-                 commitment=0.25,
-                 mode='nearest',
-                 init_mode='normal',
-                 return_indices=True):
+                 latent_dim: int,
+                 num_tokens: int,
+                 dim: int = 1,
+                 commitment: float = 0.25,
+                 mode: str = 'nearest',
+                 init_mode: str = 'normal',
+                 return_indices: bool = True):
         super(VQ, self).__init__()
         self.embedding = nn.Embedding(num_tokens, latent_dim)
         nn.init.normal_(self.embedding.weight, 0, 1)
@@ -41,7 +42,9 @@ class VQ(nn.Module):
         assert init_mode in ['normal', 'first']
         self.init_mode = init_mode
 
-    def forward(self, x):
+    def forward(
+        self, x: torch.Tensor
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """
         Forward pass
 
@@ -66,7 +69,7 @@ class VQ(nn.Module):
 
             ch_first = x.transpose(dim, -1).contiguous().view(-1, x.shape[dim])
             n_samples = ch_first.shape[0]
-            idx = torch.randint(0, n_samples, (n_proto,))[:nb_codes]
+            idx = torch.randint(0, n_samples, (n_proto, ))[:nb_codes]
             self.embedding.weight.data.copy_(ch_first[idx])
             self.initialized[:] = 1
 
@@ -84,3 +87,50 @@ class VQ(nn.Module):
             return codes, indices
         else:
             return codes
+
+
+class MultiVQ(nn.Module):
+    """
+    Multi codebooks quantization layer from _Neural Discrete Representation Learning_
+
+    Args:
+        latent_dim (int): number of features along which to quantize
+        num_tokens (int): number of tokens in the codebook
+        num_codebooks (int): number of parallel codebooks
+        dim (int): dimension along which to quantize
+        mode ('angular' or 'nearest'): whether the distance between the input
+            vectors and the codebook vectors is computed with a L2 distance or
+            an angular distance
+        return_indices (bool): whether to return the indices of the quantized
+            code points
+    """
+    def __init__(self,
+                 latent_dim: int,
+                 num_tokens: int,
+                 num_codebooks: int,
+                 dim: int = 1,
+                 commitment: float = 0.25,
+                 mode: str = 'nearest',
+                 init_mode: str = 'normal',
+                 return_indices: bool = True):
+        assert (latent_dim % num_codebooks == 0,
+                "num_codebooks must divide evenly latent_dim")
+        super(MultiVQ).__init__()
+        self.dim = dim
+        self.num_codebooks = num_codebooks
+        self.vqs = nn.ModuleList([
+            VQ(latent_dim // num_codebooks,
+               num_tokens,
+               dim=dim,
+               commitment=commitment,
+               mode=mode,
+               init_mode=init_mode,
+               return_indices=return_indices) for _ in range(num_codebooks)
+        ])
+
+    def forward(
+        self, x: torch.Tensor
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        x_chunks = torch.chunk(x, self.num_codebooks, dim=self.dim)
+        return torch.cat([vq(chunk) for chunk, vq in zip(x_chunks, self.vqs)],
+                         dim=self.dim)
