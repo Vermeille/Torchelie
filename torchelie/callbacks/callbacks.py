@@ -271,6 +271,7 @@ class LRSched(tu.AutoStateDict):
         self.sched = sched
         self.metric = metric
         self.step_each_batch = step_each_batch
+        self.avg = RunningAvg()
 
     def state_dict(self):
         if hasattr(self.sched, 'state_dict'):
@@ -287,13 +288,18 @@ class LRSched(tu.AutoStateDict):
                 self.sched.step()
             else:
                 self.sched.step(state['metrics'][self.metric])
+        else:
+            if self.metric is not None:
+                self.avg.log(state['metrics'][self.metric])
+
 
     def on_epoch_end(self, state):
         if not self.step_each_batch:
             if self.metric is None:
                 self.sched.step()
             else:
-                self.sched.step(state['metrics'][self.metric])
+                self.sched.step(self.avg.get())
+                self.avg = RunningAvg()
 
 
 class Log(tu.AutoStateDict):
