@@ -18,17 +18,13 @@ def GANRecipe(G,
               g_every=1):
     def D_wrap(batch):
         tu.freeze(G)
-        G.eval()
         tu.unfreeze(D)
-        D.train()
 
         return D_fun(batch)
 
     def G_wrap(batch):
         tu.freeze(D)
-        D.eval()
         tu.unfreeze(G)
-        G.train()
 
         return G_fun(batch)
 
@@ -38,7 +34,11 @@ def GANRecipe(G,
         D.eval()
         G.eval()
 
-        return test_fun(batch)
+        out = test_fun(batch)
+
+        D.train()
+        G.train()
+        return out
 
     D_loop = Recipe(D_wrap, loader)
     D_loop.register('G', G)
@@ -80,13 +80,89 @@ def GANRecipe(G,
                        prefix='Test'),
     ])
 
-    G_loop.callbacks.add_epilogues([
-        tcb.Log('loss', 'loss'),
-        tcb.WindowedMetricAvg('loss')
-    ])
+    G_loop.callbacks.add_epilogues(
+        [tcb.Log('loss', 'loss'),
+         tcb.WindowedMetricAvg('loss')])
 
     if checkpoint is not None:
         test_loop.callbacks.add_epilogues(
             [tcb.Checkpoint(checkpoint + '/ckpt_{iters}.pth', D_loop)])
 
     return D_loop
+
+
+if __name__ == '__main__':
+    from torchelie.models import autogan_128, snres_discr
+    import torchelie.loss.gan.hinge as gan_loss
+    from torchvision.datasets import ImageFolder
+    import torchvision.transforms as TF
+    from torchelie.optim import RAdamW
+    import torchelie as tch
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--device', default='cuda')
+    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--noise-size', type=int, default=128)
+    parser.add_argument('--img-size', type=int, default=64)
+    parser.add_argument('--img-dir', required=True)
+    opts = parser.parse_args()
+
+    device = opts.device
+    G = tch.models.VggGeneratorDebug(opts.noise_size, out_sz=opts.img_size)
+    D = snres_discr(1, input_sz=opts.img_size, max_channels=512).to(device)
+
+    if False:
+        for m in D.modules():
+            if isinstance(m, (torch.nn.Conv2d, torch.nn.Linear)):
+                torch.nn.utils.spectral_norm(m)
+
+    optG = RAdamW(G.parameters(), 2e-4, betas=(0., 0.99), weight_decay=0)
+    optD = RAdamW(D.parameters(), 2e-4, betas=(0., 0.99), weight_decay=0)
+
+    def G_train(batch):
+        tu.fast_zero_grad(G)
+        imgs = G(torch.randn(opts.batch_size, opts.noise_size, device=device))
+        score = gan_loss.generated(D(imgs * 2 - 1))
+        score.backward()
+        optG.step()
+        return {'loss': score.item()}
+
+    def D_train(batch):
+        tu.fast_zero_grad(D)
+        fake = G(torch.randn(opts.batch_size, opts.noise_size, device=device))
+        fake_loss = gan_loss.fake(D(fake * 2 - 1))
+        fake_loss.backward()
+        optD.step()
+
+        tu.fast_zero_grad(D)
+        real_loss = gan_loss.real(D(batch[0] * 2 - 1))
+        real_loss.backward()
+        optD.step()
+        return {
+            'imgs': fake.detach(),
+            'loss': real_loss.item() + fake_loss.item()
+        }
+
+    def test(batch):
+        return {}
+
+    tfm = TF.Compose([
+        TF.Resize(opts.img_size),
+        TF.CenterCrop(opts.img_size),
+        TF.ToTensor()
+    ])
+    dl = torch.utils.data.DataLoader(ImageFolder(opts.img_dir,
+                                                 transform=tfm),
+                                     num_workers=4,
+                                     shuffle=True,
+                                     pin_memory=True,
+                                     batch_size=opts.batch_size)
+
+    recipe = GANRecipe(G, D, G_train, D_train, test, dl, visdom_env='gan')
+    recipe.callbacks.add_callbacks([
+        #tch.callbacks.Optimizer(optG)
+        tcb.Log('batch.0', 'x'),
+    ])
+    recipe.to(device)
+    recipe.run(500)
