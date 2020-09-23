@@ -629,7 +629,8 @@ class ClassificationInspector:
     @torch.no_grad()
     def on_batch_end(self, state):
         pred, y, x = state['pred'], state['batch'][1], state['batch'][0]
-        self.vis.analyze(x, pred, y)
+        paths = state['batch'][2] if len(state['batch']) > 2 else None
+        self.vis.analyze(x, pred, y, paths=paths)
         if self.post_each_batch and state.get('visdom_will_log', False):
             state['metrics']['report'] = self.vis.show()
 
