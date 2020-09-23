@@ -221,7 +221,9 @@ class Optimizer(tu.AutoStateDict):
 
     def on_batch_start(self, state):
         if state['iters'] % self.accumulation == 0:
-            self.opt.zero_grad()
+            for group in self.opt.param_groups:
+                for p in group['params']:
+                    p.grad = None
 
         if self.log_lr:
             for i in range(len(self.opt.param_groups)):

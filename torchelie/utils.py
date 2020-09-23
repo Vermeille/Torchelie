@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+def fast_zero_grad(net):
+    for p in net.parameters():
+        p.grad = None
 
 def freeze(net):
     """
