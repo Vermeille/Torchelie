@@ -1,8 +1,9 @@
+from functools import partial
 import torch.nn as nn
 import torchelie.nn as tnn
 from torchelie.utils import kaiming, xavier
 
-from .classifier import Classifier2
+from .classifier import Classifier2, ConcatPoolClassifier1
 
 
 def VggBNBone(arch, in_ch=3, leak=0, block=tnn.Conv2dBNReLU, debug=False):
@@ -38,7 +39,7 @@ def VggBNBone(arch, in_ch=3, leak=0, block=tnn.Conv2dBNReLU, debug=False):
         elif layer == 'A':
             layers.append(nn.AvgPool2d(2, 2))
         elif layer == 'U':
-            layers.append(nn.UpsamplingNearest2d(scale_factor=2))
+            layers.append(nn.UpsamplingBilinear2d(scale_factor=2))
         else:
             layers.append(block(in_ch, layer, ks=3, leak=leak))
             in_ch = layer
@@ -47,6 +48,17 @@ def VggBNBone(arch, in_ch=3, leak=0, block=tnn.Conv2dBNReLU, debug=False):
             layers.append(tnn.Debug(layer_name))
     return tnn.CondSeq(*layers)
 
+def VggDebugFullyConv(num_classes, in_ch=3, input_size=32):
+    layers = [32, 'A', 64, 'A', 128, 'A', 256]
+
+    input_size = input_size // 32
+
+    while input_size != 1:
+        layers += ['A', min(1024, layers[-1] * 2)]
+        input_size = input_size // 2
+
+    return ConcatPoolClassifier1(
+        VggBNBone(layers, in_ch=in_ch), layers[-1], num_classes)
 
 def VggDebug(num_classes, in_ch=1, debug=False):
     """
@@ -60,13 +72,16 @@ def VggDebug(num_classes, in_ch=1, debug=False):
     Returns:
         a VGG instance
     """
+    layers = [64, 'M', 128, 'M', 128, 'M', 256]
     return Classifier2(
-        VggBNBone([64, 64, 'M', 128, 'M', 128, 'M', 256, 256],
+        VggBNBone(layers,
                   in_ch=in_ch,
-                  debug=debug), 256, num_classes)
+                  debug=debug,
+                  block=partial(tnn.Conv2dBNReLU,inplace=True)),
+        layers[-1], num_classes)
 
 
-def VggGeneratorDebug(in_noise=32, out_ch=3):
+def VggGeneratorDebug(in_noise=32, out_ch=3, out_sz=32):
     """
     A not so small Vgg net image GAN generator for testing purposes
 
@@ -77,11 +92,16 @@ def VggGeneratorDebug(in_noise=32, out_ch=3):
     Returns:
         a VGG instance
     """
+    layers = [128, 'U', 64, 'U', 32, 'U', 16]
+    out_sz = out_sz // 32
+    while out_sz != 1:
+        layers = [min(1024, 2 * layers[0]), 'U'] + layers
+        out_sz = out_sz // 2
     return nn.Sequential(
-        kaiming(nn.Linear(in_noise, 128 * 16)), tnn.Reshape(128, 4, 4),
+        kaiming(nn.Linear(in_noise, layers[0] * 4 * 4)), tnn.Reshape(-1, 4, 4),
         nn.LeakyReLU(0.2, inplace=True),
-        VggBNBone([128, 'U', 64, 'U', 32, 'U', 16], in_ch=128),
-        xavier(tnn.Conv1x1(16, 1)), nn.Sigmoid())
+        VggBNBone(layers, in_ch=layers[0]),
+        xavier(tnn.Conv1x1(16, out_ch)), nn.Sigmoid())
 
 
 class VggImg2ImgGeneratorDebug(nn.Module):

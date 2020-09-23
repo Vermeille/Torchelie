@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torchelie.nn as tnn
-from .classifier import Classifier2, ProjectionDiscr
+from .classifier import Classifier2, ProjectionDiscr, ConcatPoolClassifier1
 
 
 def _parse_snres(arch, in_ch):
@@ -16,7 +16,17 @@ def _parse_snres(arch, in_ch):
     return tnn.CondSeq(*blocks), in_ch
 
 
-def snres_discr(arch, in_ch=3, out_ch=1):
+def snres_discr(num_classes, in_ch=3, input_sz=32, max_channels=1024):
+    layers = [32, 'D', 64, 'D', 128, 'D']
+    input_sz = input_sz // 32
+    while input_sz != 1:
+        layers += [min(max_channels, layers[-2] * 2), 'D']
+        input_sz = input_sz // 2
+
+    return snres_discr_ctor(layers, in_ch=in_ch, out_ch=num_classes)
+
+
+def snres_discr_ctor(arch, in_ch=3, out_ch=1):
     """
     Make a resnet discriminator with spectral norm, using
     `SNResidualDiscrBlock`.
@@ -31,7 +41,7 @@ def snres_discr(arch, in_ch=3, out_ch=1):
         an instance
     """
     bone, in_ch = _parse_snres(arch, in_ch)
-    clf = Classifier2(bone, in_ch, out_ch)
+    clf = ConcatPoolClassifier1(bone, in_ch, out_ch)
 
     for m in clf.head.modules():
         if isinstance(m, nn.Linear):
@@ -74,7 +84,7 @@ def snres_discr_4l(in_ch=3, out_ch=1):
     Returns:
         an instance
     """
-    return snres_discr(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D'],
+    return snres_discr_ctor(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D'],
                        in_ch=in_ch,
                        out_ch=out_ch)
 
@@ -91,7 +101,7 @@ def snres_projdiscr_4l(num_classes, in_ch=3):
     Returns:
         an instance
     """
-    return snres_discr(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D'],
+    return snres_discr_ctor(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D'],
                        in_ch=in_ch,
                        num_classes=num_classes)
 
@@ -108,7 +118,7 @@ def snres_discr_5l(in_ch=3, out_ch=1):
     Returns:
         an instance
     """
-    return snres_discr(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D'],
+    return snres_discr_ctor(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D'],
                        in_ch=in_ch,
                        out_ch=out_ch)
 
@@ -125,7 +135,7 @@ def snres_discr_6l(in_ch=3, out_ch=1):
     Returns:
         an instance
     """
-    return snres_discr(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D',
+    return snres_discr_ctor(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D',
         512, 'D'],
                        in_ch=in_ch,
                        out_ch=out_ch)
@@ -142,7 +152,7 @@ def snres_discr_7l(in_ch=3, out_ch=1):
     Returns:
         an instance
     """
-    return snres_discr(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D',
+    return snres_discr_ctor(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D',
         512, 'D', 1024, 'D'],
                        in_ch=in_ch,
                        out_ch=out_ch)
@@ -160,6 +170,6 @@ def snres_projdiscr_5l(num_classes, in_ch=3):
     Returns:
         an instance
     """
-    return snres_discr(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D'],
+    return snres_discr_ctor(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D'],
                        in_ch=in_ch,
                        num_classes=num_classes)
