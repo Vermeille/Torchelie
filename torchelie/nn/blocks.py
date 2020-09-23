@@ -12,7 +12,7 @@ from .maskedconv import MaskedConv2d
 from torchelie.utils import kaiming, xavier, normal_init, constant_init
 
 
-def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0):
+def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0, inplace=False):
     """
     A packed block with Conv-Norm-ReLU
 
@@ -36,13 +36,14 @@ def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0):
                              bias=norm is None),
                       a=leak))]
 
+    inplace = inplace or norm is not None
     if norm is not None:
         layer.append(('norm', norm(out_ch)))
 
     if leak != 0:
-        layer.append(('relu', nn.LeakyReLU(leak)))
+        layer.append(('relu', nn.LeakyReLU(leak, inplace=inplace)))
     else:
-        layer.append(('relu', nn.ReLU()))
+        layer.append(('relu', nn.ReLU(inplace=inplace)))
 
     return CondSeq(collections.OrderedDict(layer))
 
@@ -115,7 +116,7 @@ def MConvBNrelu(in_ch, out_ch, ks, center=True):
     return MConvNormReLU(in_ch, out_ch, ks, nn.BatchNorm2d, center=center)
 
 
-def Conv2dBNReLU(in_ch, out_ch, ks, stride=1, leak=0):
+def Conv2dBNReLU(in_ch, out_ch, ks, stride=1, leak=0, inplace=False):
     """
     A packed block with Conv-BN-ReLU
 
@@ -125,6 +126,7 @@ def Conv2dBNReLU(in_ch, out_ch, ks, stride=1, leak=0):
         ks (int): kernel size
         stride (int): stride of the conv
         leak (float): negative slope of the LeakyReLU or 0 for ReLU
+        inplace (bool): if relu should be inplace
 
     Returns:
         A packed block with Conv-BN-ReLU as a CondSeq
@@ -134,7 +136,8 @@ def Conv2dBNReLU(in_ch, out_ch, ks, stride=1, leak=0):
                           ks,
                           nn.BatchNorm2d,
                           leak=leak,
-                          stride=stride)
+                          stride=stride,
+                          inplace=inplace)
 
 
 class Conv2dCondBNReLU(nn.Module):
@@ -307,6 +310,7 @@ class PreactResBlock(nn.Module):
                  out_ch,
                  stride=1,
                  norm=nn.BatchNorm2d,
+                 dropout=0.,
                  use_se=False,
                  bottleneck=False, first_layer=False):
         super(PreactResBlock, self).__init__()
@@ -316,14 +320,14 @@ class PreactResBlock(nn.Module):
         self.use_se = use_se
         self.bottleneck = bottleneck
         self.first_layer = first_layer
-        bias = False
+        bias = norm is None
 
         if bottleneck:
             mid = out_ch // 4
             self.branch = CondSeq(
                 collections.OrderedDict([
                     ('bn1', constant_init(norm(in_ch), 1) if norm else Dummy()),
-                    ('relu', nn.ReLU(not first_layer)),
+                    ('relu', nn.ReLU(not first_layer and norm is not None)),
                     ('conv1', kaiming(Conv1x1(in_ch, mid, bias=bias))),
                     ('bn2', constant_init(norm(mid), 1) if norm else Dummy()),
                     ('relu2', nn.ReLU(True)),
@@ -337,28 +341,21 @@ class PreactResBlock(nn.Module):
             self.branch = CondSeq(
                 collections.OrderedDict([
                     ('bn1', constant_init(norm(in_ch), 1) if norm else Dummy()),
-                    ('relu', nn.ReLU(not first_layer)),
+                    ('relu', nn.ReLU(not first_layer and norm is not None)),
                     ('conv1',
                      kaiming(Conv3x3(in_ch, out_ch, stride=stride,
                                      bias=bias))),
+                    ('dropout1', nn.Dropout2d(dropout)),
                     ('bn2', constant_init(norm(out_ch), 1) if norm else Dummy()),
                     ('relu2', nn.ReLU(True)),
-                    ('conv2', constant_init(Conv3x3(out_ch, out_ch), 0))
+                    ('conv2', constant_init(Conv3x3(out_ch, out_ch), 0)),
+                    ('dropout2', nn.Dropout2d(dropout)),
                 ]))
 
         if use_se:
             self.branch.add_module('se', SEBlock(out_ch))
 
         self.shortcut = make_preact_resnet_shortcut(in_ch, out_ch, stride)
-
-    def __repr__(self):
-        return "{}({}, {}, stride={}, norm={}{})".format(
-            ("SE-" if self.use_se else "") +
-            ("PreactBottleneck" if self.bottleneck else "PreactResBlock"),
-            self.in_ch, self.out_ch, self.stride,
-            self.branch.bn1.__class__.__name__,
-            " share_norm_relu" if self.first_layer or len(self.shortcut) > 0
-            else "")
 
     def condition(self, z):
         self.branch.condition(z)
@@ -470,19 +467,23 @@ class SNResidualDiscrBlock(torch.nn.Module):
     def __init__(self, in_ch, out_ch, downsample=False):
         super(SNResidualDiscrBlock, self).__init__()
         self.branch = nn.Sequential(*[
-            nn.ReLU(),
-            kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1)),
-            nn.ReLU(True),
-            kaiming(nn.Conv2d(out_ch, out_ch, 3, padding=1)),
+            nn.LeakyReLU(0.2),
+        nn.utils.spectral_norm(
+            kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1))),
+            nn.AvgPool2d(2, 2, 0) if downsample else Dummy(),
+            nn.LeakyReLU(0.2, True),
+        nn.utils.spectral_norm(
+            kaiming(nn.Conv2d(out_ch, out_ch, 3, padding=1)))
         ])
-        nn.utils.spectral_norm(self.branch[1])
-        nn.utils.spectral_norm(self.branch[3])
 
         self.downsample = downsample
         self.sc = None
         if in_ch != out_ch:
-            self.sc = kaiming(nn.Conv2d(in_ch, out_ch, 1))
-            nn.utils.spectral_norm(self.sc)
+            self.sc = nn.Sequential(
+                nn.LeakyReLU(0.2),
+                nn.AvgPool2d(2, 2, 0) if downsample else Dummy(),
+                nn.utils.spectral_norm(kaiming(nn.Conv2d(in_ch, out_ch, 1)))
+            )
 
     def forward(self, x):
         """
@@ -498,8 +499,7 @@ class SNResidualDiscrBlock(torch.nn.Module):
         if self.sc is not None:
             # FIXME: we can share the relu and have it inplace
             x = self.sc(x)
-        if self.downsample:
-            x = F.avg_pool2d(x, 2, 2, 0)
-            res = F.avg_pool2d(res, 2, 2, 0)
+        elif self.downsample:
+            x = nn.functional.avg_pool2d(x, 3, 2, 1)
         return x + res
 
