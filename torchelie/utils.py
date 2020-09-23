@@ -171,9 +171,7 @@ def gram(m):
     Returns:
         The Gram matrix
     """
-    m1 = m
-    m2 = m.t()
-    g = torch.mm(m1, m2) / m.shape[1]
+    g = torch.einsum('ik,jk->ij', m, m) / m.shape[1]
     return g
 
 
@@ -188,9 +186,7 @@ def bgram(m):
         The batch of Gram matrix
     """
     m = m.view(m.shape[0], m.shape[1], -1)
-    m1 = m
-    m2 = m.permute(0, 2, 1)
-    g = torch.bmm(m1, m2) / (m.shape[1] * m.shape[2])
+    g = torch.einsum('bik,bjk->bij', m, m) / (m.shape[1] * m.shape[2])
     return g
 
 
