@@ -112,11 +112,6 @@ if __name__ == '__main__':
     G = tch.models.VggGeneratorDebug(opts.noise_size, out_sz=opts.img_size)
     D = snres_discr(1, input_sz=opts.img_size, max_channels=512).to(device)
 
-    if False:
-        for m in D.modules():
-            if isinstance(m, (torch.nn.Conv2d, torch.nn.Linear)):
-                torch.nn.utils.spectral_norm(m)
-
     optG = RAdamW(G.parameters(), 2e-4, betas=(0., 0.99), weight_decay=0)
     optD = RAdamW(D.parameters(), 2e-4, betas=(0., 0.99), weight_decay=0)
 
