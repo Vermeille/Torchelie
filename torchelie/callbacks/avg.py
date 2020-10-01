@@ -3,6 +3,7 @@ Those classes are different ways of averaging metrics.
 """
 
 import torchelie.utils as tu
+from typing import List, Optional
 
 class RunningAvg(tu.AutoStateDict):
     """
@@ -10,12 +11,12 @@ class RunningAvg(tu.AutoStateDict):
     Useful when the metrics come per batch and an accurate number for the whole
     epoch is needed.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         super(RunningAvg, self).__init__()
         self.count = 0
         self.val = 0
 
-    def log(self, x, total=1):
+    def log(self, x: float, total: int=1):
         """
         Log metric
 
@@ -26,7 +27,7 @@ class RunningAvg(tu.AutoStateDict):
         self.count += total
         self.val += x
 
-    def get(self):
+    def get(self) -> float:
         """
         Get the average so far
         """
@@ -42,12 +43,12 @@ class WindowAvg(tu.AutoStateDict):
     Args:
         k (int): the window's length
     """
-    def __init__(self, k=100):
+    def __init__(self, k: int=100) -> None:
         super(WindowAvg, self).__init__()
-        self.vals = []
+        self.vals: List[float] = []
         self.k = k
 
-    def log(self, x):
+    def log(self, x: float) -> None:
         """
         Log `x`
         """
@@ -55,7 +56,7 @@ class WindowAvg(tu.AutoStateDict):
             self.vals = self.vals[1:]
         self.vals.append(x)
 
-    def get(self):
+    def get(self) -> float:
         """
         Return the value averaged over the window
         """
@@ -71,18 +72,18 @@ class ExponentialAvg(tu.AutoStateDict):
     Args:
         beta (float): the decay rate
     """
-    def __init__(self, beta=0.6):
+    def __init__(self, beta: float=0.6):
         super(ExponentialAvg, self).__init__()
         self.beta = beta
-        self.val = None
+        self.val: Optional[float] = None
 
-    def log(self, x):
+    def log(self, x: float) -> None:
         """Log `x`"""
         if self.val is None:
             self.val = x
         else:
             self.val = self.beta * self.val + (1 - self.beta) * x
 
-    def get(self):
+    def get(self) -> float:
         """Return the exponential average at this time step"""
         return self.val
