@@ -16,7 +16,7 @@ def VggBNBone(arch, in_ch=3, leak=0, block=tnn.Conv2dBNReLU, debug=False):
 
     - 'M' for maxpool of kernel size 2 and stride 2
     - 'A' for average pool of kernel size 2 and stride 2
-    - 'U' for nearest neighbors upsampling (scale factor 2)
+    - 'U' for bilinear upsampling (scale factor 2)
     - an integer `ch` for a block with `ch` output channels
 
     Args:
@@ -92,16 +92,17 @@ def VggGeneratorDebug(in_noise=32, out_ch=3, out_sz=32):
     Returns:
         a VGG instance
     """
-    layers = [128, 'U', 64, 'U', 32, 'U', 16]
+    layers = [256, 256, 'U', 128, 128, 'U', 64, 64, 'U', 32, 32]
     out_sz = out_sz // 32
     while out_sz != 1:
-        layers = [min(1024, 2 * layers[0]), 'U'] + layers
+        ch = min(1024, 2*layers[0])
+        layers = [ch, ch, 'U'] + layers
         out_sz = out_sz // 2
     return nn.Sequential(
         kaiming(nn.Linear(in_noise, layers[0] * 4 * 4)), tnn.Reshape(-1, 4, 4),
         nn.LeakyReLU(0.2, inplace=True),
         VggBNBone(layers, in_ch=layers[0]),
-        xavier(tnn.Conv1x1(16, out_ch)), nn.Sigmoid())
+        xavier(tnn.Conv1x1(layers[-1], out_ch)), nn.Sigmoid())
 
 
 class VggImg2ImgGeneratorDebug(nn.Module):
