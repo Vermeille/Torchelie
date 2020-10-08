@@ -149,9 +149,13 @@ def ResNetBone(head: nn.Module,
     if debug:
         layers.append(tnn.Debug('Head'))
     in_ch = head_ch
-    for i, (ch, s) in enumerate(map(parse, arch)):
-        layers.append(block(in_ch, ch, stride=s))
-        in_ch = ch
+    for i, layer in enumerate(arch):
+        if layer == 'U':
+            layers.append(nn.UpsamplingBilinear2d(scale_factor=2))
+        else:
+            ch, s = parse(layer)
+            layers.append(block(in_ch, ch, stride=s))
+            in_ch = ch
         if debug:
             layer_name = 'layer_{}_{}'.format(layers[-1].__class__.__name__, i)
             layers.append(tnn.Debug(layer_name))
@@ -199,6 +203,12 @@ def PreactResNetBone(head, head_ch, arch, block, widen=1, debug=False):
     layers.append(nn.ReLU(True))
     return tnn.CondSeq(*layers)
 
+
+def ResNetGeneratorDebug(noise_size, image_size):
+    return ResNetBone(tnn.Conv2dBNReLU(in_ch, 64, ks=7, stride=2),
+                   64, ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
+                   tnn.ResBlock,
+                   debug=debug)
 
 def ResNetDebug(num_classes, in_ch=3, debug=False):
     """
