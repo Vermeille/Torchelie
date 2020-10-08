@@ -70,12 +70,17 @@ class FiLM2d(nn.Module):
         cond_channels (int): number of conditioning channels from which bias
             and scale will be derived
     """
+    weight: Optional[torch.Tensor]
+    bias: Optional[torch.Tensor]
+
     def __init__(self, channels, cond_channels):
         super(FiLM2d, self).__init__()
         self.make_weight = tu.normal_init(nn.Linear(cond_channels, channels),
                                           0.01)
         self.make_bias = tu.normal_init(nn.Linear(cond_channels, channels),
                                         0.01)
+        self.weight = None
+        self.bias = None
 
     def forward(self, x, z: Optional[torch.Tensor] = None):
         """
@@ -92,8 +97,10 @@ class FiLM2d(nn.Module):
         if z is not None:
             self.condition(z)
 
-        out = self.weight * x + self.bias
-        return out
+        w = self.weight
+        b = self.bias
+        assert w is not None and b is not None
+        return w * x + b
 
     def condition(self, z):
         """
