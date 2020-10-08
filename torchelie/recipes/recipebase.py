@@ -141,7 +141,6 @@ class RecipeBase:
                             val,
                         (torch.nn.parallel.DistributedDataParallel,
                             torch.nn.parallel.DataParallel)):
-                        sd[nm] = mod.module.state_dict()
                         print(val.module.load_state_dict(state, strict=False))
                     else:
                         print(val.load_state_dict(state, strict=False))
