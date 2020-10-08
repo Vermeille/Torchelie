@@ -138,7 +138,8 @@ class RAdamW(Optimizer):
                  lr=1e-3,
                  betas=(0.9, 0.999),
                  eps=1e-8,
-                 weight_decay=1e-2):
+                 weight_decay=1e-2,
+                 stable=False):
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
         if not 0.0 <= eps:
@@ -149,7 +150,8 @@ class RAdamW(Optimizer):
         if not 0.0 <= betas[1] < 1.0:
             raise ValueError("Invalid beta parameter at index 1: {}".format(
                 betas[1]))
-        defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+        defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay,
+                stable=stable)
         super(RAdamW, self).__init__(params, defaults)
 
     def step(self, closure=None):
@@ -189,6 +191,7 @@ class RAdamW(Optimizer):
                 beta1, beta2 = group['betas']
                 eps = group['eps']
                 lr = group['lr']
+                stable = group['stable']
                 if 'rho_inf' not in group:
                     group['rho_inf'] = 2 / (1 - beta2) - 1
                 rho_inf = group['rho_inf']
@@ -201,12 +204,18 @@ class RAdamW(Optimizer):
                 exp_avg.mul_(beta1).add_(1 - beta1, grad)
                 exp_avg_no_bias = exp_avg / (1 - beta1**t)
                 rho_t = rho_inf - ((2 * t * (beta2**t)) / (1 - beta2**t))
+                var = exp_avg_sq / (1 - beta2**t)
 
                 # Perform stepweight decay
-                p.data.mul_(1 - group['lr'] * group['weight_decay'])
+                if stable:
+                    # AdamS
+                    p.data.mul_(1 - group['lr'] * group['weight_decay'] /
+                            var.mean().add_(1e-8).sqrt_())
+                else:
+                    # AdamW
+                    p.data.mul_(1 - group['lr'] * group['weight_decay'])
 
                 if rho_t > 4:
-                    var = exp_avg_sq / (1 - beta2**t)
                     var.sqrt_()
                     r = math.sqrt(((rho_t - 4) * (rho_t - 2) * rho_inf) /
                                   ((rho_inf - 4) * (rho_inf - 2) * rho_t))
