@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchelie.utils as tu
 
 from typing import Optional
 
@@ -15,7 +16,6 @@ class AdaIN2d(nn.Module):
         cond_channels (int): number of conditioning channels from which bias
             and scale will be derived
     """
-
     def __init__(self, channels, cond_channels):
         super(AdaIN2d, self).__init__()
         self.make_weight = nn.Linear(cond_channels, channels)
@@ -39,7 +39,7 @@ class AdaIN2d(nn.Module):
             self.condition(z)
 
         m = x.mean(dim=(2, 3), keepdim=True)
-        s = torch.sqrt(x.var(dim=(2, 3), keepdim=True)+1e-8)
+        s = torch.sqrt(x.var(dim=(2, 3), keepdim=True) + 1e-8)
 
         weight = self.weight / (s + 1e-5)
         bias = -m * weight + self.bias
@@ -70,13 +70,12 @@ class FiLM2d(nn.Module):
         cond_channels (int): number of conditioning channels from which bias
             and scale will be derived
     """
-
     def __init__(self, channels, cond_channels):
         super(FiLM2d, self).__init__()
-        self.make_weight = nn.Linear(cond_channels, channels)
-        self.make_bias = nn.Linear(cond_channels, channels)
-        self.register_buffer('weight', torch.zeros(0))
-        self.register_buffer('bias', torch.zeros(0))
+        self.make_weight = tu.normal_init(nn.Linear(cond_channels, channels),
+                                          0.01)
+        self.make_bias = tu.normal_init(nn.Linear(cond_channels, channels),
+                                        0.01)
 
     def forward(self, x, z: Optional[torch.Tensor] = None):
         """
@@ -93,7 +92,8 @@ class FiLM2d(nn.Module):
         if z is not None:
             self.condition(z)
 
-        return self.weight * x + self.bias
+        out = self.weight * x + self.bias
+        return out
 
     def condition(self, z):
         """
@@ -103,5 +103,5 @@ class FiLM2d(nn.Module):
         Args:
             z (2D tensor, optional): conditioning vector
         """
-        self.weight = self.make_weight(z)[:, :, None, None]
+        self.weight = self.make_weight(z)[:, :, None, None].add_(1)
         self.bias = self.make_bias(z)[:, :, None, None]
