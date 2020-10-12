@@ -5,7 +5,7 @@ from .classifier import Classifier2, ProjectionDiscr, ConcatPoolClassifier1
 
 
 def _parse_snres(arch, in_ch):
-    blocks = [nn.utils.spectral_norm(tnn.Conv3x3(3, in_ch))]
+    blocks = [tnn.Conv3x3(3, in_ch)]
     for x, x2 in zip(arch, arch[1:] + ['dummy']):
         if x == 'D':
             continue
@@ -44,9 +44,6 @@ def snres_discr_ctor(arch, in_ch=3, out_ch=1):
     bone.add_module('final_relu', nn.LeakyReLU(0.2, True))
     clf = ConcatPoolClassifier1(bone, in_ch, out_ch, dropout=0.)
 
-    for m in clf.modules():
-        if isinstance(m, nn.Linear):
-            nn.utils.spectral_norm(m)
     return clf
 
 

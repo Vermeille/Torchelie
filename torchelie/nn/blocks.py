@@ -481,7 +481,7 @@ class SNResidualDiscrBlock(torch.nn.Module):
         if in_ch != out_ch:
             self.sc = nn.Sequential(
                 nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
-                nn.utils.spectral_norm(kaiming(nn.Conv2d(in_ch, out_ch, 1)))
+                kaiming(nn.Conv2d(in_ch, out_ch, 1))
             )
 
     def forward(self, x):
