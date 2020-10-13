@@ -470,7 +470,7 @@ class SNResidualDiscrBlock(torch.nn.Module):
             nn.LeakyReLU(0.2),
         nn.utils.spectral_norm(
             kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1))),
-            nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
+            nn.UpsamplingBilinear2d(scale_factor=0.5) if downsample else Dummy(),
             nn.LeakyReLU(0.2, True),
         nn.utils.spectral_norm(
             kaiming(nn.Conv2d(out_ch, out_ch, 3, padding=1)))
@@ -480,8 +480,10 @@ class SNResidualDiscrBlock(torch.nn.Module):
         self.sc = None
         if in_ch != out_ch:
             self.sc = nn.Sequential(
-                nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
-                kaiming(nn.Conv2d(in_ch, out_ch, 1))
+                    #nn.LeakyReLU(0.2),
+                nn.UpsamplingBilinear2d(scale_factor=0.5) if downsample else Dummy(),
+            nn.utils.spectral_norm
+                (kaiming(nn.Conv2d(in_ch, out_ch, 1)))
             )
 
     def forward(self, x):
