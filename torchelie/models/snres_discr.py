@@ -16,8 +16,10 @@ def _parse_snres(arch, in_ch):
     return tnn.CondSeq(*blocks), in_ch
 
 
-def snres_discr(num_classes, in_ch=3, input_sz=32, max_channels=1024):
-    layers = [32, 'D', 64, 'D', 128, 'D']
+def snres_discr(num_classes, in_ch=3, input_sz=32, max_channels=1024,
+        base_ch=32):
+    ch = base_ch
+    layers = [ch, 'D', ch * 2, 'D', ch * 4, 'D']
     input_sz = input_sz // 32
     while input_sz != 1:
         layers += [min(max_channels, layers[-2] * 2), 'D']
