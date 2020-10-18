@@ -5,20 +5,14 @@ import numpy as np
 # FIXME: The API is not that great, improve it.
 
 
-def _rollx(img, begin, to):
-    if to <= img.shape[1]:
-        return img[..., :, begin:to]
-    else:
-        return torch.cat(
-            [img[..., :, begin:], img[..., :, :to - img.shape[-1]]], dim=-1)
+def _rollx(img, begin):
+    return torch.cat(
+            [img[..., :, begin:], img[..., :, :begin]], dim=-1)
 
 
-def _rolly(img, begin, to):
-    if to <= img.shape[0]:
-        return img[..., begin:to, :]
-    else:
-        return torch.cat(
-            [img[..., begin:, :], img[..., :to - img.shape[-2], :]], dim=-2)
+def _rolly(img, begin):
+    return torch.cat(
+            [img[..., begin:, :], img[..., :begin, :]], dim=-2)
 
 
 def roll(img, x_roll, y_roll):
@@ -33,7 +27,7 @@ def roll(img, x_roll, y_roll):
     Returns:
         The rolled tensor
     """
-    return _rollx(_rolly(img, y_roll, img.shape[-2]), x_roll, img.shape[-1])
+    return _rollx(_rolly(img, y_roll), x_roll)
 
 
 def center_crop(batch, size):
@@ -71,7 +65,8 @@ def crop(img, warped=True, sub_img_factor=2):
     if warped:
         y = np.random.randint(sz[-2])
         x = np.random.randint(sz[-1])
-        return _rolly(_rollx(img, x, x + w), y, y + h)
+        out = _rolly(_rollx(img, x), y)
+        return out [..., :h, :w]
     else:
         y = np.random.randint(sz[-2] - h)
         x = np.random.randint(sz[-1] - w)
