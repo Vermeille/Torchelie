@@ -49,9 +49,10 @@ class AdaptPad:
         padding_mode (str): one of the modes of `torchvision.transforms.pad`
     """
 
-    def __init__(self, sz, padding_mode='constant'):
+    def __init__(self, sz, padding_mode='constant', fill=0):
         self.sz = sz
         self.padding_mode = padding_mode
+        self.fill = fill
 
     def __call__(self, img):
         """
@@ -72,7 +73,8 @@ class AdaptPad:
         pd = self.sz[0] - h - pt
 
         return TF.functional.pad(img, (pl, pt, pr, pd),
-                                 padding_mode=self.padding_mode)
+                                 padding_mode=self.padding_mode,
+                                 fill=self.fill)
 
 
 class MultiBranch:

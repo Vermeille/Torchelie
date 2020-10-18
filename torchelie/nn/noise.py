@@ -10,9 +10,9 @@ class Noise(nn.Module):
         ch (int): number of input channels for a different std on each channel,
             or 1
     """
-    def __init__(self, ch, init_val=0, inplace=False):
+    def __init__(self, ch, inplace=False):
         super(Noise, self).__init__()
-        self.a = nn.Parameter(torch.ones(ch, 1, 1) *  init_val)
+        self.a = nn.Parameter(torch.zeros(ch, 1, 1))
         self.inplace = inplace
 
     def forward(self, x):
