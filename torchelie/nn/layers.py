@@ -67,5 +67,30 @@ class ModulatedConv(nn.Conv2d):
         x = F.conv2d(x.view(1, -1, H, W), w, None, self.stride, self.padding,
                        self.dilation, N)
         x = x.view(N, C_out, H, W)
-        return x.add_(self.bias.view(-1, 1, 1))
+        if self.bias is not None:
+            return x.add_(self.bias.view(-1, 1, 1))
+        else:
+            return x
+
+
+class SelfAttention2d(nn.Module):
+    def __init__(self, ch):
+        super().__init__()
+        self.key = nn.Conv1d(ch, ch // 8, 1)
+        self.query = nn.Conv1d(ch, ch // 8, 1)
+        self.value = nn.Conv1d(ch, ch, 1)
+        self.gamma = nn.Parameter(torch.tensor([0.]))
+
+    def forward(self, x):
+        print(x.shape)
+        x_flat = x.view(*x.shape[:2], -1)
+        k = self.key(x_flat)
+        q = self.query(x_flat)
+        v = self.value(x_flat)
+
+        affinity = torch.einsum('bki,bkj->bij', q, k)
+        attention = F.softmax(affinity, dim=1)
+        out = torch.einsum('bci,bih->bch', v, affinity).view(*x.shape)
+        return self.gamma * out + x
+
 
