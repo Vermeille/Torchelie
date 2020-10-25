@@ -1,10 +1,14 @@
+import os
+import torch.distributed as dist
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 def fast_zero_grad(net):
     for p in net.parameters():
         p.grad = None
+
 
 def freeze(net):
     """
@@ -62,7 +66,10 @@ def kaiming(m, a=0, nonlinearity='relu', mode='fan_out'):
         else:
             nonlinearity = 'leaky_relu'
 
-    nn.init.kaiming_normal_(m.weight, a=a, nonlinearity=nonlinearity, mode=mode)
+    nn.init.kaiming_normal_(m.weight,
+                            a=a,
+                            nonlinearity=nonlinearity,
+                            mode=mode)
     if hasattr(m, 'biais') and m.bias is not None:
         nn.init.constant_(m.bias, 0)
     return m
@@ -293,7 +300,6 @@ class FrozenModule(nn.Module):
     Args:
         m (nn.Module): a module
     """
-
     def __init__(self, m):
         super(FrozenModule, self).__init__()
         self.m = freeze(m).eval()
@@ -314,7 +320,6 @@ class DetachedModule:
     Args:
         m (nn.Module): a module
     """
-
     def __init__(self, m):
         self.m = freeze(m).eval()
 
@@ -386,7 +391,8 @@ def slerp(z1, z2, t):
     z3 = z2_n - dot * z1_n
     z3 = z3 / z3.pow(2).sum(dim=-1, keepdim=True).sqrt()
 
-    return lerp(z1_l, z2_l, t) * (z1_n * torch.cos(theta) + z3 * torch.sin(theta))
+    return lerp(z1_l, z2_l,
+                t) * (z1_n * torch.cos(theta) + z3 * torch.sin(theta))
 
 
 def as_multiclass_shape(preds, as_probs=False):
@@ -441,3 +447,45 @@ class AutoStateDict:
                 print('no key', ke, 'for', self.__class__.__name__)
 
 
+def dist_setup(rank):
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+
+    # initialize the process group
+    dist.init_process_group("nccl",
+                            rank=rank,
+                            world_size=torch.cuda.device_count())
+
+
+class WrapFun:
+    def __init__(self, fun, *args, **kwargs):
+        self.fun = fun
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self, rank):
+        dist_setup(rank)
+        torch.cuda.set_device(rank)
+        torch.backends.cudnn.benchmark = True
+        return self.fun(*self.args, **self.kwargs, rank=rank)
+
+
+def parallel_run(fun, *args, n_gpus: int = torch.cuda.device_count(),
+                 **kwargs) -> None:
+    """
+    Starts a function  in parallel for GPU dispatching.
+
+    Args:
+        fun (callable): the function to start, with signature
+            :code:`fun(rank, world_size, *args, **kwargs)`. :code:`rank` is the
+            GPU id tu use on this thread, and :code:`world_size` is the total
+            number of GPUs.
+        *args: arguments passed to :code:`fun`
+        n_gpus (int, optional): number of GPUs to use. Will default to the
+            number of available GPUs.
+        **kwargs: kw arguments passed to :code:`fun`
+    """
+    import torch.multiprocessing as mp
+    mp.spawn(WrapFun(fun, *args, **kwargs, world_size=n_gpus),
+             nprocs=n_gpus,
+             join=True)
