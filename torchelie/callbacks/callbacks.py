@@ -139,7 +139,7 @@ class MetricsTable(tu.AutoStateDict):
             Default: True.
     """
 
-    def __init__(self, post_each_batch=True):
+    def __init__(self, post_each_batch=True, epoch_ends=True):
         super(MetricsTable, self).__init__()
         self.post_each_batch = post_each_batch
 
@@ -340,10 +340,12 @@ class VisdomLogger:
         prefix (str): prefix for all metrics name
     """
 
-    def __init__(self, visdom_env='main', log_every=10, prefix=''):
+    def __init__(self, visdom_env='main', log_every=10, prefix='',
+            post_epoch_ends=True):
         self.vis = None
         self.log_every = log_every
         self.prefix = prefix
+        self.post_epoch_ends = post_epoch_ends
         if visdom_env is not None:
             self.vis = Visdom(env=visdom_env)
             self.vis.close()
@@ -360,7 +362,8 @@ class VisdomLogger:
             self.log(iters, state['metrics'])
 
     def on_epoch_end(self, state):
-        self.log(state['iters'], state['metrics'])
+        if self.post_epoch_ends:
+            self.log(state['iters'], state['metrics'])
 
     def log(self, iters, xs, store_history=[]):
         if self.vis is None:
