@@ -204,8 +204,8 @@ def PreactResNetBone(head, head_ch, arch, block, widen=1, debug=False):
     return tnn.CondSeq(*layers)
 
 
-def ResNetGeneratorDebug(noise_size, image_size):
-    return ResNetBone(tnn.Conv2dBNReLU(in_ch, 64, ks=7, stride=2),
+def ResNetGeneratorDebug(noise_size, image_size, debug=False):
+    return ResNetBone(tnn.Conv2dBNReLU(noise_size, 64, ks=7, stride=2),
                    64, ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
                    tnn.ResBlock,
                    debug=debug)
