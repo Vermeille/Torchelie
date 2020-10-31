@@ -399,6 +399,15 @@ class VisdomLogger:
                 elif x.dim() == 4:
                     x = x - x.min()
                     x = x / x.max()
+                    if x.shape[1] == 1:
+                        B, _, H, W = x.shape
+                        x_flat = x.view(B * H, W)
+                        import matplotlib.cm
+                        import numpy as np
+                        x_flat = matplotlib.cm.get_cmap('viridis')(x_flat)
+                        x_flat = np.ascontiguousarray(x_flat[:, :, :3])
+                        x_flat.shape = (B, H, W, 3)
+                        x = x_flat.transpose(0, 3, 1, 2)
                     self.vis.images(x,
                                     win=name,
                                     opts=dict(
