@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from typing import List
 
 
 def _rfft2d_freqs(h, w):
@@ -20,12 +21,15 @@ class PixelImage(nn.Module):
         init_img (tensor, optional): an image tensor to initialize the pixel
             values
     """
-
-    def __init__(self, shape, sd=0.01, init_img=None):
+    def __init__(self,
+                 shape: List[int],
+                 sd: float = 0.01,
+                 init_img: torch.Tensor = None) -> None:
         super(PixelImage, self).__init__()
         self.shape = shape
         n, ch, h, w = shape
-        self.pixels = torch.nn.Parameter(sd * torch.randn(n, ch, h, w))
+        self.pixels = torch.nn.Parameter(sd * torch.randn(n, ch, h, w),
+                requires_grad=True)
 
         if init_img is not None:
             self.init_img(init_img)
@@ -55,7 +59,6 @@ class SpectralImage(nn.Module):
             mean 0.5 and standard deviation `sd`
         init_img (tensor, optional): an image tensor to initialize the image
     """
-
     def __init__(self, shape, sd=0.01, decay_power=1, init_img=None):
         super(SpectralImage, self).__init__()
         self.shape = shape
@@ -71,19 +74,19 @@ class SpectralImage(nn.Module):
         spertum_scale = 1.0 / np.maximum(freqs,
                                          1.0 / max(h, w))**self.decay_power
         spertum_scale *= np.sqrt(w * h)
-        spertum_scale = torch.FloatTensor(spertum_scale).unsqueeze(-1)
+        spertum_scale = torch.tensor(spertum_scale).unsqueeze(-1)
         self.register_buffer('spertum_scale', spertum_scale)
 
         if init_img is not None:
             self.init_img(init_img)
 
-    def init_img(self, init_img):
+    def init_img(self, init_img: torch.Tensor):
         if init_img.shape[2] % 2 == 1:
-            init_img = nn.functional.pad(init_img, (1, 0, 0, 0))
+            init_img = nn.functional.pad(init_img, [1, 0, 0, 0])
         fft = torch.rfft(init_img * 4, 2, onesided=True, normalized=False)
         self.spectrum_var.data.copy_(fft / self.spertum_scale)
 
-    def forward(self):
+    def forward(self) -> torch.Tensor:
         """
         Return the image
         """
@@ -101,12 +104,11 @@ class CorrelateColors(torch.nn.Module):
     Takes an learnable image and applies the inverse color decorrelation from
     ImageNet (ie, it correlates the color like ImageNet to ease optimization)
     """
-
     def __init__(self):
         super(CorrelateColors, self).__init__()
-        color_correlation_svd_sqrt = torch.FloatTensor([[0.26, 0.09, 0.02],
-                                                        [0.27, 0.00, -0.05],
-                                                        [0.27, -0.09, 0.03]])
+        color_correlation_svd_sqrt = torch.tensor([[0.26, 0.09, 0.02],
+                                                   [0.27, 0.00, -0.05],
+                                                   [0.27, -0.09, 0.03]])
 
         max_norm_svd_sqrt = float(
             np.max(np.linalg.norm(color_correlation_svd_sqrt, axis=0)))
@@ -114,7 +116,7 @@ class CorrelateColors(torch.nn.Module):
         cc = color_correlation_svd_sqrt / max_norm_svd_sqrt
         self.register_buffer('color_correlation', cc)
 
-    def forward(self, t):
+    def forward(self, t: torch.Tensor) -> torch.Tensor:
         """
         Correlate the color of the image `t` and return the result
         """
@@ -123,12 +125,13 @@ class CorrelateColors(torch.nn.Module):
         t = t_flat.transpose(2, 1).view(t.shape)
         return t
 
-    def invert(self, t):
+    def invert(self, t: torch.Tensor) -> torch.Tensor:
         """
         Decorrelate the color of the image `t` and return the result
         """
         t_flat = t.view(t.shape[0], 3, -1).transpose(2, 1)
-        t_flat = torch.matmul(t_flat, self.color_correlation.inverse().t()[None])
+        t_flat = torch.matmul(t_flat,
+                              self.color_correlation.inverse().t()[None])
         t = t_flat.transpose(2, 1).view(t.shape)
         return t
 
@@ -139,6 +142,7 @@ class RGB:
 
     def invert(self, x):
         return x
+
 
 class ParameterizedImg(nn.Module):
     """
@@ -178,7 +182,6 @@ class ParameterizedImg(nn.Module):
         if init_img is not None:
             self.init_img(init_img)
 
-
     def init_img(self, init_img):
         init_img = init_img.clamp(0.01, 0.99)
         init_img = -torch.log(((1 - init_img) / init_img))
@@ -186,13 +189,12 @@ class ParameterizedImg(nn.Module):
         init_img = self.color.invert(init_img)
         self.img.init_img(init_img)
 
-
     def forward(self):
         """
         Return the tensor
         """
         t = self.color(self.img())
-        return torch.sigmoid(t)+0.01*t
+        return torch.sigmoid(t) + 0.01 * t
 
     def render(self):
         """
