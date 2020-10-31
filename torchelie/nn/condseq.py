@@ -1,4 +1,5 @@
 import torch.nn as nn
+from typing import Dict, Any
 
 
 class CondSeq(nn.Sequential):
@@ -6,7 +7,9 @@ class CondSeq(nn.Sequential):
     An extension to torch's Sequential that allows conditioning either as a
     second forward argument or `condition()`
     """
-    def condition(self, z):
+    _modules: Dict[str, nn.Module]
+
+    def condition(self, z: Any):
         """
         Conditions all the layers on z
 
