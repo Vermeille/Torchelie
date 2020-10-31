@@ -50,3 +50,32 @@ def combine_laplacians(laplacians):
 
     mixed = torch.stack(rescaled, dim=-1)
     return mixed.sum(dim=-1)
+
+
+class InformationBottleneckFunc(Function):
+    @staticmethod
+    def forward(ctx, mu, sigma, strength=1):
+        z = torch.randn_like(mu)
+        x = mu + z * sigma
+        s = torch.tensor(strength, device=x.device)
+        ctx.save_for_backward(mu, sigma, z, s)
+        return x
+
+    @staticmethod
+    def backward(ctx, d_out):
+        mu, sigma, z, strength = ctx.saved_tensors
+
+        # kl = -0.5 * (1 + log(sigma^2) - mu^2 - sigma^2)
+        # dkl/dmu = -0.5 * (-2*mu)
+        #         = mu
+        # dkl/dsig = -0.5 * (d 2*log(sigma) - d sigma^2)
+        #          = -0.5 * (2/sigma - 2*sigma)
+        #          = -1/sigma + sigma
+        d_mu = d_out + strength * mu
+        d_sigma = z * d_out
+        d_sigma += -strength / sigma + strength * sigma
+        return d_mu, d_sigma, None
+
+
+information_bottleneck = InformationBottleneckFunc.apply
+unit_gaussian_prior = InformationBottleneckFunc.apply

@@ -94,3 +94,91 @@ class SelfAttention2d(nn.Module):
         return self.gamma * out + x
 
 
+from torch.autograd import Function
+
+class GaussianPriorFunc(Function):
+    @staticmethod
+    def forward(ctx, mu, sigma, mu2, sigma2, strength=1):
+        z = torch.randn_like(mu)
+        x = mu + z * sigma
+        s = torch.tensor(strength, device=x.device)
+        ctx.save_for_backward(mu, sigma, z, mu2, sigma2, s)
+        return x
+
+    @staticmethod
+    def backward(ctx, d_out):
+        mu, sigma, z, mu2, sigma2, strength = ctx.saved_tensors
+
+        # kl = -0.5
+        #      + log(sigma2) - log(sigma1)
+        #      + (sigma1 ** 2) / (2 * sigma2 ** 2)
+        #      + ((mu1 - mu2) ** 2) / (2 * sigma2 ** 2)
+        # dkl/dmu  =  (mu - mu2) / (sigma**2)
+        # dkl/dmu2 = -(mu - mu2) / (sigma**2)
+        # dkl/dsig  = -1/sigma + sigma/(sigma2**2)
+        # dkl/dsig2 = 1/sigma2 - ((sigma**2) + ((mu-mu2)**2)) / (sigma2 ** 3)
+        diff_mu = mu - mu2
+        s2sq = sigma2.pow(2)
+        diff_mu_over_s2sq = diff_mu / s2sq
+        d_mu = d_out + strength * diff_mu_over_s2sq
+        d_mu2 = -strength * diff_mu_over_s2sq
+        d_sigma = d_out * z - strength/sigma + strength*sigma / s2sq
+        d_sigma2 = 1/sigma2 - (sigma.pow(2) + diff_mu.pow(2)) / sigma2.pow(3)
+        d_sigma2 *= strength
+        return d_mu, d_sigma, d_mu2, d_sigma2
+
+class UnitGaussianPrior(nn.Module):
+    """
+    Force a representation to fit a unit gaussian prior. It projects with a
+    nn.Linear the input vector to a mu and sigma that represent a gaussian
+    distribution from which the output is sampled. The backward pass includes a
+    kl divergence loss between N(mu, sigma) and N(0, 1).
+
+    This can be used to implement VAEs or information bottlenecks
+
+    In train mode, the output is sampled from N(mu, sigma) but at test time mu
+    is returned.
+
+    Args:
+        in_channels (int): dimension of input channels
+        num_latents (int): dimension of output latents
+        strength (float): strength of the kl loss. When using this to implement
+            a VAE, set strength to :code:`1/number of output dim of the model`
+            or set it to 1 but make sure that the loss for each output
+            dimension is summed, but averaged over the batch.
+        kl_reduction (str): how the implicit kl loss is reduced over the batch
+            samples. 'sum' means the kl term of each sample is summed, while
+            'mean' divides the loss by the number of examples.
+    """
+    def __init__(self, in_channels, num_latents, strength=1,
+            kl_reduction='mean'):
+        super().__init__()
+        self.project = tu.kaiming(nn.Linear(in_channels, 2*num_latents))
+        self.project.bias.data[num_latents:].fill_(1)
+        self.strength = strength
+        assert kl_reduction in ['mean', 'sum']
+        self.reduction = kl_reduction
+
+    def forward(self, x):
+        """
+        Args:
+            x (Tensor): A 2D (N, in_channels) tensor
+
+        Returns:
+            A 2D (N, num_channels) tensor sampled from the implicit gaussian
+                distribution.
+        """
+        x = self.project(x)
+        mu, sigma = torch.chunk(x, 2, dim=1)
+        if self.training:
+            sigma = torch.exp(0.5 * sigma)
+            strength = self.strength
+            if self.reduction == 'mean':
+                strength = strength / x.shape[0]
+            return tch.nn.functional.unit_gaussian_prior(mu, sigma, strength)
+        else:
+            return mu
+
+class InformationBottleneck(UnitGaussianPrior):
+    pass
+

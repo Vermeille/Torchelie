@@ -37,7 +37,7 @@ class VectorQuantization(Function):
         codes, indices = VectorQuantization.restore_shapes(
             codes, indices, inputs.shape)
 
-        ctx.save_for_backward(codes, inputs, torch.FloatTensor([commitment]),
+        ctx.save_for_backward(codes, inputs, torch.tensor([float(commitment)]),
                               codebook, indices)
         ctx.mark_non_differentiable(indices)
         return codes, indices
