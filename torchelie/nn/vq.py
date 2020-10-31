@@ -35,7 +35,7 @@ class VQ(nn.Module):
         nn.init.normal_(self.embedding.weight, 0, 1)
         self.dim = dim
         self.commitment = commitment
-        self.register_buffer('initialized', torch.ByteTensor([0]))
+        self.register_buffer('initialized', torch.Tensor([0]))
         assert mode in ['nearest', 'angular']
         self.mode = mode
         self.return_indices = return_indices
@@ -113,9 +113,9 @@ class MultiVQ(nn.Module):
                  mode: str = 'nearest',
                  init_mode: str = 'normal',
                  return_indices: bool = True):
-        assert (latent_dim % num_codebooks == 0,
+        assert latent_dim % num_codebooks == 0, (
                 "num_codebooks must divide evenly latent_dim")
-        super(MultiVQ).__init__()
+        super(MultiVQ, self).__init__()
         self.dim = dim
         self.num_codebooks = num_codebooks
         self.vqs = nn.ModuleList([

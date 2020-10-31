@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchelie.utils as tu
+import torchelie as tch
 
 
 def Conv2d(in_ch, out_ch, ks, stride=1, bias=True):
@@ -74,15 +75,23 @@ class ModulatedConv(nn.Conv2d):
 
 
 class SelfAttention2d(nn.Module):
-    def __init__(self, ch):
+    """
+    Self Attention such as used in SAGAN or BigGAN.
+
+    Args:
+        ch (int): number of input / output channels
+    """
+    def __init__(self, ch: int):
         super().__init__()
         self.key = nn.Conv1d(ch, ch // 8, 1)
         self.query = nn.Conv1d(ch, ch // 8, 1)
         self.value = nn.Conv1d(ch, ch, 1)
         self.gamma = nn.Parameter(torch.tensor([0.]))
 
-    def forward(self, x):
-        print(x.shape)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        forward
+        """
         x_flat = x.view(*x.shape[:2], -1)
         k = self.key(x_flat)
         q = self.query(x_flat)
