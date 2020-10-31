@@ -1,7 +1,7 @@
-from .vq import quantize
-
 import torch
 import torch.nn.functional as F
+from torch.autograd import Function
+from .vq import quantize
 
 
 def laplacian(images, n_down=4):
@@ -18,11 +18,12 @@ def laplacian(images, n_down=4):
     lapls = []
 
     for i in range(n_down):
-        n = F.interpolate(images, scale_factor=0.5, mode='bilinear',
-                align_corners=True)
-        lapls.append(images -
-                     F.interpolate(n, size=images.shape[-2:], mode='bilinear',
-                         align_corners=True))
+        n = F.interpolate(images,
+                          scale_factor=0.5,
+                          mode='bilinear',
+                          align_corners=True)
+        lapls.append(images - F.interpolate(
+            n, size=images.shape[-2:], mode='bilinear', align_corners=True))
         images = n
 
     lapls.append(images)
@@ -45,8 +46,10 @@ def combine_laplacians(laplacians):
     rescaled = [biggest]
     for im in laplacians[1:]:
         rescaled.append(
-                F.interpolate(im, size=biggest.shape[-2:], mode='bilinear',
-                    align_corners=True))
+            F.interpolate(im,
+                          size=biggest.shape[-2:],
+                          mode='bilinear',
+                          align_corners=True))
 
     mixed = torch.stack(rescaled, dim=-1)
     return mixed.sum(dim=-1)
