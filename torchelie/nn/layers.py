@@ -195,3 +195,30 @@ class UnitGaussianPrior(nn.Module):
 class InformationBottleneck(UnitGaussianPrior):
     pass
 
+
+class Const(nn.Module):
+    """
+    Return a constant learnable volume. Disregards the input except its batch
+    size
+
+    Args:
+        *size (ints): the shape of the volume to learn
+    """
+    def __init__(self, *size):
+        super().__init__()
+        self.size = size
+        self.const = nn.Parameter(torch.randn(1, *size))
+
+    def extra_repr(self):
+        return repr(self.size)
+
+    def forward(self, n):
+        """
+        Args:
+            n (int or torch.Tensor): batch size to use, n if n is int or
+                n.shape[0]
+        """
+        if isinstance(n, torch.Tensor):
+            n = n.shape[0]
+        return self.const.expand(n, *self.const.shape[1:]).contiguous()
+
