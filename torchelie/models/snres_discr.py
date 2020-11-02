@@ -16,10 +16,17 @@ def _parse_snres(arch, in_ch):
     return tnn.CondSeq(*blocks), in_ch
 
 
-def snres_discr(num_classes, in_ch=3, input_sz=32, max_channels=1024,
-        base_ch=32):
+def snres_discr(num_classes,
+                in_ch=3,
+                input_sz=32,
+                max_channels=1024,
+                base_ch=32):
     ch = base_ch
-    layers = [ch, 'D', ch * 2, 'D', ch * 4, 'D']
+    layers = [
+        ch, 'D',
+        min(max_channels, ch * 2), 'D',
+        min(max_channels, ch * 4), 'D'
+    ]
     input_sz = input_sz // 32
     while input_sz != 1:
         layers += [min(max_channels, layers[-2] * 2), 'D']
@@ -89,8 +96,8 @@ def snres_discr_4l(in_ch=3, out_ch=1):
         an instance
     """
     return snres_discr_ctor(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D'],
-                       in_ch=in_ch,
-                       out_ch=out_ch)
+                            in_ch=in_ch,
+                            out_ch=out_ch)
 
 
 def snres_projdiscr_4l(num_classes, in_ch=3):
@@ -106,8 +113,8 @@ def snres_projdiscr_4l(num_classes, in_ch=3):
         an instance
     """
     return snres_discr_ctor(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D'],
-                       in_ch=in_ch,
-                       num_classes=num_classes)
+                            in_ch=in_ch,
+                            num_classes=num_classes)
 
 
 def snres_discr_5l(in_ch=3, out_ch=1):
@@ -122,9 +129,10 @@ def snres_discr_5l(in_ch=3, out_ch=1):
     Returns:
         an instance
     """
-    return snres_discr_ctor(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D'],
-                       in_ch=in_ch,
-                       out_ch=out_ch)
+    return snres_discr_ctor(
+        arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D'],
+        in_ch=in_ch,
+        out_ch=out_ch)
 
 
 def snres_discr_6l(in_ch=3, out_ch=1):
@@ -139,10 +147,11 @@ def snres_discr_6l(in_ch=3, out_ch=1):
     Returns:
         an instance
     """
-    return snres_discr_ctor(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D',
-        512, 'D'],
-                       in_ch=in_ch,
-                       out_ch=out_ch)
+    return snres_discr_ctor(
+        arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D', 512, 'D'],
+        in_ch=in_ch,
+        out_ch=out_ch)
+
 
 def snres_discr_7l(in_ch=3, out_ch=1):
     """
@@ -156,10 +165,11 @@ def snres_discr_7l(in_ch=3, out_ch=1):
     Returns:
         an instance
     """
-    return snres_discr_ctor(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D',
-        512, 'D', 1024, 'D'],
-                       in_ch=in_ch,
-                       out_ch=out_ch)
+    return snres_discr_ctor(arch=[
+        32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D', 512, 'D', 1024, 'D'
+    ],
+                            in_ch=in_ch,
+                            out_ch=out_ch)
 
 
 def snres_projdiscr_5l(num_classes, in_ch=3):
@@ -174,6 +184,7 @@ def snres_projdiscr_5l(num_classes, in_ch=3):
     Returns:
         an instance
     """
-    return snres_discr_ctor(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D'],
-                       in_ch=in_ch,
-                       num_classes=num_classes)
+    return snres_discr_ctor(
+        arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D'],
+        in_ch=in_ch,
+        num_classes=num_classes)

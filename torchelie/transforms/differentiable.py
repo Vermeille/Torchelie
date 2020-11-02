@@ -98,7 +98,7 @@ def gblur(input):
         the blurred tensor
     """
     return F.conv2d(input,
-                    torch.FloatTensor(_gblur_kernel()).to(input.device),
+                    torch.tensor(_gblur_kernel()).to(input.device),
                     padding=1)
 
 
@@ -127,5 +127,5 @@ def mblur(input):
         the blurred tensor
     """
     return F.conv2d(input,
-                    torch.FloatTensor(_mblur_kernel()).to(input.device),
+                    torch.tensor(_mblur_kernel()).to(input.device),
                     padding=1)

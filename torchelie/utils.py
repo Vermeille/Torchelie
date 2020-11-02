@@ -1,4 +1,5 @@
 import os
+import math
 import torch.distributed as dist
 import torch
 import torch.nn as nn
@@ -48,7 +49,7 @@ def entropy(out, dim=1, reduce='mean'):
         return h.sum()
 
 
-def kaiming(m, a=0, nonlinearity='relu', mode='fan_out'):
+def kaiming(m, a=0, nonlinearity='relu', mode='fan_out', dynamic=False):
     """
     Initialize a module with kaiming normal init
 
@@ -56,6 +57,8 @@ def kaiming(m, a=0, nonlinearity='relu', mode='fan_out'):
         m (nn.Module): the module to init
         a (float): the slope of the nonlinearity
         nonlinearity (str): type of the nonlinearity
+        dynamic (bool): wether to scale the weights on the forward pass for
+            equalized LR such as ProGAN (default: False)
 
     Returns:
         the initialized module
@@ -66,26 +69,50 @@ def kaiming(m, a=0, nonlinearity='relu', mode='fan_out'):
         else:
             nonlinearity = 'leaky_relu'
 
-    nn.init.kaiming_normal_(m.weight,
-                            a=a,
-                            nonlinearity=nonlinearity,
-                            mode=mode)
+    if not dynamic:
+        nn.init.kaiming_normal_(m.weight,
+                                a=a,
+                                nonlinearity=nonlinearity,
+                                mode=mode)
+    else:
+        from .nn.utils import weight_scale
+        nn.init.normal_(m.weight, 0, 1)
+        fan = nn.init._calculate_correct_fan(m.weight, mode)
+        gain = nn.init.calculate_gain(nonlinearity, param=a)
+        weight_scale(m, scale=gain / math.sqrt(fan))
+
     if hasattr(m, 'biais') and m.bias is not None:
         nn.init.constant_(m.bias, 0)
     return m
 
 
-def xavier(m):
+def xavier(m, a=0, nonlinearity='relu', mode='fan_out', dynamic=False):
     """
     Initialize a module with xavier normal init
 
     Args:
         m (nn.Module): the module to init
+        dynamic (bool): wether to scale the weights on the forward pass for
+            equalized LR such as ProGAN (default: False)
 
     Returns:
         the initialized module
     """
-    nn.init.xavier_normal_(m.weight)
+    if nonlinearity in ['relu', 'leaky_relu']:
+        if a == 0:
+            nonlinearity = 'relu'
+        else:
+            nonlinearity = 'leaky_relu'
+
+    if not dynamic:
+        nn.init.xavier_normal_(m.weight)
+    else:
+        from .nn.utils import weight_scale
+        nn.init.normal_(m.weight, 0, 1)
+        fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(m.weight)
+        gain = nn.init.calculate_gain(nonlinearity, param=a)
+        weight_scale(m, scale=gain*math.sqrt(2. / (fan_in + fan_out)))
+
     if hasattr(m, 'biais') and m.bias is not None:
         nn.init.constant_(m.bias, 0)
     return m
