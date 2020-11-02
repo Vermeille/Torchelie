@@ -517,3 +517,115 @@ class ResidualDiscrBlock(torch.nn.Module):
             x = nn.functional.avg_pool2d(x, 3, 2, 1)
         return x + res
 
+
+class SNResidualDiscrBlock(ResidualDiscrBlock):
+    """
+    A residual block with downsampling and spectral normalization.
+
+    Args:
+        in_ch (int): number of input channels
+        out_ch (int): number of output channels
+        downsample (bool): whether to downsample
+    """
+    def __init__(self, in_ch, out_ch, downsample=False):
+        super().__init__(in_ch, out_ch, downsample, equal_lr=False)
+        xavier(self.branch[-1].weight_g, nonlinearity='linear')
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.utils.spectral_norm(m)
+
+
+class StyleGAN2Block(nn.Module):
+    """
+    A Upsample-(ModulatedConv-Noise-LeakyReLU)* block from StyleGAN2
+
+    Args:
+        in_ch (int): input channels
+        out_ch (int): output channels
+        noise_size (int): channels of the conditioning style / noise vector
+        upsample (bool): whether to upsample the input or not (default: False)
+        n_layers (int): number of conv-noise-relu blocks (default: 2)
+        equal_lr (bool): whether to equalize parameters' lr with dynamic weight
+            init scaling (weight_scale)
+
+    """
+    def __init__(self,
+                 in_ch: int,
+                 out_ch: int,
+                 noise_size: int,
+                 upsample: bool = False,
+                 n_layers: int = 2,
+                 equal_lr: bool = True):
+        super().__init__()
+        self.equal_lr = equal_lr
+        dyn = equal_lr
+        self.upsample = upsample
+        inside = [
+            kaiming(ModulatedConv(in_ch,
+                                  noise_size,
+                                  out_ch,
+                                  kernel_size=3,
+                                  padding=1,
+                                  bias=True),
+                    dynamic=dyn,
+                    a=0.2),
+            Noise(1, bias=False),
+            nn.LeakyReLU(0.2, True),
+        ]
+
+        for _ in range(n_layers - 1):
+            inside += [
+                kaiming(ModulatedConv(out_ch,
+                                      noise_size,
+                                      out_ch,
+                                      kernel_size=3,
+                                      padding=1,
+                                      bias=True),
+                        dynamic=dyn,
+                        a=0.2),
+                Noise(1, bias=False),
+                nn.LeakyReLU(0.2, True),
+            ]
+
+        if dyn:
+            for m in inside:
+                if isinstance(m, ModulatedConv):
+                    xavier(m.make_s, dynamic=True)
+
+        self.inside = CondSeq(*inside)
+        self.to_rgb = xavier(ModulatedConv(out_ch,
+                                           noise_size,
+                                           3,
+                                           kernel_size=1,
+                                           padding=0,
+                                           bias=True,
+                                           demodulate=False),
+                             dynamic=dyn,
+                             a=0.2)
+
+    def condition(self, z):
+        self.inside.condition(z)
+        self.to_rgb.condition(z)
+
+    def extra_repr(self):
+        return (f"upsample={self.upsample} n_layers={len(self.inside) // 3} "
+                f"equal_lr={self.equal_lr}")
+
+    def forward(self, xs, z=None):
+        if z is not None:
+            self.condition(z)
+
+        if not isinstance(xs, tuple):
+            img = torch.zeros(xs.shape[0], 3, *xs.shape[2:], device=xs.device)
+            maps = xs
+        else:
+            img, maps = xs
+        if self.upsample:
+            img = nn.functional.interpolate(img,
+                                            scale_factor=2,
+                                            mode='bilinear')
+            maps = nn.functional.interpolate(maps,
+                                             scale_factor=2,
+                                             mode='bilinear')
+        maps = self.inside(maps)
+        return img + self.to_rgb(maps), maps
