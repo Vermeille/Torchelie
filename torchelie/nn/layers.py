@@ -48,10 +48,11 @@ class AdaptiveConcatPool2d(nn.Module):
 
 
 class ModulatedConv(nn.Conv2d):
-    def __init__(self, in_channels, noise_channels, *args, **kwargs):
+    def __init__(self, in_channels, noise_channels, *args, demodulate=True, **kwargs):
         super(ModulatedConv, self).__init__(in_channels, *args, **kwargs)
-        self.make_s = tu.kaiming(nn.Linear(noise_channels, in_channels))
+        self.make_s = tu.xavier(nn.Linear(noise_channels, in_channels))
         self.make_s.bias.data.fill_(1)
+        self.demodulate = demodulate
 
     def condition(self, z):
         self.s = self.make_s(z)
@@ -60,9 +61,12 @@ class ModulatedConv(nn.Conv2d):
         N, C, H, W = x.shape
         C_out, C_in = self.weight.shape[:2]
         w_prime = torch.einsum('oihw,bi->boihw', self.weight, self.s)
-        w_prime_prime = torch.einsum('boihw,boihw->bo', w_prime, w_prime)
-        w_prime_prime = w_prime_prime.add_(1e-8).rsqrt()
-        w = w_prime * w_prime_prime[..., None, None, None]
+        if self.demodulate:
+            w_prime_prime = torch.einsum('boihw,boihw->bo', w_prime, w_prime)
+            w_prime_prime = w_prime_prime.add_(1e-8).rsqrt()
+            w = w_prime * w_prime_prime[..., None, None, None]
+        else:
+            w = w_prime
 
         w = w.view(-1, *w.shape[2:])
         x = F.conv2d(x.view(1, -1, H, W), w, None, self.stride, self.padding,
