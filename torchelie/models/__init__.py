@@ -9,4 +9,5 @@ from .autogan import AutoGAN, autogan_32, autogan_64, autogan_128
 from .snres_discr import *
 from .hourglass import Hourglass
 from .attention import Attention56Bone, attention56
+from .stylegan2 import StyleGAN2Generator, StyleGAN2Discriminator
 #from .efficient import EfficientNet
