@@ -10,6 +10,8 @@ from .batchnorm import ConditionalBN2d, Spade2d
 from .condseq import CondSeq
 from .maskedconv import MaskedConv2d
 from torchelie.utils import kaiming, xavier, normal_init, constant_init
+from .layers import ModulatedConv
+from .noise import Noise
 
 
 def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0, inplace=False):
@@ -57,7 +59,6 @@ class SEBlock(nn.Module):
         reduction (int): channels reduction factor for the hidden number of
             channels
     """
-
     def __init__(self, in_ch, reduction=16):
         super(SEBlock, self).__init__()
         reduc = in_ch // reduction
@@ -204,7 +205,6 @@ class ResBlock(nn.Module):
         bottleneck (bool): whether to use the standard block with two 3x3 convs
             or the bottleneck block with 1x1 -> 3x3 -> 1x1 convs.
     """
-
     def __init__(self,
                  in_ch,
                  out_ch,
@@ -236,12 +236,15 @@ class ResBlock(nn.Module):
         else:
             self.branch = CondSeq(
                 collections.OrderedDict([
-                    ('conv1', kaiming(Conv3x3(in_ch, out_ch, stride=stride,
-                        bias=bias))),
-                    ('bn1', constant_init(norm(out_ch), 1) if norm else Dummy()),
+                    ('conv1',
+                     kaiming(Conv3x3(in_ch, out_ch, stride=stride,
+                                     bias=bias))),
+                    ('bn1',
+                     constant_init(norm(out_ch), 1) if norm else Dummy()),
                     ('relu', nn.ReLU(True)),
                     ('conv2', kaiming(Conv3x3(out_ch, out_ch, bias=bias))),
-                    ('bn2', constant_init(norm(out_ch), 0) if norm else Dummy())
+                    ('bn2',
+                     constant_init(norm(out_ch), 0) if norm else Dummy())
                 ]))
 
         if use_se:
@@ -249,15 +252,13 @@ class ResBlock(nn.Module):
 
         self.relu = nn.ReLU(True)
 
-        self.shortcut = make_resnet_shortcut(in_ch, out_ch, stride,
-                norm=None)
+        self.shortcut = make_resnet_shortcut(in_ch, out_ch, stride, norm=None)
 
     def __repr__(self):
         return "{}({}, {}, stride={}, norm={})".format(
             ("SE-" if self.use_se else "") +
             ("Bottleneck" if self.bottleneck else "ResBlock"), self.in_ch,
-            self.out_ch, self.stride,
-            self.branch.bn1.__class__.__name__)
+            self.out_ch, self.stride, self.branch.bn1.__class__.__name__)
 
     def condition(self, z):
         self.branch.condition(z)
@@ -274,7 +275,6 @@ class HardSigmoid(nn.Module):
     """
     Hard Sigmoid
     """
-
     def forward(self, x):
         return x.add_(0.5).clamp_(min=0, max=1)
 
@@ -283,7 +283,6 @@ class HardSwish(nn.Module):
     """
     Hard Swish
     """
-
     def forward(self, x):
         return x.add(0.5).clamp_(min=0, max=1).mul_(x)
 
@@ -304,7 +303,6 @@ class PreactResBlock(nn.Module):
         bottleneck (bool): whether to use the standard block with two 3x3 convs
             or the bottleneck block with 1x1 -> 3x3 -> 1x1 convs.
     """
-
     def __init__(self,
                  in_ch,
                  out_ch,
@@ -312,7 +310,8 @@ class PreactResBlock(nn.Module):
                  norm=nn.BatchNorm2d,
                  dropout=0.,
                  use_se=False,
-                 bottleneck=False, first_layer=False):
+                 bottleneck=False,
+                 first_layer=False):
         super(PreactResBlock, self).__init__()
         self.in_ch = in_ch
         self.out_ch = out_ch
@@ -326,7 +325,8 @@ class PreactResBlock(nn.Module):
             mid = out_ch // 4
             self.branch = CondSeq(
                 collections.OrderedDict([
-                    ('bn1', constant_init(norm(in_ch), 1) if norm else Dummy()),
+                    ('bn1',
+                     constant_init(norm(in_ch), 1) if norm else Dummy()),
                     ('relu', nn.ReLU(not first_layer and norm is not None)),
                     ('conv1', kaiming(Conv1x1(in_ch, mid, bias=bias))),
                     ('bn2', constant_init(norm(mid), 1) if norm else Dummy()),
@@ -340,13 +340,15 @@ class PreactResBlock(nn.Module):
         else:
             self.branch = CondSeq(
                 collections.OrderedDict([
-                    ('bn1', constant_init(norm(in_ch), 1) if norm else Dummy()),
+                    ('bn1',
+                     constant_init(norm(in_ch), 1) if norm else Dummy()),
                     ('relu', nn.ReLU(not first_layer and norm is not None)),
                     ('conv1',
                      kaiming(Conv3x3(in_ch, out_ch, stride=stride,
                                      bias=bias))),
                     ('dropout1', nn.Dropout2d(dropout)),
-                    ('bn2', constant_init(norm(out_ch), 1) if norm else Dummy()),
+                    ('bn2',
+                     constant_init(norm(out_ch), 1) if norm else Dummy()),
                     ('relu2', nn.ReLU(True)),
                     ('conv2', constant_init(Conv3x3(out_ch, out_ch), 0)),
                     ('dropout2', nn.Dropout2d(dropout)),
@@ -382,7 +384,6 @@ class SpadeResBlock(PreactResBlock):
 
     https://arxiv.org/abs/1903.07291
     """
-
     def __init__(self, in_ch, out_ch, cond_channels, hidden, stride=1):
         norm = functools.partial(Spade2d,
                                  cond_channels=cond_channels,
@@ -406,7 +407,6 @@ class AutoGANGenBlock(nn.Module):
         ks (int): kernel size of the convolutions
         mode (str): usampling mode, 'nearest' or 'bilinear'
     """
-
     def __init__(self, in_ch, out_ch, skips_ch, ks=3, mode='nearest'):
         super(AutoGANGenBlock, self).__init__()
         assert mode in ['nearest', 'bilinear']
@@ -454,37 +454,50 @@ class AutoGANGenBlock(nn.Module):
         return x + x_skip, F.leaky_relu(x_mid, 0.2)
 
 
-class SNResidualDiscrBlock(torch.nn.Module):
+class ResidualDiscrBlock(torch.nn.Module):
     """
-    A residual block with downsampling and spectral normalization.
+    A residual block with downsampling
 
     Args:
         in_ch (int): number of input channels
         out_ch (int): number of output channels
         downsample (bool): whether to downsample
+        equal_lr (bool): whether to use dynamic weight scaling for equal lr
+            such as in StyleGAN2
     """
-
-    def __init__(self, in_ch, out_ch, downsample=False):
-        super(SNResidualDiscrBlock, self).__init__()
+    def __init__(self,
+                 in_ch,
+                 out_ch,
+                 downsample=False,
+                 equal_lr=False,
+                 force_shortcut=False):
+        super(ResidualDiscrBlock, self).__init__()
+        self.equal_lr = equal_lr
         self.branch = nn.Sequential(*[
             nn.LeakyReLU(0.2),
-        nn.utils.spectral_norm(
-            kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1))),
-            nn.UpsamplingBilinear2d(scale_factor=0.5) if downsample else Dummy(),
+            kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1), dynamic=equal_lr),
             nn.LeakyReLU(0.2, True),
-        nn.utils.spectral_norm(
-            kaiming(nn.Conv2d(out_ch, out_ch, 3, padding=1)))
+            nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
+            xavier(nn.Conv2d(out_ch, out_ch, 3, padding=1), dynamic=equal_lr,
+                nonlinearity='linear')
         ])
+
+        with torch.no_grad():
+            if equal_lr:
+                self.branch[-1].weight_g.data.zero_()
+            else:
+                self.branch[-1].weight.data.zero_()
 
         self.downsample = downsample
         self.sc = None
-        if in_ch != out_ch:
+        if in_ch != out_ch or force_shortcut:
             self.sc = nn.Sequential(
-                    #nn.LeakyReLU(0.2),
-                nn.UpsamplingBilinear2d(scale_factor=0.5) if downsample else Dummy(),
-            nn.utils.spectral_norm
-                (kaiming(nn.Conv2d(in_ch, out_ch, 1)))
-            )
+                nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
+                xavier(nn.Conv2d(in_ch, out_ch, 1), dynamic=equal_lr,
+                    nonlinearity='linear'))
+
+    def extra_repr(self):
+        return f"equal_lr={self.equal_lr} downsample={self.downsample}"
 
     def forward(self, x):
         """
