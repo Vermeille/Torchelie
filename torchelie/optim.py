@@ -248,7 +248,7 @@ class Lookahead(Optimizer):
         self.alpha = alpha
         self.k = k
         self.optimizer = base_optimizer
-        self.state = defaultdict(dict)
+        self.state: dict = defaultdict(dict)
         self.param_groups = base_optimizer.param_groups
 
     def state_dict(self):

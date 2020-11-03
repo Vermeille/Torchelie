@@ -8,8 +8,9 @@ import numpy as np
 
 try:
     import cv2
+    HAS_CV = True
 except:
-    print("Can't import OpenCV. Some transforms will not work properly")
+    pass
 
 
 class ResizeNoCrop:
@@ -124,6 +125,8 @@ class Canny:
         Returns:
             edges detected in `img` as PIL Image
         """
+        assert HAS_CV, ("Can't import OpenCV. Some transforms will not "
+                "work properly")
         img = np.array(img)
         img = cv2.Canny(img, self.thresh_low, self.thresh_high)
         return Image.fromarray(img)
