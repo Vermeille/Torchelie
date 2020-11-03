@@ -239,3 +239,59 @@ class AllAtOnceGeometric:
         grid = grid.to(x.device)
         return F.grid_sample(x, grid, mode='bilinear', padding_mode='reflection')
 
+
+class AllAtOnceColor:
+    """
+    Similar to AllAtOnceGeometric, performs multiple color transforms at once.
+
+    Args:
+        B (int): batch size
+        init (torch.Tensor): an initial user supplied transformation matrix. If
+            not provided, default to identity.
+    """
+    B: int
+    m: torch.Tensor
+
+    def __init__(self, B: int, init: Optional[torch.Tensor] = None):
+        self.B = B
+        if init is None:
+            self.m = torch.stack([torch.eye(4, 4) for _ in range(B)], dim=0)
+        else:
+            self.m = init
+
+    def _mix(self, m: torch.Tensor, prob: float) -> None:
+        RND = (self.B, 1, 1)
+        self.m = torch.where(
+            torch.rand(RND) < prob, torch.bmm(m, self.m), self.m)
+
+    def brightness(self, alpha: float, prob: float = 1.) -> 'AllAtOnceColor':
+        tfm = torch.stack([
+            torch.eye(4, 4) * random.uniform(1 - alpha, 1 + alpha)
+            for _ in range(self.B)
+        ],
+                          dim=0)
+        tfm[:, 3, 3] = 1
+        self._mix(tfm, prob)
+        return self
+
+    def contrast(self, alpha: float, prob: float = 1.) -> 'AllAtOnceColor':
+        rot = []
+        for _ in range(self.B):
+            t = random.uniform(1 - alpha, 1 + alpha)
+            rot.append([[t, 0, 0, (1 - t) / 2], [0, t, 0, (1 - t) / 2],
+                        [0, 0, t, (1 - t) / 2], [0, 0, 0, 1]])
+        rot = torch.tensor(rot)
+        self._mix(rot, prob)
+        return self
+
+    def apply(self, x: torch.Tensor) -> torch.Tensor:
+        B, C, H, W = x.shape
+        w = self.m[:, :3, :3].reshape(3 * self.B, 3, 1, 1)
+        b = self.m[:, :3, 3].reshape(self.B, 3, 1, 1)
+        x = x.view(1, B * C, H, W)
+        w = w.to(x.device)
+        b = b.to(x.device)
+        out = nn.functional.conv2d(x, w, None, groups=self.B)
+        out = out.view(B, C, H, W)
+        return out + b
+
