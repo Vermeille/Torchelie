@@ -1,6 +1,9 @@
+import math
+import random
 import torch
 import torch.nn.functional as F
 import numpy as np
+from typing import Optional
 
 # FIXME: The API is not that great, improve it.
 
@@ -129,3 +132,110 @@ def mblur(input):
     return F.conv2d(input,
                     torch.tensor(_mblur_kernel()).to(input.device),
                     padding=1)
+
+
+class AllAtOnceGeometric:
+    """
+    Various geometric transforms packed up into an affine transformation
+    matrix. Transformations can be stacked then applied on a 4D tensor to
+    reduce artifact, memory usage, and compute. Fully differentiable.
+
+    >>> img = torch.randn(10, 3, 32, 32)
+    >>> transformed = AllAtOnceGeometric(10)\
+            .translate(5, 5).scale(0.9).apply(img)
+
+    Note: the transformations get sampled at creation, so that each call to
+    apply() runs the same transforms. Construct another AllAtOnceGeometric
+    object for another set of transform. This allows to easily run the same
+    transforms on paired datasets.
+
+    Note2: Each transform has a prob argument which specifies whether to use
+    the transform or bypass it. This makes it easy to implement StyleGAN2-ADA.
+
+    Args:
+        B (int): batch size
+        init (torch.Tensor): an initial user supplied transformation matrix. If
+            not provided, default to identity.
+    """
+    B: int
+    m: torch.Tensor
+
+    def __init__(self, B: int, init: Optional[torch.Tensor] = None) -> None:
+        if init is None:
+            self.m = torch.stack([torch.eye(3, 3) for _ in range(B)], dim=0)
+        else:
+            self.m = init
+        self.B = B
+
+    def _mix(self, m: torch.Tensor, prob: float) -> None:
+        RND = (m.shape[0], 1, 1)
+        self.m = torch.where(
+            torch.rand(RND) < prob, torch.bmm(m, self.m), self.m)
+
+    def translate(self, x: float, y: float, prob: float = 1.) -> 'AllAtOnceGeometric':
+        """
+        Randomly translate image horizontally with an offset sampled in [-x, x]
+        and vertically [-y, y]. Note that the coordinate are not pixel
+        coordinate but texel coordinate between [-1, 1]
+        """
+        tfm = torch.tensor([[[1, 0., random.uniform(-x, x)],
+                             [0, 1, random.uniform(-y, y)], [0, 0, 1]]
+                            for _ in range(self.B)])
+        self._mix(tfm, prob)
+        return self
+
+    def scale(self, x: float, y: float, prob: float = 1.) -> 'AllAtOnceGeometric':
+        """
+        Randomly scale the image horizontally by a factor [1 - x; 1 + x] and
+        vertically by a factor of [1 - y; 1 + y].
+
+        Args:
+            x (float): horizontal factor
+            y (float): vertical factor
+        """
+        tfm = torch.tensor([[[random.uniform(1 - x, 1 + x), 0., 0],
+                             [0, random.uniform(1 - y, 1 + y), 0], [0, 0, 1]]
+                            for _ in range(self.B)])
+        self._mix(tfm, prob)
+        return self
+
+    def rotate(self, theta: float, prob: float = 1.) -> 'AllAtOnceGeometric':
+        """
+        Rotate the image by an angle randomly sampled between [-theta, theta]
+
+        Args:
+            theta (float): an angle in degrees
+        """
+        theta = theta * 3.14 / 180
+        rot = []
+        for _ in range(self.B):
+            t = random.uniform(-theta, theta)
+            rot.append([[math.cos(t), math.sin(-t), 0],
+                        [math.sin(t), math.cos(t), 0], [0, 0, 1]])
+        tfm = torch.tensor(rot)
+        self._mix(tfm, prob)
+        return self
+
+    def flip_x(self, p: float, prob: float = 1.) -> 'AllAtOnceGeometric':
+        tfm = []
+        for _ in range(self.B):
+            p_rot = math.copysign(1, random.random() - (1 - p))
+            tfm.append([[p_rot, 0., 0], [0, 1, 0], [0, 0, 1]])
+        tfm = torch.tensor(tfm)
+        self._mix(tfm, prob)
+        return self
+
+    def flip_y(self, p: float, prob: float = 1.) -> 'AllAtOnceGeometric':
+        tfm = []
+        for _ in range(self.B):
+            p_rot = math.copysign(1, random.random() - (1 - p))
+            tfm.append([[1, 0., 0], [0, p_rot, 0], [0, 0, 1]])
+        tfm = torch.tensor(tfm)
+        self._mix(tfm, prob)
+        return self
+
+    def apply(self, x: torch.Tensor) -> torch.Tensor:
+        grid = F.affine_grid(self.m[:, :2, :], x.size())
+        grid = grid.to(x.device)
+        return F.grid_sample(x, grid, mode='bilinear', padding_mode='reflection')
+
