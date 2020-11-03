@@ -222,3 +222,10 @@ class Const(nn.Module):
             n = n.shape[0]
         return self.const.expand(n, *self.const.shape[1:]).contiguous()
 
+
+class MinibatchStddev(nn.Module):
+    """Minibatch Stddev layer from Progressive GAN"""
+    def forward(self, x):
+        stddev_map = torch.sqrt(x.var(dim=0) + 1e-8).mean()
+        stddev = stddev_map.expand(x.shape[0], 1, *x.shape[2:])
+        return torch.cat([x, stddev], dim=1)
