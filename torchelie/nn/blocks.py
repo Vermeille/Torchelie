@@ -466,11 +466,11 @@ class ResidualDiscrBlock(torch.nn.Module):
             such as in StyleGAN2
     """
     def __init__(self,
-                 in_ch,
-                 out_ch,
-                 downsample=False,
-                 equal_lr=False,
-                 force_shortcut=False):
+                 in_ch: int,
+                 out_ch: int,
+                 downsample: bool = False,
+                 equal_lr: bool = False,
+                 force_shortcut: bool = False):
         super(ResidualDiscrBlock, self).__init__()
         self.equal_lr = equal_lr
         self.branch = nn.Sequential(*[
@@ -478,8 +478,9 @@ class ResidualDiscrBlock(torch.nn.Module):
             kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1), dynamic=equal_lr),
             nn.LeakyReLU(0.2, True),
             nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
-            xavier(nn.Conv2d(out_ch, out_ch, 3, padding=1), dynamic=equal_lr,
-                nonlinearity='linear')
+            xavier(nn.Conv2d(out_ch, out_ch, 3, padding=1),
+                   dynamic=equal_lr,
+                   nonlinearity='linear')
         ])
 
         with torch.no_grad():
@@ -493,8 +494,9 @@ class ResidualDiscrBlock(torch.nn.Module):
         if in_ch != out_ch or force_shortcut:
             self.sc = nn.Sequential(
                 nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
-                xavier(nn.Conv2d(in_ch, out_ch, 1), dynamic=equal_lr,
-                    nonlinearity='linear'))
+                xavier(nn.Conv2d(in_ch, out_ch, 1),
+                       dynamic=equal_lr,
+                       nonlinearity='linear'))
 
     def extra_repr(self):
         return f"equal_lr={self.equal_lr} downsample={self.downsample}"
@@ -527,7 +529,7 @@ class SNResidualDiscrBlock(ResidualDiscrBlock):
         out_ch (int): number of output channels
         downsample (bool): whether to downsample
     """
-    def __init__(self, in_ch, out_ch, downsample=False):
+    def __init__(self, in_ch: int, out_ch: int, downsample: bool = False):
         super().__init__(in_ch, out_ch, downsample, equal_lr=False)
         xavier(self.branch[-1].weight_g, nonlinearity='linear')
         for m in self.modules():
