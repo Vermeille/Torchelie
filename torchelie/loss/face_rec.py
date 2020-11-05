@@ -20,6 +20,15 @@ class L2Constraint(nn.Module):
     """
 
     def __init__(self, dim, num_classes, s=30.):
+        """
+        Initialize the gradient.
+
+        Args:
+            self: (todo): write your description
+            dim: (int): write your description
+            num_classes: (int): write your description
+            s: (int): write your description
+        """
         super(L2Constraint, self).__init__()
         self.weight = nn.Parameter(torch.FloatTensor(num_classes, dim))
         nn.init.orthogonal_(self.weight)
@@ -43,6 +52,12 @@ class L2Constraint(nn.Module):
         return output, cosine
 
     def __repr__(self):
+        """
+        Return a human - readable representation of this object.
+
+        Args:
+            self: (todo): write your description
+        """
         return "L2CrossEntropy(s={})".format(self.s)
 
 
@@ -63,6 +78,16 @@ class AdaCos(nn.Module):
     """
 
     def __init__(self, dim, num_classes, fixed=False, estimate_B=False):
+        """
+        Initialize the class.
+
+        Args:
+            self: (todo): write your description
+            dim: (int): write your description
+            num_classes: (int): write your description
+            fixed: (array): write your description
+            estimate_B: (todo): write your description
+        """
         super(AdaCos, self).__init__()
         self.fixed = fixed
         self.weight = nn.Parameter(torch.FloatTensor(num_classes, dim))
@@ -106,4 +131,10 @@ class AdaCos(nn.Module):
         return cosine * self.s, cosine, self.s, theta_med
 
     def __repr__(self):
+        """
+        Return a human - readable representation of this object.
+
+        Args:
+            self: (todo): write your description
+        """
         return "FixedAdaCos(fixed={})".format(self.fixed)

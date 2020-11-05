@@ -19,6 +19,24 @@ class Hourglass(nn.Module):
                  upsampling='bilinear',
                  pad=nn.ReflectionPad2d,
                  relu=nn.LeakyReLU(0.2, True)):
+        """
+        Initialize the kernel.
+
+        Args:
+            self: (todo): write your description
+            noise_dim: (str): write your description
+            down_channels: (todo): write your description
+            skip_channels: (todo): write your description
+            down_kernel: (todo): write your description
+            up_kernel: (str): write your description
+            upsampling: (todo): write your description
+            pad: (todo): write your description
+            nn: (todo): write your description
+            ReflectionPad2d: (str): write your description
+            relu: (todo): write your description
+            nn: (todo): write your description
+            LeakyReLU: (todo): write your description
+        """
         super(Hourglass, self).__init__()
 
         assert (len(down_channels) == len(down_kernel)), (len(down_channels),
@@ -52,6 +70,15 @@ class Hourglass(nn.Module):
             (nn.Conv2d(down_channels[0], 3, up_kernel[-1])), nn.BatchNorm2d(3))
 
     def down(self, in_ch, out_ch, ks):
+        """
+        Downsample the output ).
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            out_ch: (str): write your description
+            ks: (int): write your description
+        """
         return nn.Sequential(
             self.pad(ks // 2),
             (nn.Conv2d(in_ch, out_ch, ks, stride=2)),
@@ -64,6 +91,15 @@ class Hourglass(nn.Module):
         )
 
     def up(self, in_ch, out_ch, ks):
+        """
+        Updates the output tensor.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            out_ch: (todo): write your description
+            ks: (todo): write your description
+        """
         return nn.Sequential(
             nn.BatchNorm2d(in_ch),
             self.pad(ks // 2),
@@ -73,6 +109,14 @@ class Hourglass(nn.Module):
         )
 
     def skip(self, in_ch, out_ch):
+        """
+        Skip the output from_chunk.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            out_ch: (str): write your description
+        """
         return nn.Sequential(
             (nn.Conv2d(in_ch, out_ch, 1)),
             nn.BatchNorm2d(out_ch),
@@ -80,6 +124,13 @@ class Hourglass(nn.Module):
         )
 
     def forward(self, x):
+        """
+        Forward computation. forward.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         acts = [x]
         for d in self.downs:
             acts.append(d(acts[-1]))

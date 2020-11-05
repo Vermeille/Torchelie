@@ -55,6 +55,12 @@ def TrainAndCall(model,
     """
 
     def test_fun_wrap(_):
+        """
+        Decorator to wrap a test function.
+
+        Args:
+            _: (todo): write your description
+        """
         return test_fun()
 
     return TrainAndTest(model,

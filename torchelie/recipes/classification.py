@@ -211,6 +211,12 @@ def CrossEntropyClassification(model,
     """
 
     def train_step(batch):
+        """
+        Train the model
+
+        Args:
+            batch: (todo): write your description
+        """
         x, y = batch
         pred = model(x)
         loss = torch.nn.functional.cross_entropy(pred, y)
@@ -218,6 +224,12 @@ def CrossEntropyClassification(model,
         return {'loss': loss, 'pred': pred}
 
     def validation_step(batch):
+        """
+        Perform the loss.
+
+        Args:
+            batch: (todo): write your description
+        """
         x, y = batch
         pred = model(x)
         loss = torch.nn.functional.cross_entropy(pred, y)
@@ -282,6 +294,12 @@ def MixupClassification(model,
     from torchelie.loss import continuous_cross_entropy
 
     def train_step(batch):
+        """
+        Train the model.
+
+        Args:
+            batch: (todo): write your description
+        """
         x, y = batch
         pred = model(x)
         loss = continuous_cross_entropy(pred, y)
@@ -289,6 +307,12 @@ def MixupClassification(model,
         return {'loss': loss}
 
     def validation_step(batch):
+        """
+        Perform the loss.
+
+        Args:
+            batch: (todo): write your description
+        """
         x, y = batch
         pred = model(x)
         loss = torch.nn.functional.cross_entropy(pred, y)

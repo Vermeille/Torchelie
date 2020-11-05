@@ -30,6 +30,19 @@ class VQ(nn.Module):
                  mode: str = 'nearest',
                  init_mode: str = 'normal',
                  return_indices: bool = True):
+        """
+        Initialize the embedding.
+
+        Args:
+            self: (todo): write your description
+            latent_dim: (str): write your description
+            num_tokens: (int): write your description
+            dim: (int): write your description
+            commitment: (str): write your description
+            mode: (todo): write your description
+            init_mode: (str): write your description
+            return_indices: (bool): write your description
+        """
         super(VQ, self).__init__()
         self.embedding = nn.Embedding(num_tokens, latent_dim)
         nn.init.normal_(self.embedding.weight, 0, 1)
@@ -113,6 +126,20 @@ class MultiVQ(nn.Module):
                  mode: str = 'nearest',
                  init_mode: str = 'normal',
                  return_indices: bool = True):
+        """
+        Initialize a set of matrices.
+
+        Args:
+            self: (todo): write your description
+            latent_dim: (str): write your description
+            num_tokens: (int): write your description
+            num_codebooks: (int): write your description
+            dim: (int): write your description
+            commitment: (str): write your description
+            mode: (todo): write your description
+            init_mode: (str): write your description
+            return_indices: (bool): write your description
+        """
         assert (latent_dim % num_codebooks == 0,
                 "num_codebooks must divide evenly latent_dim")
         super(MultiVQ).__init__()
@@ -131,6 +158,15 @@ class MultiVQ(nn.Module):
     def forward(
         self, x: torch.Tensor
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        """
+        Forward computation.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+            torch: (todo): write your description
+            Tensor: (todo): write your description
+        """
         x_chunks = torch.chunk(x, self.num_codebooks, dim=self.dim)
         return torch.cat([vq(chunk) for chunk, vq in zip(x_chunks, self.vqs)],
                          dim=self.dim)

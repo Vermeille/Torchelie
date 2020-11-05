@@ -14,6 +14,15 @@ from .classifier import Classifier2, Classifier1
 
 class BlockBuilder(Protocol):
     def __call__(self, in_ch: int, out_ch: int, stride: int) -> nn.Module:
+        """
+        Call the next callable.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            out_ch: (array): write your description
+            stride: (int): write your description
+        """
         ...
 
 
@@ -82,6 +91,20 @@ class ClassCondResNetBone(nn.Module):
                  num_classes: int,
                  head_ch: int = 3,
                  debug: bool = False):
+        """
+        Initialize the architecture.
+
+        Args:
+            self: (todo): write your description
+            arch: (todo): write your description
+            head: (todo): write your description
+            nn: (todo): write your description
+            Module: (str): write your description
+            hidden: (todo): write your description
+            num_classes: (int): write your description
+            head_ch: (todo): write your description
+            debug: (bool): write your description
+        """
         super(ClassCondResNetBone, self).__init__()
         norm_ctor = functools.partial(tnn.ConditionalBN2d,
                                       cond_channels=hidden)
@@ -90,6 +113,14 @@ class ClassCondResNetBone(nn.Module):
         self.emb = nn.Embedding(num_classes, hidden)
 
     def forward(self, x, y):
+        """
+        Transforms the layer.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+            y: (todo): write your description
+        """
         y_emb = self.emb(y)
         return self.bone(x, y_emb)
 
@@ -142,6 +173,12 @@ def ResNetBone(head: nn.Module,
         A Resnet instance
     """
     def parse(l):
+        """
+        Parse a list of integers.
+
+        Args:
+            l: (str): write your description
+        """
         return [int(x) for x in l.split(':')]
 
     layers = [head]
@@ -184,6 +221,12 @@ def PreactResNetBone(head, head_ch, arch, block, widen=1, debug=False):
         A Resnet instance
     """
     def parse(l):
+        """
+        Parse a list of integers.
+
+        Args:
+            l: (str): write your description
+        """
         return [int(x) for x in l.split(':')]
 
     layers = [head]
@@ -205,6 +248,13 @@ def PreactResNetBone(head, head_ch, arch, block, widen=1, debug=False):
 
 
 def ResNetGeneratorDebug(noise_size, image_size):
+    """
+    ResNet image to image.
+
+    Args:
+        noise_size: (int): write your description
+        image_size: (int): write your description
+    """
     return ResNetBone(tnn.Conv2dBNReLU(in_ch, 64, ks=7, stride=2),
                    64, ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
                    tnn.ResBlock,
@@ -249,6 +299,15 @@ def PreactResNetDebug(num_classes, in_ch=3, debug=False):
 
 
 def resnet20_cifar(num_classes, in_ch=3, dropout=0.2, debug=False):
+    """
+    Resnet20 network.
+
+    Args:
+        num_classes: (int): write your description
+        in_ch: (int): write your description
+        dropout: (bool): write your description
+        debug: (bool): write your description
+    """
     return Classifier1(ResNetBone(tnn.Conv2dBNReLU(in_ch, 16, ks=3, stride=1),
                                   16, [
                                       '16:1', '16:1', '16:1', '32:2', '32:1',
@@ -261,6 +320,14 @@ def resnet20_cifar(num_classes, in_ch=3, dropout=0.2, debug=False):
 
 
 def _preact_head(in_ch, out_ch, input_size=128):
+    """
+    Preact head of a head.
+
+    Args:
+        in_ch: (int): write your description
+        out_ch: (str): write your description
+        input_size: (int): write your description
+    """
     if input_size <= 64:
         return tu.kaiming(tnn.Conv2d(in_ch, out_ch, ks=3))
     elif input_size <= 128:
@@ -272,6 +339,14 @@ def _preact_head(in_ch, out_ch, input_size=128):
 
 
 def preact_resnet20_cifar(num_classes, in_ch=3, debug=False, **kwargs):
+    """
+    Preact_resnet function.
+
+    Args:
+        num_classes: (int): write your description
+        in_ch: (int): write your description
+        debug: (bool): write your description
+    """
     widen = kwargs.pop('widen', 1)
     return Classifier1(PreactResNetBone(
         tnn.Conv2d(in_ch, 16 * widen, ks=3),
@@ -288,6 +363,14 @@ def preact_resnet20_cifar(num_classes, in_ch=3, debug=False, **kwargs):
 
 
 def resnet18(num_classes, in_ch=3, debug=False):
+    """
+    A resnet classifier.
+
+    Args:
+        num_classes: (int): write your description
+        in_ch: (int): write your description
+        debug: (bool): write your description
+    """
     return Classifier1(ResNetBone(
         tnn.Conv2dBNReLU(3, 64, ks=7, stride=2),
         64,
@@ -300,6 +383,15 @@ def resnet18(num_classes, in_ch=3, debug=False):
 
 
 def preact_resnet18(num_classes, in_ch=3, input_size=224, debug=False):
+    """
+    Create resnet resnet.
+
+    Args:
+        num_classes: (int): write your description
+        in_ch: (int): write your description
+        input_size: (int): write your description
+        debug: (bool): write your description
+    """
     head = _preact_head(in_ch, 64, input_size)
     return Classifier1(PreactResNetBone(
         head,
@@ -313,6 +405,15 @@ def preact_resnet18(num_classes, in_ch=3, input_size=224, debug=False):
 
 
 def preact_resnet34(num_classes, in_ch=3, input_size=224, debug=False):
+    """
+    Preact_resnet.
+
+    Args:
+        num_classes: (int): write your description
+        in_ch: (int): write your description
+        input_size: (int): write your description
+        debug: (bool): write your description
+    """
     head = _preact_head(in_ch, 64, input_size)
     return Classifier1(PreactResNetBone(
         head,
@@ -326,6 +427,15 @@ def preact_resnet34(num_classes, in_ch=3, input_size=224, debug=False):
 
 
 def preact_resnet26_reduce(num_classes, in_ch=3, input_size=224, debug=False):
+    """
+    Perform the resnet26.
+
+    Args:
+        num_classes: (int): write your description
+        in_ch: (int): write your description
+        input_size: (int): write your description
+        debug: (bool): write your description
+    """
     head = _preact_head(in_ch, 64, input_size)
     return Classifier1(PreactResNetBone(
         head,
@@ -341,6 +451,14 @@ def preact_resnet26_reduce(num_classes, in_ch=3, input_size=224, debug=False):
 
 
 def preact_resnet18_exp(num_classes, in_ch=3, debug=False):
+    """
+    Preact classesifier.
+
+    Args:
+        num_classes: (int): write your description
+        in_ch: (int): write your description
+        debug: (bool): write your description
+    """
     head = tu.kaiming(tnn.Conv2d(3, 64, ks=5, stride=2))
     return Classifier1(PreactResNetBone(
         head,

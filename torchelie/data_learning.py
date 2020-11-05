@@ -4,6 +4,13 @@ import torch.nn as nn
 
 
 def _rfft2d_freqs(h, w):
+    """
+    Compute fourier fourier transform.
+
+    Args:
+        h: (todo): write your description
+        w: (todo): write your description
+    """
     fy = np.fft.fftfreq(h)[:, None]
     fx = np.fft.fftfreq(w)[:w // 2 + (1 if w % 2 == 0 else 2)]
     return np.sqrt(fx * fx + fy * fy)
@@ -22,6 +29,15 @@ class PixelImage(nn.Module):
     """
 
     def __init__(self, shape, sd=0.01, init_img=None):
+        """
+        Initialize image.
+
+        Args:
+            self: (todo): write your description
+            shape: (int): write your description
+            sd: (int): write your description
+            init_img: (int): write your description
+        """
         super(PixelImage, self).__init__()
         self.shape = shape
         n, ch, h, w = shape
@@ -31,6 +47,13 @@ class PixelImage(nn.Module):
             self.init_img(init_img)
 
     def init_img(self, init_img):
+        """
+        Initialize the image.
+
+        Args:
+            self: (todo): write your description
+            init_img: (todo): write your description
+        """
         self.pixels.data.copy_(init_img - 0.5)
 
     def forward(self):
@@ -57,6 +80,16 @@ class SpectralImage(nn.Module):
     """
 
     def __init__(self, shape, sd=0.01, decay_power=1, init_img=None):
+        """
+        Initialize image.
+
+        Args:
+            self: (todo): write your description
+            shape: (int): write your description
+            sd: (int): write your description
+            decay_power: (float): write your description
+            init_img: (int): write your description
+        """
         super(SpectralImage, self).__init__()
         self.shape = shape
         n, ch, h, w = shape
@@ -78,6 +111,13 @@ class SpectralImage(nn.Module):
             self.init_img(init_img)
 
     def init_img(self, init_img):
+        """
+        Initialize an image.
+
+        Args:
+            self: (todo): write your description
+            init_img: (todo): write your description
+        """
         if init_img.shape[2] % 2 == 1:
             init_img = nn.functional.pad(init_img, (1, 0, 0, 0))
         fft = torch.rfft(init_img * 4, 2, onesided=True, normalized=False)
@@ -103,6 +143,12 @@ class CorrelateColors(torch.nn.Module):
     """
 
     def __init__(self):
+        """
+        Initialize the svd.
+
+        Args:
+            self: (todo): write your description
+        """
         super(CorrelateColors, self).__init__()
         color_correlation_svd_sqrt = torch.FloatTensor([[0.26, 0.09, 0.02],
                                                         [0.27, 0.00, -0.05],
@@ -135,9 +181,23 @@ class CorrelateColors(torch.nn.Module):
 
 class RGB:
     def __call__(self, x):
+        """
+        Call the callable function.
+
+        Args:
+            self: (todo): write your description
+            x: (array): write your description
+        """
         return x
 
     def invert(self, x):
+        """
+        Invert x into a single array
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         return x
 
 class ParameterizedImg(nn.Module):
@@ -161,6 +221,17 @@ class ParameterizedImg(nn.Module):
                  init_img=None,
                  space='spectral',
                  colors='uncorr'):
+        """
+        Initialize the image.
+
+        Args:
+            self: (todo): write your description
+            shape: (int): write your description
+            init_sd: (str): write your description
+            init_img: (int): write your description
+            space: (todo): write your description
+            colors: (dict): write your description
+        """
         super(ParameterizedImg, self).__init__()
 
         assert colors in ['uncorr', 'corr']
@@ -180,6 +251,13 @@ class ParameterizedImg(nn.Module):
 
 
     def init_img(self, init_img):
+        """
+        Initialize the image.
+
+        Args:
+            self: (todo): write your description
+            init_img: (todo): write your description
+        """
         init_img = init_img.clamp(0.01, 0.99)
         init_img = -torch.log(((1 - init_img) / init_img))
 

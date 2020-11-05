@@ -5,6 +5,13 @@ from .classifier import Classifier2, ProjectionDiscr, ConcatPoolClassifier1
 
 
 def _parse_snres(arch, in_ch):
+    """
+    Parse the snresidual block.
+
+    Args:
+        arch: (str): write your description
+        in_ch: (int): write your description
+    """
     blocks = [nn.utils.spectral_norm(tnn.Conv3x3(3, in_ch))]
     for x, x2 in zip(arch, arch[1:] + ['dummy']):
         if x == 'D':
@@ -18,6 +25,16 @@ def _parse_snres(arch, in_ch):
 
 def snres_discr(num_classes, in_ch=3, input_sz=32, max_channels=1024,
         base_ch=32):
+    """
+    Snres_discr function.
+
+    Args:
+        num_classes: (int): write your description
+        in_ch: (int): write your description
+        input_sz: (todo): write your description
+        max_channels: (int): write your description
+        base_ch: (str): write your description
+    """
     ch = base_ch
     layers = [ch, 'D', ch * 2, 'D', ch * 4, 'D']
     input_sz = input_sz // 32

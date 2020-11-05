@@ -6,6 +6,11 @@ import torchelie.loss.functional as tlf
 
 
 def test_bitempered():
+    """
+    Evaluate the bitemperedperedperedperedperedperedperedges.
+
+    Args:
+    """
     x = torch.randn(3, 5)
     y = torch.arange(3)
 
@@ -30,12 +35,22 @@ def test_bitempered():
 
 
 def test_deepdream():
+    """
+    Test the test test.
+
+    Args:
+    """
     m = nn.Sequential(nn.Conv2d(1, 1, 3))
     dd = DeepDreamLoss(m, '0', max_reduction=1)
     loss = dd(m(torch.randn(1, 1, 10, 10)))
 
 
 def test_focal():
+    """
+    Compute the cross product.
+
+    Args:
+    """
     y = (torch.randn(10, 1) < 0).float()
     x = torch.randn(10, 1)
 
@@ -55,6 +70,11 @@ def test_focal():
 
 
 def test_funcs():
+    """
+    Perform the cross - validation functions.
+
+    Args:
+    """
     f = OrthoLoss()
     f(torch.randn(10, 10))
     ortho(torch.randn(10, 10))
@@ -70,6 +90,11 @@ def test_funcs():
 
 
 def test_neural_style():
+    """
+    Sets style
+
+    Args:
+    """
     ns = NeuralStyleLoss()
     ns.set_content(torch.randn(3, 128, 128))
     ns.set_style(torch.randn(3, 128, 128), 1)
@@ -77,11 +102,21 @@ def test_neural_style():
 
 
 def test_perceptual():
+    """
+    Test if the test test.
+
+    Args:
+    """
     pl = PerceptualLoss(['conv1_1'], rescale=True)
     pl(torch.randn(1, 3, 64, 64), torch.randn(1, 3, 64, 64))
 
 
 def test_gan():
+    """
+    Test if the test
+
+    Args:
+    """
     x = torch.randn(5, 5)
 
     gan.hinge.real(x)

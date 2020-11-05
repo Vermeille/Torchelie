@@ -39,6 +39,14 @@ class DeepDream(torch.nn.Module):
     """
 
     def __init__(self, model, dream_layer):
+        """
+        Initialize the layer.
+
+        Args:
+            self: (todo): write your description
+            model: (todo): write your description
+            dream_layer: (todo): write your description
+        """
         super(DeepDream, self).__init__()
         self.loss = DeepDreamLoss(model, dream_layer)
         self.norm = tnn.ImageNetInputNorm()
@@ -59,6 +67,12 @@ class DeepDream(torch.nn.Module):
                                   colors='uncorr')
 
         def forward(_):
+            """
+            Perform loss
+
+            Args:
+                _: (todo): write your description
+            """
             img = canvas()
             rnd = random.randint(0, 10)
             loss = self.loss(self.norm(img[:, :, rnd:, rnd:]))

@@ -59,6 +59,12 @@ def TrainAndTest(model,
     """
 
     def eval_call(batch):
+        """
+        Evaluate the model.
+
+        Args:
+            batch: (todo): write your description
+        """
         model.eval()
         with torch.no_grad():
             out = test_fun(batch)
@@ -73,6 +79,12 @@ def TrainAndTest(model,
     train_loop.register('test_loop', test_loop)
 
     def prepare_test(state):
+        """
+        Prepare a test state.
+
+        Args:
+            state: (todo): write your description
+        """
         test_loop.callbacks.update_state({
             'epoch': state['epoch'],
             'iters': state['iters'],

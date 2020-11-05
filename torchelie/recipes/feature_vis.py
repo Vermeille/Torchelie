@@ -42,6 +42,18 @@ class FeatureVis(torch.nn.Module):
                  lr=1e-3,
                  device='cpu',
                  visdom_env='feature_vis'):
+        """
+        Initialize the layer.
+
+        Args:
+            self: (todo): write your description
+            model: (todo): write your description
+            layer: (todo): write your description
+            input_size: (int): write your description
+            lr: (float): write your description
+            device: (todo): write your description
+            visdom_env: (todo): write your description
+        """
         super().__init__()
         self.device = device
         self.model = tnn.WithSavedActivations(model, names=[layer])
@@ -70,6 +82,12 @@ class FeatureVis(torch.nn.Module):
 
 
         def forward(_):
+            """
+            Forward computation.
+
+            Args:
+                _: (todo): write your description
+            """
             cim = canvas()
             rnd = random.randint(0, cim.shape[2] // 10)
             im = cim[:, :, rnd:, rnd:]

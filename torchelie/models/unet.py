@@ -11,6 +11,15 @@ from torchelie.transforms.differentiable import center_crop
 
 class UBlock(nn.Module):
     def __init__(self, in_ch, out_ch, inner=None):
+        """
+        Initialize k - layer.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            out_ch: (str): write your description
+            inner: (todo): write your description
+        """
         super(UBlock, self).__init__()
         self.in_conv = nn.Sequential(
             OrderedDict([
@@ -46,6 +55,13 @@ class UBlock(nn.Module):
             ]))
 
     def forward(self, x_orig):
+        """
+        Forward computation.
+
+        Args:
+            self: (todo): write your description
+            x_orig: (todo): write your description
+        """
         x = self.in_conv(x_orig)
         if self.inner is not None:
             x2 = x
@@ -76,6 +92,15 @@ class UNetBone(nn.Module):
     """
 
     def __init__(self, arch, in_ch=3, out_ch=1):
+        """
+        Initialize k - layer.
+
+        Args:
+            self: (todo): write your description
+            arch: (todo): write your description
+            in_ch: (int): write your description
+            out_ch: (str): write your description
+        """
         super(UNetBone, self).__init__()
         self.in_conv = nn.Sequential(
                 tu.kaiming(nn.Conv2d(in_ch, arch[0], 5, padding=2)),

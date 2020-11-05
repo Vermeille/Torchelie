@@ -5,23 +5,54 @@ import torchelie.utils as tu
 
 class CallbacksRunner:
     def __init__(self):
+        """
+        Reset the internal state.
+
+        Args:
+            self: (todo): write your description
+        """
         self.cbs = [[], [], []]
         self.reset()
 
     def reset(self):
+        """
+        Reset the state of this state.
+
+        Args:
+            self: (todo): write your description
+        """
         self.state = {'metrics': {}}
 
     def __call__(self, name, *args, **kwargs):
+        """
+        Call the given callback.
+
+        Args:
+            self: (todo): write your description
+            name: (str): write your description
+        """
         for cb in self.callbacks():
             if hasattr(cb, name):
                 getattr(cb, name)(self.state, *args, **kwargs)
 
     def callbacks(self):
+        """
+        Call all callbacks.
+
+        Args:
+            self: (todo): write your description
+        """
         for cbs in self.cbs:
             for cb in cbs:
                 yield cb
 
     def named_callbacks(self):
+        """
+        Yield a generator of named callbacks.
+
+        Args:
+            self: (todo): write your description
+        """
         for step, cbs in zip(['prologue', 'middle', 'epilogue'], self.cbs):
             counts = defaultdict(int)
             for cb in cbs:
@@ -31,6 +62,12 @@ class CallbacksRunner:
                 yield '_'.join([nm, step, str(cnt)]), cb
 
     def state_dict(self):
+        """
+        Returns a dict to be serialized.
+
+        Args:
+            self: (todo): write your description
+        """
         serial_cb = {}
         for nm, cb in self.named_callbacks():
             if hasattr(cb, 'state_dict'):
@@ -38,6 +75,13 @@ class CallbacksRunner:
         return {'state': self.state, 'callbacks': serial_cb}
 
     def load_state_dict(self, dicc):
+        """
+        Load the state of all callbacks.
+
+        Args:
+            self: (todo): write your description
+            dicc: (dict): write your description
+        """
         self.state = dicc['state']
 
         for nm, cb in self.named_callbacks():
@@ -45,30 +89,85 @@ class CallbacksRunner:
                 cb.load_state_dict(dicc['callbacks'][nm])
 
     def update_state(self, state_additions):
+        """
+        Update the state of the given state.
+
+        Args:
+            self: (todo): write your description
+            state_additions: (bool): write your description
+        """
         self.state.update(state_additions)
 
     def add_prologue(self, cb):
+        """
+        Add a callback.
+
+        Args:
+            self: (todo): write your description
+            cb: (todo): write your description
+        """
         self.cbs[0].append(cb)
 
     def add_callback(self, cb):
+        """
+        Add a callback.
+
+        Args:
+            self: (todo): write your description
+            cb: (todo): write your description
+        """
         self.cbs[1].append(cb)
 
     def add_epilogue(self, cb):
+        """
+        Add an epilogue callback.
+
+        Args:
+            self: (todo): write your description
+            cb: (todo): write your description
+        """
         self.cbs[2].append(cb)
 
     def add_prologues(self, cbs):
+        """
+        Add a list of log probabilities.
+
+        Args:
+            self: (todo): write your description
+            cbs: (todo): write your description
+        """
         for cb in cbs:
             self.add_prologue(cb)
 
     def add_callbacks(self, cbs):
+        """
+        Add a callbacks.
+
+        Args:
+            self: (todo): write your description
+            cbs: (todo): write your description
+        """
         for cb in cbs:
             self.add_callback(cb)
 
     def add_epilogues(self, cbs):
+        """
+        Add epilogogue.
+
+        Args:
+            self: (todo): write your description
+            cbs: (todo): write your description
+        """
         for cb in cbs:
             self.add_epilogue(cb)
 
     def __repr__(self):
+        """
+        Return a human - readable representation of this object.
+
+        Args:
+            self: (todo): write your description
+        """
         return "Prologue:\n{}\nCallbacks:\n{}\nEpilogue:\n{}".format(
             "\n".join(["  " + l for l in repr(self.cbs[0]).split("\n")]),
             "\n".join(["  " + l for l in repr(self.cbs[1]).split("\n")]),
@@ -78,11 +177,23 @@ class CallbacksRunner:
 
 class RecipeBase:
     def __init__(self):
+        """
+        Initialize the modules.
+
+        Args:
+            self: (todo): write your description
+        """
         self._modules = set()
         self._savable = set()
         self.device = 'cpu'
 
     def _check_init(self):
+        """
+        Make sure the initialisation
+
+        Args:
+            self: (todo): write your description
+        """
         if '_modules' not in self.__dict__:
             raise AttributeError('You forgot to call ModulesAware.__init__()')
 
@@ -214,6 +325,14 @@ class Recipe(RecipeBase):
         loader (Iterable): any iterable (most likely a DataLoader)
     """
     def __init__(self, call_fun, loader):
+        """
+        Initialize the callbacks.
+
+        Args:
+            self: (todo): write your description
+            call_fun: (todo): write your description
+            loader: (todo): write your description
+        """
         super(Recipe, self).__init__()
         self.call_fun = call_fun
         self.loader = loader

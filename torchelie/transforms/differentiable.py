@@ -6,11 +6,25 @@ import numpy as np
 
 
 def _rollx(img, begin):
+    """
+    Rollx image
+
+    Args:
+        img: (array): write your description
+        begin: (todo): write your description
+    """
     return torch.cat(
             [img[..., :, begin:], img[..., :, :begin]], dim=-1)
 
 
 def _rolly(img, begin):
+    """
+    Rolly the image.
+
+    Args:
+        img: (array): write your description
+        begin: (todo): write your description
+    """
     return torch.cat(
             [img[..., begin:, :], img[..., :begin, :]], dim=-2)
 
@@ -74,6 +88,12 @@ def crop(img, warped=True, sub_img_factor=2):
 
 
 def _gblur_kernel_2d(c):
+    """
+    Convert a 2d kernel to 2d
+
+    Args:
+        c: (todo): write your description
+    """
     gaussian = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]]) / 16
     kernel = np.zeros((3, 3, 3))
     kernel[c, :, :] = gaussian
@@ -81,6 +101,11 @@ def _gblur_kernel_2d(c):
 
 
 def _gblur_kernel():
+    """
+    Gblur kernel.
+
+    Args:
+    """
     return np.stack(
         [_gblur_kernel_2d(0),
          _gblur_kernel_2d(1),
@@ -103,6 +128,12 @@ def gblur(input):
 
 
 def _mblur_kernel_2d(c):
+    """
+    Convert a 2d kernel to a 2d kernel.
+
+    Args:
+        c: (todo): write your description
+    """
     gaussian = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]]) / 8
     kernel = np.zeros((3, 3, 3))
     kernel[c, :, :] = gaussian
@@ -110,6 +141,11 @@ def _mblur_kernel_2d(c):
 
 
 def _mblur_kernel():
+    """
+    Convert a 2d kernel
+
+    Args:
+    """
     return np.stack(
         [_mblur_kernel_2d(0),
          _mblur_kernel_2d(1),

@@ -16,6 +16,14 @@ import torchelie.callbacks as tcb
 
 
 def with_patches(img, patch_size, task, *args, **kwargs):
+    """
+    Create a matplotlib.
+
+    Args:
+        img: (array): write your description
+        patch_size: (int): write your description
+        task: (todo): write your description
+    """
     if img.width < patch_size and img.height < patch_size:
         return task(img, *args, **kwargs)
 
@@ -26,6 +34,15 @@ def with_patches(img, patch_size, task, *args, **kwargs):
 
 
 def with_patches2(img, mask, patch_size, task, *args, **kwargs):
+    """
+    Transforms patches for patches.
+
+    Args:
+        img: (array): write your description
+        mask: (array): write your description
+        patch_size: (int): write your description
+        task: (todo): write your description
+    """
     assert img.size == mask.size, 'Sizes of mask and image do not match'
 
     if img.width < patch_size and img.height < patch_size:
@@ -40,6 +57,13 @@ def with_patches2(img, mask, patch_size, task, *args, **kwargs):
 
 
 def input_noise(size, channels):
+    """
+    Generate noise of the image.
+
+    Args:
+        size: (int): write your description
+        channels: (todo): write your description
+    """
     if channels != 2:
         lines = torch.linspace(-0.01, 0.01, size[0])
         cols = torch.linspace(-0.01, 0.01, size[1])
@@ -64,6 +88,19 @@ def inpainting(img,
                lr,
                noise_std=1 / 30,
                device='cuda'):
+    """
+    Inpainting on an image.
+
+    Args:
+        img: (array): write your description
+        mask: (array): write your description
+        hourglass: (todo): write your description
+        input_dim: (int): write your description
+        iters: (int): write your description
+        lr: (todo): write your description
+        noise_std: (todo): write your description
+        device: (todo): write your description
+    """
     im = TFF.to_tensor(img)[None].to(device)
     mask = TFF.to_tensor(mask)[None].to(device)
     z = input_noise((im.shape[2], im.shape[3]), input_dim)
@@ -71,6 +108,12 @@ def inpainting(img,
     print(hourglass)
 
     def body(batch):
+        """
+        Generate the loss.
+
+        Args:
+            batch: (todo): write your description
+        """
         recon = hourglass(z + torch.randn_like(z) * noise_std)
         loss = torch.sum(
             F.mse_loss(F.interpolate(recon, size=im.shape[2:], mode='nearest'),
@@ -80,6 +123,11 @@ def inpainting(img,
         return {"loss": loss}
 
     def display():
+        """
+        Display the loss.
+
+        Args:
+        """
         recon = hourglass(z)
         recon = F.interpolate(recon, size=im.shape[2:], mode='nearest')
         loss = F.mse_loss(recon * mask, im)
@@ -109,11 +157,30 @@ def superres(img,
              lr,
              noise_std=1 / 30,
              device='cuda'):
+    """
+    Superresize
+
+    Args:
+        img: (array): write your description
+        hourglass: (todo): write your description
+        input_dim: (int): write your description
+        scale: (float): write your description
+        iters: (int): write your description
+        lr: (todo): write your description
+        noise_std: (todo): write your description
+        device: (todo): write your description
+    """
     im = TFF.to_tensor(img)[None].to(device)
     z = input_noise((im.shape[2] * scale, im.shape[3] * scale), input_dim)
     z = z.to(device)
 
     def body(batch):
+        """
+        Return the loss function.
+
+        Args:
+            batch: (todo): write your description
+        """
         recon = hourglass(z + torch.randn_like(z) * noise_std)
         loss = F.mse_loss(
             F.interpolate(recon, size=im.shape[2:], mode='bilinear'), im)
@@ -123,6 +190,11 @@ def superres(img,
         }
 
     def display():
+        """
+        Interpolate function.
+
+        Args:
+        """
         recon = hourglass(z)
         loss = F.mse_loss(
             F.interpolate(recon, size=im.shape[2:], mode='bilinear'), im)
@@ -144,6 +216,16 @@ def superres(img,
 
 
 def make_loop(hourglass, body, display, num_iter, lr):
+    """
+    Create a loop.
+
+    Args:
+        hourglass: (todo): write your description
+        body: (todo): write your description
+        display: (str): write your description
+        num_iter: (int): write your description
+        lr: (todo): write your description
+    """
     loop = TrainAndCall(hourglass,
                         body,
                         display,

@@ -3,6 +3,11 @@ from torchelie.data_learning import *
 
 
 def test_pixel_image():
+    """
+    Test if antsimage
+
+    Args:
+    """
     pi = PixelImage((1, 3, 128, 128), 0.01)
     pi()
 
@@ -13,6 +18,11 @@ def test_pixel_image():
 
 
 def test_spectral_image():
+    """
+    Test the spectral spectral spectral image.
+
+    Args:
+    """
     pi = SpectralImage((1, 3, 128, 128), 0.01)
     pi()
 
@@ -21,12 +31,22 @@ def test_spectral_image():
 
 
 def test_correlate_colors():
+    """
+    Test whether the correlation.
+
+    Args:
+    """
     corr = CorrelateColors()
     start = torch.randn(1, 3, 64, 64)
     assert start.allclose(corr.invert(corr(start)), atol=1e-5)
 
 
 def test_parameterized_img():
+    """
+    Generate an image
+
+    Args:
+    """
     start = torch.clamp(torch.randn(1 ,3, 128, 128) + 0.5, min=0, max=1)
 
     ParameterizedImg(1, 3, 128, 128, space='spectral', colors='uncorr')()

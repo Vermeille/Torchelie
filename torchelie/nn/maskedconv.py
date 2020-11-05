@@ -21,6 +21,18 @@ class MaskedConv2d(nn.Conv2d):
     """
 
     def __init__(self, in_chan, out_chan, ks, center, stride=1, bias=(1, 1)):
+        """
+        Initialize the channel.
+
+        Args:
+            self: (todo): write your description
+            in_chan: (int): write your description
+            out_chan: (str): write your description
+            ks: (int): write your description
+            center: (list): write your description
+            stride: (int): write your description
+            bias: (float): write your description
+        """
         super(MaskedConv2d, self).__init__(in_chan,
                                            out_chan, (ks // 2 + 1, ks),
                                            padding=0,
@@ -36,6 +48,13 @@ class MaskedConv2d(nn.Conv2d):
         nn.init.kaiming_uniform_(self.weight)
 
     def forward(self, x):
+        """
+        Forward computation.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         self.weight_orig = self.weight
         del self.weight
         self.weight = self.weight_orig * self.mask
@@ -69,6 +88,18 @@ class TopLeftConv2d(nn.Module):
     """
 
     def __init__(self, in_chan, out_chan, ks, center, stride=1, bias=(1, 1)):
+        """
+        Initialize the network.
+
+        Args:
+            self: (todo): write your description
+            in_chan: (int): write your description
+            out_chan: (str): write your description
+            ks: (int): write your description
+            center: (list): write your description
+            stride: (int): write your description
+            bias: (float): write your description
+        """
         super(TopLeftConv2d, self).__init__()
         self.top = kaiming(
             nn.Conv2d(in_chan,
@@ -85,6 +116,13 @@ class TopLeftConv2d(nn.Module):
         self.bias = nn.Parameter(torch.zeros(out_chan, *bias))
 
     def forward(self, x):
+        """
+        Calculate of the graph.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         top = self.top(
             F.pad(x[:, :, :-1, :],
                   (self.ks // 2, self.ks // 2, self.ks // 2, 0)))

@@ -33,22 +33,51 @@ class WindowedMetricAvg(tu.AutoStateDict):
     """
 
     def __init__(self, name, post_each_batch=True):
+        """
+        Internal initialization of initialization initialization.
+
+        Args:
+            self: (todo): write your description
+            name: (str): write your description
+            post_each_batch: (todo): write your description
+        """
         super(WindowedMetricAvg, self).__init__()
         self.name = name
         self.avg = WindowAvg(k=100)
         self.post_each_batch = post_each_batch
 
     def on_epoch_start(self, state):
+        """
+        Remove a epoch from the epoch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         if self.name in state['metrics']:
             del state['metrics'][self.name]
 
     @torch.no_grad()
     def on_batch_end(self, state):
+        """
+        Called when a batch is received.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         self.avg.log(state[self.name])
         if self.post_each_batch:
             state['metrics'][self.name] = self.avg.get()
 
     def on_epoch_end(self, state):
+        """
+        Called when the epoch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         state['metrics'][self.name] = self.avg.get()
 
 
@@ -64,23 +93,52 @@ class EpochMetricAvg(tu.AutoStateDict):
     """
 
     def __init__(self, name, post_each_batch=True):
+        """
+        Initialize the initialisation.
+
+        Args:
+            self: (todo): write your description
+            name: (str): write your description
+            post_each_batch: (todo): write your description
+        """
         super(EpochMetricAvg, self).__init__()
         self.name = name
         self.post_each_batch = post_each_batch
         self.avg = RunningAvg()
 
     def on_epoch_start(self, state):
+        """
+        Remove the epoch from the epoch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         self.avg = RunningAvg()
         if self.name in state['metrics']:
             del state['metrics'][self.name]
 
     @torch.no_grad()
     def on_batch_end(self, state):
+        """
+        Called when a batch is received.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         self.avg.log(state[self.name])
         if self.post_each_batch:
             state['metrics'][self.name] = self.avg.get()
 
     def on_epoch_end(self, state):
+        """
+        Called when the epoch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         state['metrics'][self.name] = self.avg.get()
 
 
@@ -96,6 +154,14 @@ class AccAvg(tu.AutoStateDict):
     """
 
     def __init__(self, post_each_batch=True, avg_type='window'):
+        """
+        Stub
+
+        Args:
+            self: (todo): write your description
+            post_each_batch: (todo): write your description
+            avg_type: (str): write your description
+        """
         super(AccAvg, self).__init__()
         self.post_each_batch = post_each_batch
         avg = {
@@ -106,6 +172,13 @@ class AccAvg(tu.AutoStateDict):
         self.avg = avg[avg_type]()
 
     def on_epoch_start(self, state):
+        """
+        When the epoch is started.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         if isinstance(self.avg, RunningAvg):
             self.avg = RunningAvg()
 
@@ -114,6 +187,13 @@ class AccAvg(tu.AutoStateDict):
 
     @torch.no_grad()
     def on_batch_end(self, state):
+        """
+        Called when a batch is received
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         pred, y = state['pred'], state['batch'][1]
         pred = tu.as_multiclass_shape(pred)
         batch_correct = pred.argmax(1).eq(y).float()
@@ -126,6 +206,13 @@ class AccAvg(tu.AutoStateDict):
             state['metrics']['acc'] = self.avg.get()
 
     def on_epoch_end(self, state):
+        """
+        Called when a epoch end.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         state['metrics']['acc'] = self.avg.get()
 
 
@@ -140,14 +227,35 @@ class MetricsTable(tu.AutoStateDict):
     """
 
     def __init__(self, post_each_batch=True):
+        """
+        Do some setup after initialisation.
+
+        Args:
+            self: (todo): write your description
+            post_each_batch: (todo): write your description
+        """
         super(MetricsTable, self).__init__()
         self.post_each_batch = post_each_batch
 
     def on_epoch_start(self, state):
+        """
+        Toggle the epoch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         if 'table' in state['metrics']:
             del state['metrics']['table']
 
     def make_html(self, state):
+        """
+        Generate html.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         html = '''
         <style>
         table {
@@ -185,10 +293,24 @@ class MetricsTable(tu.AutoStateDict):
         return html
 
     def on_batch_end(self, state):
+        """
+        Called when a batch is received.
+
+        Args:
+            self: (todo): write your description
+            state: (dict): write your description
+        """
         if self.post_each_batch and state.get('visdom_will_log', False):
             state['metrics']['table'] = self.make_html(state)
 
     def on_epoch_end(self, state):
+        """
+        Called when the end of an epoch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         state['metrics']['table'] = self.make_html(state)
 
 
@@ -212,6 +334,17 @@ class Optimizer(tu.AutoStateDict):
                  clip_grad_norm=None,
                  log_lr=False,
                  log_mom=False):
+        """
+        Initialize the gradient.
+
+        Args:
+            self: (todo): write your description
+            opt: (dict): write your description
+            accumulation: (todo): write your description
+            clip_grad_norm: (todo): write your description
+            log_lr: (todo): write your description
+            log_mom: (str): write your description
+        """
         super(Optimizer, self).__init__()
         self.opt = opt
         self.accumulation = accumulation
@@ -220,6 +353,13 @@ class Optimizer(tu.AutoStateDict):
         self.clip_grad_norm = clip_grad_norm
 
     def on_batch_start(self, state):
+        """
+        Starts a new batch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         if state['iters'] % self.accumulation == 0:
             for group in self.opt.param_groups:
                 for p in group['params']:
@@ -239,6 +379,13 @@ class Optimizer(tu.AutoStateDict):
                     state['metrics']['mom_' + str(i)] = pg['betas'][0]
 
     def on_batch_end(self, state):
+        """
+        Update the gradients
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         if (state['iters'] + 1) % self.accumulation == 0:
             if self.accumulation != 1:
                 for pg in self.opt.param_groups:
@@ -267,6 +414,15 @@ class LRSched(tu.AutoStateDict):
     """
 
     def __init__(self, sched, metric='loss', step_each_batch=False):
+        """
+        Initialize the metric.
+
+        Args:
+            self: (todo): write your description
+            sched: (todo): write your description
+            metric: (str): write your description
+            step_each_batch: (int): write your description
+        """
         super(LRSched, self).__init__()
         self.sched = sched
         self.metric = metric
@@ -274,15 +430,35 @@ class LRSched(tu.AutoStateDict):
         self.avg = RunningAvg()
 
     def state_dict(self):
+        """
+        Return the state dictionary.
+
+        Args:
+            self: (todo): write your description
+        """
         if hasattr(self.sched, 'state_dict'):
             return {'scheduler': self.sched.state_dict()}
         return {}
 
     def load_state_dict(self, dicc):
+        """
+        Load the state dictionary.
+
+        Args:
+            self: (todo): write your description
+            dicc: (dict): write your description
+        """
         if 'scheduler' in dicc:
             self.sched.load_state_dict(dicc['scheduler'])
 
     def on_batch_end(self, state):
+        """
+        Called when a step is received
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         if self.step_each_batch:
             if self.metric is None:
                 self.sched.step()
@@ -294,6 +470,13 @@ class LRSched(tu.AutoStateDict):
 
 
     def on_epoch_end(self, state):
+        """
+        Called when a single step.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         if not self.step_each_batch:
             if self.metric is None:
                 self.sched.step()
@@ -313,6 +496,15 @@ class Log(tu.AutoStateDict):
     """
 
     def __init__(self, from_k, to, post_each_batch=True):
+        """
+        Initialize k initialization.
+
+        Args:
+            self: (todo): write your description
+            from_k: (int): write your description
+            to: (todo): write your description
+            post_each_batch: (todo): write your description
+        """
         super(Log, self).__init__()
         self.from_k = from_k
         self.to = to
@@ -320,11 +512,25 @@ class Log(tu.AutoStateDict):
 
     @torch.no_grad()
     def on_batch_end(self, state):
+        """
+        Called when a batch is received.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         if self.post_each_batch:
             state['metrics'][self.to] = dict_by_key(state, self.from_k)
 
     @torch.no_grad()
     def on_epoch_end(self, state):
+        """
+        Called when a epoch is received.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         if not self.post_each_batch:
             state['metrics'][self.to] = dict_by_key(state, self.from_k)
 
@@ -341,6 +547,15 @@ class VisdomLogger:
     """
 
     def __init__(self, visdom_env='main', log_every=10, prefix=''):
+        """
+        Initializes the environment.
+
+        Args:
+            self: (todo): write your description
+            visdom_env: (todo): write your description
+            log_every: (int): write your description
+            prefix: (str): write your description
+        """
         self.vis = None
         self.log_every = log_every
         self.prefix = prefix
@@ -349,20 +564,50 @@ class VisdomLogger:
             self.vis.close()
 
     def on_batch_start(self, state):
+        """
+        Starts a batch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         iters = state['iters']
         state['visdom_will_log'] = (self.log_every != -1
                                     and iters % self.log_every == 0)
 
     @torch.no_grad()
     def on_batch_end(self, state):
+        """
+        Called when a batch is received.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         iters = state['iters']
         if self.log_every != -1 and iters % self.log_every == 0:
             self.log(iters, state['metrics'])
 
     def on_epoch_end(self, state):
+        """
+        Called when a epoch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         self.log(state['iters'], state['metrics'])
 
     def log(self, iters, xs, store_history=[]):
+        """
+        Log the current state of the image.
+
+        Args:
+            self: (todo): write your description
+            iters: (int): write your description
+            xs: (dict): write your description
+            store_history: (bool): write your description
+        """
         if self.vis is None:
             return
 
@@ -418,20 +663,52 @@ class StdoutLogger(tu.AutoStateDict):
     """
 
     def __init__(self, log_every=10, prefix=''):
+        """
+        Initialize the logger.
+
+        Args:
+            self: (todo): write your description
+            log_every: (int): write your description
+            prefix: (str): write your description
+        """
         super(StdoutLogger, self).__init__()
         self.log_every = log_every
         self.prefix = prefix
 
     def on_batch_end(self, state):
+        """
+        Called when the batch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         iters = state['iters']
         if self.log_every != -1 and iters % self.log_every == 0:
             self.log(state['metrics'], state['epoch'], state['epoch_batch'])
 
     @torch.no_grad()
     def on_epoch_end(self, state):
+        """
+        Called when the epoch is received.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         self.log(state['metrics'], state['epoch'], state['epoch_batch'])
 
     def log(self, xs, epoch, epoch_batch, store_history=[]):
+        """
+        Log a batch of the given epoch.
+
+        Args:
+            self: (todo): write your description
+            xs: (dict): write your description
+            epoch: (int): write your description
+            epoch_batch: (int): write your description
+            store_history: (bool): write your description
+        """
         show = {}
         for name, x in xs.items():
             if isinstance(x, (float, int)):
@@ -457,10 +734,24 @@ class ImageGradientVis:
     """
 
     def on_batch_start(self, state):
+        """
+        Called when a batch is received.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         state['batch_gpu'][0].requires_grad = True
 
     @torch.no_grad()
     def on_batch_end(self, state):
+        """
+        Called when a batch is started.
+
+        Args:
+            self: (todo): write your description
+            state: (dict): write your description
+        """
         if not state.get('visdom_will_log', False):
             return
 
@@ -470,6 +761,13 @@ class ImageGradientVis:
 
     @torch.no_grad()
     def compute_image(self, x):
+        """
+        Compute image
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         grad_img = x.grad.abs().sum(1, keepdim=True)
         b, c, h, w = grad_img.shape
         gi_flat = grad_img.view(b, c, -1)
@@ -502,6 +800,16 @@ class Checkpoint(tu.AutoStateDict):
     """
 
     def __init__(self, filename_base, objects, max_saves=10, key_best=None):
+        """
+        Initialize the best best best best best best match.
+
+        Args:
+            self: (todo): write your description
+            filename_base: (str): write your description
+            objects: (dict): write your description
+            max_saves: (int): write your description
+            key_best: (str): write your description
+        """
         super(Checkpoint, self).__init__(except_names=['objects', 'key_best',
             'max_saves', 'key_best'])
         self.filename_base = filename_base
@@ -513,6 +821,13 @@ class Checkpoint(tu.AutoStateDict):
         self.last_best_name = None
 
     def save(self, state):
+        """
+        Saves the state of - to savedir.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         saved = recursive_state_dict(self.objects)
         nm = self.filename(state)
         try:
@@ -524,6 +839,12 @@ class Checkpoint(tu.AutoStateDict):
         return saved
 
     def detach_save(self):
+        """
+        Detach the best best match the best.
+
+        Args:
+            self: (todo): write your description
+        """
         nm = self.saved_fnames[-1]
         nm = nm.rsplit('.', 1)[0] + '_best.pth'
         copyfile(self.saved_fnames[-1], nm)
@@ -535,9 +856,23 @@ class Checkpoint(tu.AutoStateDict):
         self.last_best_name = nm
 
     def filename(self, state):
+        """
+        Return the filename of the given state.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         return self.filename_base.format(**state)
 
     def on_epoch_end(self, state):
+        """
+        Called when a new state has changed.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         saved = self.save(state)
         while len(self.saved_fnames) > self.max_saves:
             try:
@@ -561,12 +896,28 @@ class Polyak:
     """
 
     def __init__(self, original, copy, beta=0.999):
+        """
+        Set initial values.
+
+        Args:
+            self: (todo): write your description
+            original: (todo): write your description
+            copy: (bool): write your description
+            beta: (float): write your description
+        """
         self.original = original
         self.copy = copy
         self.beta = beta
 
     @torch.no_grad()
     def on_batch_end(self, state):
+        """
+        Called when a batch has changed
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         for s, d in zip(self.original.parameters(), self.copy.parameters()):
             d.mul_(self.beta).add_(1 - self.beta, s)
 
@@ -582,12 +933,25 @@ class Counter(tu.AutoStateDict):
     """
 
     def __init__(self):
+        """
+        Initialize the next batch.
+
+        Args:
+            self: (todo): write your description
+        """
         super(Counter, self).__init__()
         self.epoch = -1
         self.iters = -1
         self.epoch_batch = -1
 
     def on_batch_start(self, state):
+        """
+        Starts a new batch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         self.iters += 1
         self.epoch_batch += 1
 
@@ -596,6 +960,13 @@ class Counter(tu.AutoStateDict):
         state['epoch_batch'] = self.epoch_batch
 
     def on_epoch_start(self, state):
+        """
+        Perform epoch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         self.epoch += 1
         self.epoch_batch = 0
 
@@ -618,16 +989,39 @@ class ClassificationInspector:
     """
 
     def __init__(self, nb_show, classes, post_each_batch=True):
+        """
+        Initialize classes. classes.
+
+        Args:
+            self: (todo): write your description
+            nb_show: (bool): write your description
+            classes: (todo): write your description
+            post_each_batch: (todo): write your description
+        """
         self.vis = CIVis(nb_show, classes, 1. / len(classes))
         self.post_each_batch = post_each_batch
 
     def on_epoch_start(self, state):
+        """
+        Toggle the epoch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         if 'report' in state['metrics']:
             del state['metrics']['report']
         self.vis.reset()
 
     @torch.no_grad()
     def on_batch_end(self, state):
+        """
+        Called when the state is received state.
+
+        Args:
+            self: (todo): write your description
+            state: (dict): write your description
+        """
         pred, y, x = state['pred'], state['batch'][1], state['batch'][0]
         paths = state['batch'][2] if len(state['batch']) > 2 else None
         self.vis.analyze(x, pred, y, paths=paths)
@@ -635,6 +1029,13 @@ class ClassificationInspector:
             state['metrics']['report'] = self.vis.show()
 
     def on_epoch_end(self, state):
+        """
+        Show the epoch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         state['metrics']['report'] = self.vis.show()
 
 
@@ -652,22 +1053,52 @@ class SegmentationInspector:
     """
 
     def __init__(self, nb_show, classes, post_each_batch=True):
+        """
+        Initialize classes.
+
+        Args:
+            self: (todo): write your description
+            nb_show: (bool): write your description
+            classes: (todo): write your description
+            post_each_batch: (todo): write your description
+        """
         self.vis = SIVis(nb_show, classes, 0.5)
         self.post_each_batch = post_each_batch
 
     def on_epoch_start(self, state):
+        """
+        Toggle the epoch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         if 'report' in state['metrics']:
             del state['metrics']['report']
         self.vis.reset()
 
     @torch.no_grad()
     def on_batch_end(self, state):
+        """
+        Called when state.
+
+        Args:
+            self: (todo): write your description
+            state: (dict): write your description
+        """
         pred, y, x = state['pred'], state['batch'][1], state['batch'][0]
         self.vis.analyze(x, pred, y)
         if self.post_each_batch and state.get('visdom_will_log', False):
             state['metrics']['report'] = self.vis.show()
 
     def on_epoch_end(self, state):
+        """
+        Show the epoch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         state['metrics']['report'] = self.vis.show()
 
 
@@ -682,19 +1113,48 @@ class ConfusionMatrix:
     """
 
     def __init__(self, labels, normalize=False):
+        """
+        Initialize the class.
+
+        Args:
+            self: (todo): write your description
+            labels: (dict): write your description
+            normalize: (bool): write your description
+        """
         self.labels = labels
         self.normalize = normalize
 
     def reset(self, state):
+        """
+        Reset the state.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         state['cm'] = [[0] * len(self.labels) for _ in range(len(self.labels))]
         if 'f1' in state['metrics']:
             del state['metrics']['f1']
 
     def on_epoch_start(self, state):
+        """
+        On epoch start of the epoch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         self.reset(state)
 
     @torch.no_grad()
     def on_batch_end(self, state):
+        """
+        Called when the end of a batch is received.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         import torchelie.utils as tu
         cm = state['cm']
         pred = tu.as_multiclass_shape(state['pred']).argmax(1)
@@ -703,6 +1163,13 @@ class ConfusionMatrix:
             cm[p][t] += 1
 
     def to_html(self, cm):
+        """
+        Convert the html to html
+
+        Args:
+            self: (todo): write your description
+            cm: (todo): write your description
+        """
         s = "<tr><th>Pred\\True</th><th>{}</th></tr>".format("</th><th>".join(
             self.labels))
 
@@ -722,6 +1189,13 @@ class ConfusionMatrix:
         return html
 
     def on_epoch_end(self, state):
+        """
+        Called when the epoch is started.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         cm = state['cm']
         html = self.to_html(cm)
         if len(cm) == 2:
@@ -745,12 +1219,29 @@ class CallRecipe:
     """
 
     def __init__(self, loop, run_every=100, prefix='test', init_fun=None):
+        """
+        Initialize the loop.
+
+        Args:
+            self: (todo): write your description
+            loop: (str): write your description
+            run_every: (int): write your description
+            prefix: (str): write your description
+            init_fun: (todo): write your description
+        """
         self.loop = loop
         self.run_every = run_every
         self.prefix = prefix
         self.init_fun = init_fun
 
     def on_batch_end(self, state):
+        """
+        Called when the state.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         if state['iters'] % self.run_every == 0:
             if self.init_fun is not None:
                 self.init_fun(state)
@@ -775,11 +1266,24 @@ class Throughput:
         :code:`batch_size / forward_time`
     """
     def __init__(self):
+        """
+        Initialize the window.
+
+        Args:
+            self: (todo): write your description
+        """
         self.b_start = None
         self.forward_avg = WindowAvg(10)
         self.it_avg = WindowAvg()
 
     def on_batch_start(self, state):
+        """
+        Starts a batch batch.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         now = time.time()
         if self.b_start:
             t = now - self.b_start
@@ -789,6 +1293,13 @@ class Throughput:
         self.b_start = now
 
     def on_batch_end(self, state):
+        """
+        Called when the batch
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         t = time.time() - self.b_start
         self.forward_avg.log(t)
         state['metrics']['forward_time'] = self.forward_avg.get()

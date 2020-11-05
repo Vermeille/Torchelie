@@ -17,6 +17,14 @@ class AdaIN2d(nn.Module):
             and scale will be derived
     """
     def __init__(self, channels, cond_channels):
+        """
+        Initialize the channel.
+
+        Args:
+            self: (todo): write your description
+            channels: (list): write your description
+            cond_channels: (todo): write your description
+        """
         super(AdaIN2d, self).__init__()
         self.make_weight = nn.Linear(cond_channels, channels)
         self.make_bias = nn.Linear(cond_channels, channels)
@@ -74,6 +82,14 @@ class FiLM2d(nn.Module):
     bias: Optional[torch.Tensor]
 
     def __init__(self, channels, cond_channels):
+        """
+        Initialize the weights.
+
+        Args:
+            self: (todo): write your description
+            channels: (list): write your description
+            cond_channels: (todo): write your description
+        """
         super(FiLM2d, self).__init__()
         self.make_weight = tu.normal_init(nn.Linear(cond_channels, channels),
                                           0.01)

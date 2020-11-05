@@ -11,7 +11,20 @@ from torchelie.recipes import TrainAndCall
 import torchelie.metrics as tcb
 
 def train(model, loader):
+    """
+    Train the model.
+
+    Args:
+        model: (todo): write your description
+        loader: (todo): write your description
+    """
     def train_step(batch):
+        """
+        Train the model.
+
+        Args:
+            batch: (todo): write your description
+        """
         x = batch[0]
         x = x.expand(-1, 3, -1, -1)
 
@@ -22,6 +35,11 @@ def train(model, loader):
         return {'loss': loss, 'reconstruction': reconstruction}
 
     def after_train():
+        """
+        Return the image
+
+        Args:
+        """
         imgs = model.sample(1, 4).expand(-1, 3, -1, -1)
         return {'imgs': imgs}
 

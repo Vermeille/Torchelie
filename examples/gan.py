@@ -31,11 +31,24 @@ dl = torch.utils.data.DataLoader(ds,
 
 
 def train_net(Gen, Discr):
+    """
+    Train a network.
+
+    Args:
+        Gen: (todo): write your description
+        Discr: (todo): write your description
+    """
     G = Gen(in_noise=128, out_ch=3)
     G_polyak = copy.deepcopy(G).eval()
     D = Discr(in_ch=3, out_ch=1)
 
     def G_fun(batch):
+        """
+        Perform a g_funach function
+
+        Args:
+            batch: (todo): write your description
+        """
         z = torch.randn(BS, 128, device=device)
         fake = G(z)
         preds = D(fake * 2 - 1).squeeze()
@@ -44,11 +57,23 @@ def train_net(Gen, Discr):
         return {'loss': loss.item(), 'imgs': fake.detach()}
 
     def G_polyak_fun(batch):
+        """
+        Detach polynomial function.
+
+        Args:
+            batch: (todo): write your description
+        """
         z = torch.randn(BS, 128, device=device)
         fake = G_polyak(z)
         return {'imgs': fake.detach()}
 
     def D_fun(batch):
+        """
+        Determine the loss function.
+
+        Args:
+            batch: (todo): write your description
+        """
         z = torch.randn(BS, 128, device=device)
         fake = G(z)
         fake_loss = gan_loss.fake(D(fake * 2 - 1))

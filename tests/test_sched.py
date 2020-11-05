@@ -4,6 +4,11 @@ from torchelie.lr_scheduler import *
 
 
 def test_curriculum():
+    """
+    Perform a single optimizer.
+
+    Args:
+    """
     x = torch.randn(3, requires_grad=True)
     opt = SGD([x], 1)
     sched = CurriculumScheduler(opt, [[0, 1, 1], [10, 0, 0]])
@@ -11,6 +16,11 @@ def test_curriculum():
     sched.step()
 
 def test_onecycle():
+    """
+    Perform one test.
+
+    Args:
+    """
     x = torch.randn(3, requires_grad=True)
     opt = SGD([x], 1)
     sched = OneCycle(opt, (1e-3, 1e-2), 10)

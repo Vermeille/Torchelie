@@ -16,6 +16,15 @@ class Classifier2(nn.Module):
         num_classes (int): the number of output classes
     """
     def __init__(self, feat_extractor, feature_size, num_classes):
+        """
+        Initialize the graph.
+
+        Args:
+            self: (todo): write your description
+            feat_extractor: (todo): write your description
+            feature_size: (int): write your description
+            num_classes: (int): write your description
+        """
         super(Classifier2, self).__init__()
         self.bone = feat_extractor
 
@@ -50,6 +59,16 @@ class Classifier1(nn.Module):
         num_classes (int): the number of output classes
     """
     def __init__(self, feat_extractor, feature_size, num_classes, dropout=0.5):
+        """
+        Initialize the classifier.
+
+        Args:
+            self: (todo): write your description
+            feat_extractor: (todo): write your description
+            feature_size: (int): write your description
+            num_classes: (int): write your description
+            dropout: (str): write your description
+        """
         super(Classifier1, self).__init__()
         self.bone = feat_extractor
 
@@ -83,6 +102,16 @@ class ConcatPoolClassifier1(nn.Module):
         num_classes (int): the number of output classes
     """
     def __init__(self, feat_extractor, feature_size, num_classes, dropout=0.5):
+        """
+        Initialize the network.
+
+        Args:
+            self: (todo): write your description
+            feat_extractor: (todo): write your description
+            feature_size: (int): write your description
+            num_classes: (int): write your description
+            dropout: (str): write your description
+        """
         super(ConcatPoolClassifier1, self).__init__()
         self.bone = feat_extractor
 
@@ -116,6 +145,15 @@ class ProjectionDiscr(nn.Module):
         num_classes (int): the number of output classes
     """
     def __init__(self, feat_extractor, feature_size, num_classes):
+        """
+        Initialize the network.
+
+        Args:
+            self: (todo): write your description
+            feat_extractor: (todo): write your description
+            feature_size: (int): write your description
+            num_classes: (int): write your description
+        """
         super(ProjectionDiscr, self).__init__()
         self.bone = feat_extractor
         self.head = nn.Sequential(

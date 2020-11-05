@@ -6,7 +6,24 @@ from .classifier import Classifier2, ProjectionDiscr
 
 
 def base_patch_discr(arch, in_ch=3, out_ch=1, norm=None):
+    """
+    Patch a layer norm.
+
+    Args:
+        arch: (todo): write your description
+        in_ch: (int): write your description
+        out_ch: (todo): write your description
+        norm: (todo): write your description
+    """
     def block(in_ch, out_ch, norm):
+        """
+        Block block.
+
+        Args:
+            in_ch: (int): write your description
+            out_ch: (todo): write your description
+            norm: (todo): write your description
+        """
         if norm is None:
             return [
                 kaiming(nn.Conv2d(in_ch, out_ch, 4, stride=2, padding=1),
