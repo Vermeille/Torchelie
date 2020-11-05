@@ -18,11 +18,26 @@ class PairedDataset(torch.utils.data.Dataset):
     """
 
     def __init__(self, dataset1, dataset2):
+        """
+        Initialize the dataset.
+
+        Args:
+            self: (todo): write your description
+            dataset1: (todo): write your description
+            dataset2: (todo): write your description
+        """
         super(PairedDataset, self).__init__()
         self.dataset1 = dataset1
         self.dataset2 = dataset2
 
     def __getitem__(self, i):
+        """
+        Return the item corresponding to i.
+
+        Args:
+            self: (todo): write your description
+            i: (todo): write your description
+        """
         idx1 = i % len(self.dataset1)
         idx2 = i // len(self.dataset2)
 
@@ -32,6 +47,12 @@ class PairedDataset(torch.utils.data.Dataset):
         return list(zip(x1, x2))
 
     def __len__(self):
+        """
+        Returns the length of the dataset.
+
+        Args:
+            self: (todo): write your description
+        """
         return len(self.dataset1) * len(self.dataset2)
 
 
@@ -74,17 +95,44 @@ def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
 
 class _Wrap:
     def __init__(self, instance):
+        """
+        Initialize an instance
+
+        Args:
+            self: (todo): write your description
+            instance: (str): write your description
+        """
         # FIXME: NOT WORKING WHEN SETTING MEMBERS
         #self.__dict__ = instance.__dict__
         self.ds = instance
 
     def __getattr__(self, attr):
+        """
+        Get the attribute of an attribute
+
+        Args:
+            self: (todo): write your description
+            attr: (str): write your description
+        """
         return getattr(self.ds, attr)
 
     def __getstate__(self):
+        """
+        Get the state of the object.
+
+        Args:
+            self: (todo): write your description
+        """
         return self.__dict__
 
     def __setstate__(self, state):
+        """
+        Sets the state of a given state.
+
+        Args:
+            self: (todo): write your description
+            state: (dict): write your description
+        """
         self.__dict__.update(state)
 
 
@@ -102,15 +150,36 @@ class MixUpDataset(_Wrap):
     """
 
     def __init__(self, dataset, alpha=0.4):
+        """
+        Initialize all the datasets.
+
+        Args:
+            self: (todo): write your description
+            dataset: (todo): write your description
+            alpha: (float): write your description
+        """
         super(MixUpDataset, self).__init__(dataset)
         self.ds = dataset
         alpha = torch.tensor([alpha])
         self.mixer = torch.distributions.Beta(alpha, alpha)
 
     def __len__(self):
+        """
+        Returns the length of the dataset.
+
+        Args:
+            self: (todo): write your description
+        """
         return len(self.ds)
 
     def __getitem__(self, i):
+        """
+        Return a random item.
+
+        Args:
+            self: (todo): write your description
+            i: (todo): write your description
+        """
         x1, y1 = self.ds[i]
         x2, y2 = random.choice(self.ds)
 
@@ -119,15 +188,38 @@ class MixUpDataset(_Wrap):
 
 class _Proxy:
     def __init__(self, ds, indices, remap_unused_classes, cls_map):
+        """
+        Initialize the map.
+
+        Args:
+            self: (todo): write your description
+            ds: (todo): write your description
+            indices: (list): write your description
+            remap_unused_classes: (todo): write your description
+            cls_map: (str): write your description
+        """
         self.ds = ds
         self.indices = indices
         self.remap_unused_classes = remap_unused_classes
         self.cls_map = cls_map
 
     def __len__(self):
+        """
+        Returns the length of the array.
+
+        Args:
+            self: (todo): write your description
+        """
         return len(indices)
 
     def __getitem__(self, i):
+        """
+        Return the item at index i.
+
+        Args:
+            self: (todo): write your description
+            i: (todo): write your description
+        """
         b = self.ds.samples[self.indices[i]]
         if self.remap_unused_classes:
             b = list(b)
@@ -147,6 +239,15 @@ class Subset:
             from 0 to N.
     """
     def __init__(self, ds, ratio, remap_unused_classes=False):
+        """
+        Initialize dataset.
+
+        Args:
+            self: (todo): write your description
+            ds: (todo): write your description
+            ratio: (todo): write your description
+            remap_unused_classes: (todo): write your description
+        """
         self.ratio = ratio
         self.ds = ds
         indices = [
@@ -179,13 +280,32 @@ class Subset:
 
 
     def __repr__(self):
+        """
+        Return a repr representation of the object.
+
+        Args:
+            self: (todo): write your description
+        """
         return "Subset(len={}, n_classes={}, {})".format(len(self.indices),
                 len(self.classes), self.ds)
 
     def __len__(self):
+        """
+        Returns the length of the batch.
+
+        Args:
+            self: (todo): write your description
+        """
         return len(self.indices)
 
     def __getitem__(self, i):
+        """
+        Return the item at index i.
+
+        Args:
+            self: (todo): write your description
+            i: (todo): write your description
+        """
         b = self.ds[self.indices[i]]
         if self.remap_classes:
             b = list(b)
@@ -205,13 +325,33 @@ class NoexceptDataset(_Wrap):
     """
 
     def __init__(self, ds):
+        """
+        Initialize the dataset.
+
+        Args:
+            self: (todo): write your description
+            ds: (todo): write your description
+        """
         super(NoexceptDataset, self).__init__(ds)
         self.ds = ds
 
     def __len__(self):
+        """
+        Returns the length of the dataset.
+
+        Args:
+            self: (todo): write your description
+        """
         return len(self.ds)
 
     def __getitem__(self, i):
+        """
+        Returns the item from the i th row }
+
+        Args:
+            self: (todo): write your description
+            i: (todo): write your description
+        """
         while True:
             try:
                 return self.ds[i]
@@ -223,6 +363,12 @@ class NoexceptDataset(_Wrap):
                 i = 0
 
     def __repr__(self):
+        """
+        Return a representation of this object.
+
+        Args:
+            self: (todo): write your description
+        """
         return "NoexceptDataset({})".format(self.ds)
 
 
@@ -235,6 +381,13 @@ class WithIndexDataset(_Wrap):
         ds (Dataset): A dataset
     """
     def __init__(self, ds):
+        """
+        Initialize the dataset.
+
+        Args:
+            self: (todo): write your description
+            ds: (todo): write your description
+        """
         super(WithIndexDataset, self).__init__(ds)
         self.ds = ds
 
@@ -249,6 +402,12 @@ class WithIndexDataset(_Wrap):
         return i, self.ds[i]
 
     def __len__(self):
+        """
+        Returns the length of the dataset.
+
+        Args:
+            self: (todo): write your description
+        """
         return len(self.ds)
 
 
@@ -262,6 +421,15 @@ class CachedDataset(_Wrap):
         device: the device on which the cache is allocated
     """
     def __init__(self, ds, transform=None, device='cpu'):
+        """
+        Initialize the device.
+
+        Args:
+            self: (todo): write your description
+            ds: (todo): write your description
+            transform: (str): write your description
+            device: (todo): write your description
+        """
         super(CachedDataset, self).__init__(ds)
         self.ds = ds
         self.transform = transform
@@ -269,6 +437,12 @@ class CachedDataset(_Wrap):
         self.device = device
 
     def __len__(self):
+        """
+        Returns the length of the dataset.
+
+        Args:
+            self: (todo): write your description
+        """
         return len(self.ds)
 
     def __getitem__(self, i):
@@ -289,4 +463,10 @@ class CachedDataset(_Wrap):
         return [x] + y
 
     def __repr__(self):
+        """
+        Return a representation of this object.
+
+        Args:
+            self: (todo): write your description
+        """
         return "CachedDataset({})".format(self.ds)

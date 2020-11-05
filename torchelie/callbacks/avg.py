@@ -12,6 +12,12 @@ class RunningAvg(tu.AutoStateDict):
     epoch is needed.
     """
     def __init__(self) -> None:
+        """
+        Initialize the instance.
+
+        Args:
+            self: (todo): write your description
+        """
         super(RunningAvg, self).__init__()
         self.count = 0
         self.val = 0
@@ -44,6 +50,13 @@ class WindowAvg(tu.AutoStateDict):
         k (int): the window's length
     """
     def __init__(self, k: int=100) -> None:
+        """
+        Initialize the k values.
+
+        Args:
+            self: (todo): write your description
+            k: (int): write your description
+        """
         super(WindowAvg, self).__init__()
         self.vals: List[float] = []
         self.k = k
@@ -73,6 +86,13 @@ class ExponentialAvg(tu.AutoStateDict):
         beta (float): the decay rate
     """
     def __init__(self, beta: float=0.6):
+        """
+        Set initial values.
+
+        Args:
+            self: (todo): write your description
+            beta: (float): write your description
+        """
         super(ExponentialAvg, self).__init__()
         self.beta = beta
         self.val: Optional[float] = None

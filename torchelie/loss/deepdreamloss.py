@@ -22,6 +22,15 @@ class DeepDreamLoss(nn.Module):
             multiscale generation
     """
     def __init__(self, model, dream_layer, max_reduction=3):
+        """
+        Initialize the network.
+
+        Args:
+            self: (todo): write your description
+            model: (todo): write your description
+            dream_layer: (todo): write your description
+            max_reduction: (int): write your description
+        """
         super(DeepDreamLoss, self).__init__()
         self.dream_layer = dream_layer
         self.octaves = max_reduction
@@ -30,6 +39,14 @@ class DeepDreamLoss(nn.Module):
         self.i = 0
 
     def get_acts_(self, img, detach):
+        """
+        Get contacts
+
+        Args:
+            self: (todo): write your description
+            img: (array): write your description
+            detach: (str): write your description
+        """
         octave = (self.i % (self.octaves * 2)) / 2 + 1
         this_sz_img = F.interpolate(img, scale_factor=1 / octave)
         _, activations = self.net(this_sz_img, detach=detach)

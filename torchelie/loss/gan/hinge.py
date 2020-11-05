@@ -13,6 +13,13 @@ import torch.nn.functional as F
 
 
 def real(x, reduction='mean'):
+    """
+    Calculate mean of x.
+
+    Args:
+        x: (todo): write your description
+        reduction: (todo): write your description
+    """
     out = F.relu(1 - x)
     if reduction == 'none':
         return out
@@ -23,6 +30,13 @@ def real(x, reduction='mean'):
 
 
 def fake(x, reduction='mean'):
+    """
+    Fake - 1d function.
+
+    Args:
+        x: (todo): write your description
+        reduction: (todo): write your description
+    """
     out = F.relu(1 + x)
     if reduction == 'none':
         return out
@@ -33,6 +47,13 @@ def fake(x, reduction='mean'):
 
 
 def generated(x, reduction='mean'):
+    """
+    Calculate the kl divergence.
+
+    Args:
+        x: (str): write your description
+        reduction: (str): write your description
+    """
     out = -x
     if reduction == 'none':
         return out

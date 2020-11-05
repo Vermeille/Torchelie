@@ -2,18 +2,40 @@ import torch
 
 
 def log_t(x, t):
+    """
+    Logarithm.
+
+    Args:
+        x: (todo): write your description
+        t: (todo): write your description
+    """
     if t == 1:
         return torch.log(x)
     return (x**(1 - t) - 1) / (1 - t)
 
 
 def exp_t(x, t):
+    """
+    Exp_t ( x t )
+
+    Args:
+        x: (todo): write your description
+        t: (todo): write your description
+    """
     if t == 1:
         return torch.exp(x)
     return torch.clamp(1 + (1 - t) * x, min=0)**(1 / (1 - t))
 
 
 def lambdas(a, t, n_iters=3):
+    """
+    Compute the n_t ( n_t )
+
+    Args:
+        a: (array): write your description
+        t: (array): write your description
+        n_iters: (int): write your description
+    """
     mu = torch.max(a, dim=1, keepdim=True).values
     a_tilde = a - mu
     for i in range(n_iters):
@@ -122,6 +144,16 @@ class TemperedCrossEntropyLoss(torch.nn.Module):
     """
 
     def __init__(self, t1, t2, weight=None, reduction='mean'):
+        """
+        Initialize the gradient
+
+        Args:
+            self: (todo): write your description
+            t1: (int): write your description
+            t2: (int): write your description
+            weight: (int): write your description
+            reduction: (todo): write your description
+        """
         super(TemperedCrossEntropyLoss, self).__init__()
         self.t1 = t1
         self.t2 = t2

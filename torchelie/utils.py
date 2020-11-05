@@ -3,6 +3,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 def fast_zero_grad(net):
+    """
+    Fast gradient of gradient.
+
+    Args:
+        net: (todo): write your description
+    """
     for p in net.parameters():
         p.grad = None
 
@@ -295,13 +301,34 @@ class FrozenModule(nn.Module):
     """
 
     def __init__(self, m):
+        """
+        Initialize m and m.
+
+        Args:
+            self: (todo): write your description
+            m: (int): write your description
+        """
         super(FrozenModule, self).__init__()
         self.m = freeze(m).eval()
 
     def train(self, mode=True):
+        """
+        Train the given mode.
+
+        Args:
+            self: (todo): write your description
+            mode: (str): write your description
+        """
         return self
 
     def __getattr__(self, name):
+        """
+        Get the value of the given attribute.
+
+        Args:
+            self: (todo): write your description
+            name: (str): write your description
+        """
         print(self, name)
         return getattr(super(FrozenModule, self).__getattr__('m'), name)
 
@@ -316,12 +343,32 @@ class DetachedModule:
     """
 
     def __init__(self, m):
+        """
+        Initialize m and set the m
+
+        Args:
+            self: (todo): write your description
+            m: (int): write your description
+        """
         self.m = freeze(m).eval()
 
     def __call__(self, *args, **kwargs):
+        """
+        Call the call ().
+
+        Args:
+            self: (todo): write your description
+        """
         return self.m(*args, **kwargs)
 
     def __getattr__(self, name):
+        """
+        Return the value of a given attribute
+
+        Args:
+            self: (todo): write your description
+            name: (str): write your description
+        """
         return getattr(self.m, name)
 
 
@@ -421,9 +468,22 @@ def as_multiclass_shape(preds, as_probs=False):
 
 class AutoStateDict:
     def __init__(self, except_names=[]):
+        """
+        Initialize the object.
+
+        Args:
+            self: (todo): write your description
+            except_names: (str): write your description
+        """
         self._except = except_names
 
     def state_dict(self):
+        """
+        Return a dict representation of the state.
+
+        Args:
+            self: (todo): write your description
+        """
         return {
             key: (val.state_dict() if hasattr(val, 'state_dict') else val)
             for key, val in self.__dict__.items()
@@ -431,6 +491,13 @@ class AutoStateDict:
         }
 
     def load_state_dict(self, state_dict):
+        """
+        Recursively load_dict_state dictionary.
+
+        Args:
+            self: (todo): write your description
+            state_dict: (dict): write your description
+        """
         for nm, v in state_dict.items():
             try:
                 if hasattr(self.__dict__[nm], 'load_state_dict'):

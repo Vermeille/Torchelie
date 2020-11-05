@@ -21,6 +21,13 @@ class OrthoLoss(nn.Module):
     See :func:`torchelie.loss.ortho` for details.
     """
     def forward(self, w):
+        """
+        R perform a forward.
+
+        Args:
+            self: (todo): write your description
+            w: (todo): write your description
+        """
         return ortho(w)
 
 
@@ -31,6 +38,13 @@ class TotalVariationLoss(nn.Module):
     See :func:`torchelie.loss.total_variation` for details.
     """
     def forward(self, x):
+        """
+        Evaluate x.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         return total_variation(x)
 
 
@@ -41,8 +55,23 @@ class ContinuousCEWithLogits(nn.Module):
     See :func:`torchelie.loss.continuous_cross_entropy` for details.
     """
     def forward(self, pred, soft_targets):
+        """
+        Calculate the forward computation.
+
+        Args:
+            self: (todo): write your description
+            pred: (todo): write your description
+            soft_targets: (todo): write your description
+        """
         return continuous_cross_entropy(pred, soft_targets)
 
 def binary_hinge(x, y):
+    """
+    Calculate mean squared error.
+
+    Args:
+        x: (str): write your description
+        y: (str): write your description
+    """
     p = y * torch.clamp(1 - x, min=0) + (1 - y) * torch.clamp(1 + x, min=0)
     return p.mean()

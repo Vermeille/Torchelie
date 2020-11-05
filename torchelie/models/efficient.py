@@ -7,6 +7,17 @@ import torchelie.utils as tu
 
 class MBConv(nn.Module):
     def __init__(self, in_ch, out_ch, ks, stride=1, mul_factor=6):
+        """
+        Initialize the module.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            out_ch: (str): write your description
+            ks: (int): write your description
+            stride: (int): write your description
+            mul_factor: (float): write your description
+        """
         super(MBConv, self).__init__()
         self.in_ch = in_ch
         self.out_ch = out_ch
@@ -46,23 +57,62 @@ class MBConv(nn.Module):
             self.shortcut.add_module('bn', nn.BatchNorm2d(out_ch))
 
     def __repr__(self):
+        """
+        Return a representation of the representation.
+
+        Args:
+            self: (todo): write your description
+        """
         return "MBConv({}, {}, factor={}, k{}x{}s{}))".format(
                 self.in_ch, self.out_ch, self.factor, self.ks, self.ks,
                 self.stride)
 
     def forward(self, x):
+        """
+        Forward the forward.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         return self.branch(x).add_(self.shortcut(x))
 
 
 class EfficientNet(tnn.CondSeq):
     def __init__(self, in_ch, num_classes, B=0):
+        """
+        Initialize a chemap dataset.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            num_classes: (int): write your description
+            B: (int): write your description
+        """
         def ch(ch):
+            """
+            Returns the chipy.
+
+            Args:
+                ch: (todo): write your description
+            """
             return int(ch * 1.1 ** B) // 8 * 8
 
         def l(d):
+            """
+            Return the length of a 1d array.
+
+            Args:
+                d: (int): write your description
+            """
             return int(math.ceil(d * 1.2 ** B))
 
         def r():
+            """
+            Return the integer ascii
+
+            Args:
+            """
             return int(224 * 1.15 ** B)
 
         super(EfficientNet, self).__init__(

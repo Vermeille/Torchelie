@@ -59,6 +59,14 @@ class SEBlock(nn.Module):
     """
 
     def __init__(self, in_ch, reduction=16):
+        """
+        Initialize the k - means.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            reduction: (todo): write your description
+        """
         super(SEBlock, self).__init__()
         reduc = in_ch // reduction
         self.proj = nn.Sequential(
@@ -71,6 +79,13 @@ class SEBlock(nn.Module):
             ]))
 
     def forward(self, x):
+        """
+        Forward computation.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         return x * self.proj(x)
 
 
@@ -142,15 +157,41 @@ def Conv2dBNReLU(in_ch, out_ch, ks, stride=1, leak=0, inplace=False):
 
 class Conv2dCondBNReLU(nn.Module):
     def __init__(self, in_ch, out_ch, cond_ch, ks, leak=0):
+        """
+        Initialize kaim.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            out_ch: (str): write your description
+            cond_ch: (int): write your description
+            ks: (int): write your description
+            leak: (float): write your description
+        """
         super(Conv2dCondBNReLU, self).__init__()
         self.conv = kaiming(Conv2d(in_ch, out_ch, ks, bias=False), a=leak)
         self.cbn = ConditionalBN2d(out_ch, cond_ch)
         self.leak = leak
 
     def condition(self, z):
+        """
+        Set the condition of the condition.
+
+        Args:
+            self: (todo): write your description
+            z: (todo): write your description
+        """
         self.cbn.condition(z)
 
     def forward(self, x, z=None):
+        """
+        Forward computation.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+            z: (todo): write your description
+        """
         x = self.conv(x)
         x = self.cbn(x, z)
         if self.leak == 0:
@@ -161,6 +202,17 @@ class Conv2dCondBNReLU(nn.Module):
 
 
 def make_resnet_shortcut(in_ch, out_ch, stride, norm=nn.BatchNorm2d):
+    """
+    Make a convolution of a segmentation.
+
+    Args:
+        in_ch: (int): write your description
+        out_ch: (str): write your description
+        stride: (int): write your description
+        norm: (todo): write your description
+        nn: (todo): write your description
+        BatchNorm2d: (todo): write your description
+    """
     if in_ch == out_ch and stride == 1:
         return CondSeq()
 
@@ -177,6 +229,14 @@ def make_resnet_shortcut(in_ch, out_ch, stride, norm=nn.BatchNorm2d):
 
 
 def make_preact_resnet_shortcut(in_ch, out_ch, stride):
+    """
+    Make a preactresnetcut_shortcut.
+
+    Args:
+        in_ch: (int): write your description
+        out_ch: (todo): write your description
+        stride: (int): write your description
+    """
     if in_ch == out_ch and stride == 1:
         return CondSeq()
 
@@ -212,6 +272,20 @@ class ResBlock(nn.Module):
                  norm=nn.BatchNorm2d,
                  use_se=False,
                  bottleneck=False):
+        """
+        Initialize batch.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            out_ch: (str): write your description
+            stride: (int): write your description
+            norm: (todo): write your description
+            nn: (todo): write your description
+            BatchNorm2d: (todo): write your description
+            use_se: (bool): write your description
+            bottleneck: (todo): write your description
+        """
         super(ResBlock, self).__init__()
         self.in_ch = in_ch
         self.out_ch = out_ch
@@ -253,6 +327,12 @@ class ResBlock(nn.Module):
                 norm=None)
 
     def __repr__(self):
+        """
+        Return a human - readable representation.
+
+        Args:
+            self: (todo): write your description
+        """
         return "{}({}, {}, stride={}, norm={})".format(
             ("SE-" if self.use_se else "") +
             ("Bottleneck" if self.bottleneck else "ResBlock"), self.in_ch,
@@ -260,10 +340,25 @@ class ResBlock(nn.Module):
             self.branch.bn1.__class__.__name__)
 
     def condition(self, z):
+        """
+        Add a condition.
+
+        Args:
+            self: (todo): write your description
+            z: (todo): write your description
+        """
         self.branch.condition(z)
         self.shortcut.condition(z)
 
     def forward(self, x, z=None):
+        """
+        Perform a new branch.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+            z: (todo): write your description
+        """
         if z is not None:
             self.condition(z)
 
@@ -276,6 +371,13 @@ class HardSigmoid(nn.Module):
     """
 
     def forward(self, x):
+        """
+        Forward forward forward forward.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         return x.add_(0.5).clamp_(min=0, max=1)
 
 
@@ -285,6 +387,13 @@ class HardSwish(nn.Module):
     """
 
     def forward(self, x):
+        """
+        Forward computation of forward.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         return x.add(0.5).clamp_(min=0, max=1).mul_(x)
 
 
@@ -313,6 +422,22 @@ class PreactResBlock(nn.Module):
                  dropout=0.,
                  use_se=False,
                  bottleneck=False, first_layer=False):
+        """
+        Initialize batch.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            out_ch: (str): write your description
+            stride: (int): write your description
+            norm: (todo): write your description
+            nn: (todo): write your description
+            BatchNorm2d: (todo): write your description
+            dropout: (str): write your description
+            use_se: (bool): write your description
+            bottleneck: (todo): write your description
+            first_layer: (todo): write your description
+        """
         super(PreactResBlock, self).__init__()
         self.in_ch = in_ch
         self.out_ch = out_ch
@@ -358,10 +483,25 @@ class PreactResBlock(nn.Module):
         self.shortcut = make_preact_resnet_shortcut(in_ch, out_ch, stride)
 
     def condition(self, z):
+        """
+        Add a condition.
+
+        Args:
+            self: (todo): write your description
+            z: (todo): write your description
+        """
         self.branch.condition(z)
         self.shortcut.condition(z)
 
     def forward(self, x, z=None):
+        """
+        Perform of the layer.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+            z: (todo): write your description
+        """
         if z is not None:
             self.condition(z)
 
@@ -384,6 +524,17 @@ class SpadeResBlock(PreactResBlock):
     """
 
     def __init__(self, in_ch, out_ch, cond_channels, hidden, stride=1):
+        """
+        Initialize the network.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            out_ch: (str): write your description
+            cond_channels: (todo): write your description
+            hidden: (todo): write your description
+            stride: (int): write your description
+        """
         norm = functools.partial(Spade2d,
                                  cond_channels=cond_channels,
                                  hidden=hidden)
@@ -408,6 +559,17 @@ class AutoGANGenBlock(nn.Module):
     """
 
     def __init__(self, in_ch, out_ch, skips_ch, ks=3, mode='nearest'):
+        """
+        Initialize k - layer.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            out_ch: (str): write your description
+            skips_ch: (list): write your description
+            ks: (int): write your description
+            mode: (todo): write your description
+        """
         super(AutoGANGenBlock, self).__init__()
         assert mode in ['nearest', 'bilinear']
         self.mode = mode
@@ -465,6 +627,15 @@ class SNResidualDiscrBlock(torch.nn.Module):
     """
 
     def __init__(self, in_ch, out_ch, downsample=False):
+        """
+        Initialize kaim.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+            out_ch: (str): write your description
+            downsample: (todo): write your description
+        """
         super(SNResidualDiscrBlock, self).__init__()
         self.branch = nn.Sequential(*[
             nn.LeakyReLU(0.2),

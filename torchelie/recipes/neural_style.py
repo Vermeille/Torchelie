@@ -16,10 +16,22 @@ import torchelie.callbacks as tcb
 
 
 def t2pil(t):
+    """
+    Convert a pil image to a pil image.
+
+    Args:
+        t: (todo): write your description
+    """
     return ToPILImage()(t)
 
 
 def pil2t(pil):
+    """
+    Convert pil to a pil2tensor.
+
+    Args:
+        pil: (str): write your description
+    """
     return ToTensor()(pil)
 
 
@@ -37,6 +49,15 @@ class NeuralStyle(torch.nn.Module):
     """
 
     def __init__(self, lr=0.01, device="cpu", visdom_env='style'):
+        """
+        Initialize the device.
+
+        Args:
+            self: (todo): write your description
+            lr: (float): write your description
+            device: (todo): write your description
+            visdom_env: (todo): write your description
+        """
         super(NeuralStyle, self).__init__()
         self.loss = NeuralStyleLoss()
         self.loss2 = NeuralStyleLoss()
@@ -94,6 +115,12 @@ class NeuralStyle(torch.nn.Module):
                                     weight_decay=0)
 
         def forward(_):
+            """
+            Perform
+
+            Args:
+                _: (todo): write your description
+            """
             img = canvas()
             loss, losses = self.loss(img)
             loss.backward()

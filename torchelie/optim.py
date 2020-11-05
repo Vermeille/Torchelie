@@ -16,6 +16,16 @@ class DeepDreamOptim(Optimizer):
     """
 
     def __init__(self, params, lr=1e-3, eps=1e-8, weight_decay=0):
+        """
+        Initialize the weights.
+
+        Args:
+            self: (todo): write your description
+            params: (dict): write your description
+            lr: (float): write your description
+            eps: (float): write your description
+            weight_decay: (float): write your description
+        """
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
         if not 0.0 <= eps:
@@ -65,6 +75,16 @@ class AddSign(Optimizer):
     """
 
     def __init__(self, params, lr=1e-3, beta=0.9, weight_decay=0):
+        """
+        Initialize hyperparameters.
+
+        Args:
+            self: (todo): write your description
+            params: (dict): write your description
+            lr: (float): write your description
+            beta: (float): write your description
+            weight_decay: (float): write your description
+        """
         defaults = {'lr': lr, 'beta': beta, 'weight_decay': weight_decay}
         super(AddSign, self).__init__(params, defaults)
 
@@ -140,6 +160,18 @@ class RAdamW(Optimizer):
                  eps=1e-8,
                  weight_decay=1e-2,
                  stable=False):
+        """
+        Initialize the weights.
+
+        Args:
+            self: (todo): write your description
+            params: (dict): write your description
+            lr: (float): write your description
+            betas: (float): write your description
+            eps: (float): write your description
+            weight_decay: (float): write your description
+            stable: (str): write your description
+        """
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
         if not 0.0 <= eps:
@@ -240,6 +272,15 @@ class Lookahead(Optimizer):
         k (int): number of steps in the inner loop
     """
     def __init__(self, base_optimizer, alpha=0.5, k=5):
+        """
+        Initialize the optimizer.
+
+        Args:
+            self: (todo): write your description
+            base_optimizer: (todo): write your description
+            alpha: (float): write your description
+            k: (int): write your description
+        """
         if not 0.0 <= alpha <= 1.0:
             raise ValueError('Invalid slow update rate: ' + str(alpha))
         if not 1 <= k:
@@ -252,13 +293,32 @@ class Lookahead(Optimizer):
         self.param_groups = base_optimizer.param_groups
 
     def state_dict(self):
+        """
+        The state dictionary.
+
+        Args:
+            self: (todo): write your description
+        """
         return {'lookahead': self.state, 'opt': self.optimizer.state_dict()}
 
     def load_state_dict(self, state):
+        """
+        Loads optimizer state from a dictionary.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         self.state = state['lookahead']
         self.optimizer.load_state_dict(state['opt'])
 
     def zero_grad(self):
+        """
+        Gradient of the optimizer
+
+        Args:
+            self: (todo): write your description
+        """
         self.optimizer.zero_grad()
 
     def step(self, closure=None):
@@ -296,5 +356,11 @@ class Lookahead(Optimizer):
         return loss
 
     def __repr__(self):
+        """
+        Return a human - readable string.
+
+        Args:
+            self: (todo): write your description
+        """
         return "Lookahead({}, alpha={}, k={})".format(repr(self.optimizer),
                 self.alpha, self.k)

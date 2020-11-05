@@ -5,6 +5,11 @@ import torchelie.nn.functional as tnnf
 
 
 def test_adain():
+    """
+    Todo : py script
+
+    Args:
+    """
     m = torch.jit.script(AdaIN2d(16, 8))
     m(torch.randn(5, 16, 8, 8), torch.randn(5, 8))
 
@@ -14,11 +19,21 @@ def test_adain():
 
 
 def test_film():
+    """
+    Test if the soft soft soft soft softlayer.
+
+    Args:
+    """
     m = torch.jit.script(FiLM2d(16, 8))
     m(torch.randn(5, 16, 8, 8), torch.randn(5, 8))
 
 
 def test_bn():
+    """
+    Test if the softmax script.
+
+    Args:
+    """
     for M in [NoAffineBN2d, NoAffineMABN2d, BatchNorm2d, MovingAverageBN2d]:
         m = torch.jit.script(M(16))
         m(torch.randn(5, 16, 8, 8))
@@ -35,17 +50,32 @@ def test_bn():
 
 
 def test_spade():
+    """
+    Generate the spadem.
+
+    Args:
+    """
     for M in [Spade2d, SpadeMA2d]:
         m = M(16, 8, 4)
         m(torch.randn(5, 16, 8, 8), torch.randn(5, 8, 8, 8))
 
 
 def test_attnnorm():
+    """
+    Test if the two - bit 2d.
+
+    Args:
+    """
     m = AttenNorm2d(16, 8)
     m(torch.randn(1, 16, 8, 8))
 
 
 def test_blocks():
+    """
+    Convert the blocks of blocks
+
+    Args:
+    """
     m = Conv2dNormReLU(4, 8, 3, nn.BatchNorm2d)
     m(torch.randn(1, 4, 8, 8))
 
@@ -83,6 +113,11 @@ def test_blocks():
     m(torch.randn(1, 6, 8, 8))
 
 def test_vq():
+    """
+    Create vqtuple.
+
+    Args:
+    """
     m = VQ(8, 16, mode='nearest')
     m(torch.randn(10, 8))
 
@@ -97,11 +132,21 @@ def test_vq():
 
 
 def test_tfms():
+    """
+    Convert a pil image to an image.
+
+    Args:
+    """
     m = torch.jit.script(ImageNetInputNorm())
     m(torch.randn(1, 3, 8, 8))
 
 
 def test_maskedconv():
+    """
+    Test if a masked mask.
+
+    Args:
+    """
     m = MaskedConv2d(3, 8, 3, center=True)
     m(torch.randn(1, 3, 8, 8))
     m = TopLeftConv2d(3, 8, 3, center=True)
@@ -109,6 +154,11 @@ def test_maskedconv():
 
 
 def test_misc():
+    """
+    Generate the script
+
+    Args:
+    """
     m = torch.jit.script(Noise(1))
     m(torch.randn(1, 3, 8, 8))
 
@@ -119,5 +169,10 @@ def test_misc():
     m(torch.randn(1, 4, 4))
 
 def test_laplacian():
+    """
+    Laplacian
+
+    Args:
+    """
     x = torch.randn(5, 3, 32, 32)
     tnnf.combine_laplacians(tnnf.laplacian(x))

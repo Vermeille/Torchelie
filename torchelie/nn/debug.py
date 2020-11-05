@@ -13,10 +13,24 @@ class Debug(nn.Module):
         name (str): this layer's name
     """
     def __init__(self, name):
+        """
+        Initializes the name.
+
+        Args:
+            self: (todo): write your description
+            name: (str): write your description
+        """
         super(Debug, self).__init__()
         self.name = name
 
     def forward(self, x):
+        """
+        Perform computation.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         print(crayons.yellow(self.name))
         print(crayons.yellow('----'))
         print('Shape {}'.format(x.shape))
@@ -38,4 +52,11 @@ class Dummy(nn.Module):
     A pure pass-through layer
     """
     def forward(self, x):
+        """
+        Forward function.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         return x

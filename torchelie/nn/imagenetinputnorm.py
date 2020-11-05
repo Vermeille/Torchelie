@@ -8,6 +8,12 @@ class ImageNetInputNorm(nn.Module):
     differentiable way
     """
     def __init__(self):
+        """
+        Initialize the processor.
+
+        Args:
+            self: (todo): write your description
+        """
         super(ImageNetInputNorm, self).__init__()
         self.register_buffer(
             'norm_mean',
@@ -18,4 +24,11 @@ class ImageNetInputNorm(nn.Module):
             torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
 
     def forward(self, input):
+        """
+        Perform forward forward
+
+        Args:
+            self: (todo): write your description
+            input: (todo): write your description
+        """
         return (input - self.norm_mean) / self.norm_std

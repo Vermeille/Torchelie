@@ -21,6 +21,17 @@ class PerceptualLoss(nn.Module):
             representations, like mse_loss or l1_loss
     """
     def __init__(self, l, rescale=False, loss_fn=F.mse_loss):
+        """
+        Initialize the network.
+
+        Args:
+            self: (todo): write your description
+            l: (int): write your description
+            rescale: (str): write your description
+            loss_fn: (todo): write your description
+            F: (int): write your description
+            mse_loss: (bool): write your description
+        """
         super(PerceptualLoss, self).__init__()
         self.m = PerceptualNet(l)
         self.norm = ImageNetInputNorm()

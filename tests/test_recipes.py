@@ -14,22 +14,53 @@ import torchelie.callbacks as tcb
 
 class FakeData:
     def __len__(self):
+        """
+        Returns the number of bytes in bytes.
+
+        Args:
+            self: (todo): write your description
+        """
         return 10
 
     def __getitem__(self, i):
+        """
+        Return a random item at i.
+
+        Args:
+            self: (todo): write your description
+            i: (todo): write your description
+        """
         cls = 0 if i < 5 else 1
         return torch.randn(10) + cls * 3, cls
 
 class FakeImg:
     def __len__(self):
+        """
+        Returns the number of bytes in bytes.
+
+        Args:
+            self: (todo): write your description
+        """
         return 10
 
     def __getitem__(self, i):
+        """
+        Get a random item.
+
+        Args:
+            self: (todo): write your description
+            i: (todo): write your description
+        """
         cls = 0 if i < 5 else 1
         return torch.randn(1, 4, 4) + cls * 3, cls
 
 
 def test_classification():
+    """
+    Train classification classification.
+
+    Args:
+    """
     trainloader = DataLoader(FakeImg(), 4, shuffle=True)
     testloader = DataLoader(FakeImg(), 4, shuffle=True)
 
@@ -41,18 +72,33 @@ def test_classification():
 
 
 def test_deepdream():
+    """
+    Test the fit isochastic model.
+
+    Args:
+    """
     model = nn.Sequential(nn.Conv2d(3, 6, 3))
     dd = DeepDream(model, '0')
     dd.fit(ToPILImage()(torch.randn(3, 128, 128)), 1)
 
 
 def test_featurevis():
+    """
+    Test the model.
+
+    Args:
+    """
     model = nn.Sequential(nn.Conv2d(3, 6, 3))
     dd = FeatureVis(model, '0', 229, lr=1)
     dd.fit(1, 0)
 
 
 def test_neuralstyle():
+    """
+    Test for the style
+
+    Args:
+    """
     stylizer = NeuralStyle()
 
     content = ToPILImage()(torch.randn(3, 64, 64))
@@ -62,9 +108,20 @@ def test_neuralstyle():
             content_layers=['conv1_1'])
 
 def test_trainandcall():
+    """
+    Train a model.
+
+    Args:
+    """
     model = nn.Linear(10, 2)
 
     def train_step(batch):
+        """
+        Train the model
+
+        Args:
+            batch: (todo): write your description
+        """
         x, y = batch
         out = model(x)
         loss = torch.nn.functional.cross_entropy(out, y)
@@ -72,6 +129,11 @@ def test_trainandcall():
         return {'loss': loss}
 
     def after_train():
+        """
+        Prints the main function.
+
+        Args:
+        """
         print('Yup.')
         return {}
 
@@ -84,9 +146,20 @@ def test_trainandcall():
     trainer.run(1)
 
 def test_callbacks():
+    """
+    Test for callbacks.
+
+    Args:
+    """
     from torchelie.recipes import Recipe
 
     def train(b):
+        """
+        Train a b
+
+        Args:
+            b: (array): write your description
+        """
         x, y = b
         return {'pred': torch.randn(y.shape[0])}
 

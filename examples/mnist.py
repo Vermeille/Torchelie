@@ -22,6 +22,11 @@ from torchelie.recipes.classification import CrossEntropyClassification
 
 
 def get_args():
+    """
+    Parse command line arguments.
+
+    Args:
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', choices=['cpu', 'cuda'], default='cpu')
     parser.add_argument('--epochs', default=1, type=int)
@@ -30,6 +35,11 @@ def get_args():
 
 
 def build_transforms():
+    """
+    Builds a tensorflow tensorflow.
+
+    Args:
+    """
     tfms = TF.Compose([
         TF.Resize(32),
         TF.ToTensor(),
@@ -45,6 +55,11 @@ def build_transforms():
 
 
 def get_datasets():
+    """
+    Get the datasets.
+
+    Args:
+    """
     tfms, train_tfms = build_transforms()
     ds = CIFAR10('~/.cache/torch/cifar10', download=True, transform=train_tfms)
     dst = CIFAR10('~/.cache/torch/cifar10',
@@ -55,6 +70,11 @@ def get_datasets():
 
 
 def train():
+    """
+    Training function.
+
+    Args:
+    """
     opts = get_args()
     ds, dst = get_datasets()
     model = tch.models.preact_resnet20_cifar(num_classes=10)

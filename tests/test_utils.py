@@ -4,6 +4,11 @@ from torchelie.utils import *
 
 
 def test_net():
+    """
+    Test if a network.
+
+    Args:
+    """
     m = torch.nn.Linear(10, 4)
     freeze(m)
     unfreeze(m)
@@ -25,6 +30,11 @@ def test_net():
 
 
 def test_utils():
+    """
+    Compute a random entropy.
+
+    Args:
+    """
     entropy(torch.randn(1, 10))
     gram(torch.randn(4, 10))
     bgram(torch.randn(3, 4, 10))

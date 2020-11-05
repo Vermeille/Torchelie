@@ -10,6 +10,15 @@ Block = functools.partial(tnn.PreactResBlock, bottleneck=True)
 
 class UBlock(nn.Module):
     def __init__(self, ch, inner, with_skip=True):
+        """
+        Initialize the base class.
+
+        Args:
+            self: (todo): write your description
+            ch: (todo): write your description
+            inner: (todo): write your description
+            with_skip: (list): write your description
+        """
         super(UBlock, self).__init__()
         self.inner = inner
         if with_skip and inner is not None:
@@ -23,6 +32,13 @@ class UBlock(nn.Module):
                                   nn.UpsamplingBilinear2d(scale_factor=2))
 
     def forward(self, x):
+        """
+        Evaluate forward forward.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         e = self.encode(x)
         if self.inner is not None:
             e2 = self.inner(e)
@@ -37,6 +53,13 @@ class UBlock(nn.Module):
 
 class UBlock1(nn.Module):
     def __init__(self, ch):
+        """
+        Initialize a bil image.
+
+        Args:
+            self: (todo): write your description
+            ch: (todo): write your description
+        """
         super(UBlock1, self).__init__()
         self.inner = tnn.CondSeq(nn.MaxPool2d(3, 1, 1),
                                  nn.UpsamplingBilinear2d(scale_factor=0.5),
@@ -44,6 +67,13 @@ class UBlock1(nn.Module):
                                  nn.UpsamplingBilinear2d(scale_factor=2))
 
     def forward(self, x):
+        """
+        Perform forward computation.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         return self.inner(x)
 
 
@@ -56,6 +86,19 @@ class AttentionBlock(nn.Module):
                  n_pre=1,
                  n_att_conv=2,
                  with_skips=True):
+        """
+        Initialize preprocessing.
+
+        Args:
+            self: (todo): write your description
+            ch: (todo): write your description
+            n_down: (int): write your description
+            n_trunk: (int): write your description
+            n_post: (int): write your description
+            n_pre: (int): write your description
+            n_att_conv: (int): write your description
+            with_skips: (todo): write your description
+        """
         super(AttentionBlock, self).__init__()
         self.pre = tnn.CondSeq(*[Block(ch, ch) for _ in range(n_pre)])
         self.post = tnn.CondSeq(*[Block(ch, ch) for _ in range(n_post)])
@@ -79,6 +122,13 @@ class AttentionBlock(nn.Module):
             self.mask = None
 
     def forward(self, x):
+        """
+        Forward function to forward todo.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         x = self.pre(x)
         t = self.trunk(x)
         if self.mask is not None:
@@ -94,6 +144,13 @@ class Attention56Bone(nn.Module):
         in_ch (int): number of channels in the images
     """
     def __init__(self, in_ch=3):
+        """
+        Initialize attention.
+
+        Args:
+            self: (todo): write your description
+            in_ch: (int): write your description
+        """
         super(Attention56Bone, self).__init__()
         self.head = tnn.CondSeq(tu.kaiming(tnn.Conv2d(in_ch, 64, 7, stride=2)),
                                 nn.ReLU(True), nn.MaxPool2d(3, 2, 1))
@@ -110,6 +167,13 @@ class Attention56Bone(nn.Module):
         )
 
     def forward(self, x):
+        """
+        Forward forward forward forward.
+
+        Args:
+            self: (todo): write your description
+            x: (todo): write your description
+        """
         x = self.head(x)
         x = self.pre1(x)
         x = self.attn1(x)

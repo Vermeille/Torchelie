@@ -32,13 +32,33 @@ device = 'cpu' if opts.cpu else 'cuda'
 
 class TrueOrFakeLabelDataset:
     def __init__(self, dataset):
+        """
+        Initialize the dataset.
+
+        Args:
+            self: (todo): write your description
+            dataset: (todo): write your description
+        """
         self.dataset = dataset
         self.classes = ['Fake', 'True']
 
     def __len__(self):
+        """
+        Returns the number of the dataset.
+
+        Args:
+            self: (todo): write your description
+        """
         return len(self.dataset)
 
     def __getitem__(self, i):
+        """
+        Return the item corresponding to index.
+
+        Args:
+            self: (todo): write your description
+            i: (todo): write your description
+        """
         x, y = self.dataset[i]
         if torch.randn(1).item() < 0:
             return x, 1, y
@@ -61,9 +81,20 @@ dlt = torch.utils.data.DataLoader(dt,
 
 
 def train_net():
+    """
+    Train the model.
+
+    Args:
+    """
     model = ClassCondResNetDebug(2, 10, in_ch=1)
 
     def train_step(batch):
+        """
+        Train the model
+
+        Args:
+            batch: (todo): write your description
+        """
         x, y, z = batch
 
         out = model(x, z)
@@ -73,6 +104,12 @@ def train_net():
         return {'loss': loss, 'pred': out}
 
     def validation_step(batch):
+        """
+        Evaluate step step
+
+        Args:
+            batch: (todo): write your description
+        """
         x, y, z = batch
 
         out = model(x, z)

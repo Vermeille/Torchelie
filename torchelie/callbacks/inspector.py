@@ -10,6 +10,13 @@ from PIL import Image
 
 
 def img2html(img, opts=None):
+    """
+    Convert an image to an image
+
+    Args:
+        img: (array): write your description
+        opts: (dict): write your description
+    """
     if isinstance(img, torch.Tensor):
         img = img.cpu().detach().numpy()
 
@@ -48,6 +55,15 @@ def img2html(img, opts=None):
 
 class ClassificationInspector:
     def __init__(self, topk, labels, center_value=0):
+        """
+        Initialize the topk
+
+        Args:
+            self: (todo): write your description
+            topk: (int): write your description
+            labels: (dict): write your description
+            center_value: (str): write your description
+        """
         self.labels = labels
         self.center_value = center_value
         self.topk = topk
@@ -56,11 +72,28 @@ class ClassificationInspector:
         self.M = float('-inf')
 
     def reset(self):
+        """
+        Reset the configuration.
+
+        Args:
+            self: (todo): write your description
+        """
         self.best = []
         self.worst = []
         self.confused = []
 
     def analyze(self, batch, pred, true, pred_label=None, paths=None):
+        """
+        Analyze the model.
+
+        Args:
+            self: (todo): write your description
+            batch: (int): write your description
+            pred: (todo): write your description
+            true: (array): write your description
+            pred_label: (str): write your description
+            paths: (str): write your description
+        """
         pred = as_multiclass_shape(pred, as_probs=True)
         for_label = pred.gather(1, true.unsqueeze(1))
         if pred_label is None:
@@ -84,7 +117,21 @@ class ClassificationInspector:
         self.confused = self.confused[:self.topk]
 
     def _report(self, dat):
+        """
+        Report report.
+
+        Args:
+            self: (todo): write your description
+            dat: (todo): write your description
+        """
         def prob_as_bar(cos, is_correct):
+            """
+            Render a bar chart.
+
+            Args:
+                cos: (todo): write your description
+                is_correct: (bool): write your description
+            """
             return '<div style="width:{percents}%;background-color:{color};height:5px"></div>'.format(
                 percents=int(cos * 100),
                 color='green' if is_correct else 'red')
@@ -118,6 +165,12 @@ class ClassificationInspector:
         return ''.join(html)
 
     def show(self):
+        """
+        Return a formatted report.
+
+        Args:
+            self: (todo): write your description
+        """
         html = [
             '<h1>Best predictions</h1>',
             self._report(self.best), '<h1>Worst predictions</h1>',
@@ -129,9 +182,29 @@ class ClassificationInspector:
 
 class SegmentationInspector(ClassificationInspector):
     def __init__(self, topk, labels, center_value=0):
+        """
+        Initialize the topk
+
+        Args:
+            self: (todo): write your description
+            topk: (int): write your description
+            labels: (dict): write your description
+            center_value: (str): write your description
+        """
         super().__init__(topk, labels, center_value=0)
 
     def analyze(self, batch, pred, true, pred_label=None, paths=None):
+        """
+        Analyze the model.
+
+        Args:
+            self: (todo): write your description
+            batch: (int): write your description
+            pred: (array): write your description
+            true: (array): write your description
+            pred_label: (str): write your description
+            paths: (str): write your description
+        """
         pred = torch.sigmoid(pred)
         for_label = torch.median((pred * true + (1 - pred) * (1 - true)).reshape(pred.shape[0], -1), -1)[0]
         if pred_label is None:

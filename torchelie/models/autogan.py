@@ -30,6 +30,17 @@ class AutoGAN(nn.Module):
                  in_noise=256,
                  out_ch=3,
                  batchnorm_in_output=False):
+        """
+        Initialize the architecture.
+
+        Args:
+            self: (todo): write your description
+            arch: (todo): write your description
+            n_skip_max: (float): write your description
+            in_noise: (int): write your description
+            out_ch: (str): write your description
+            batchnorm_in_output: (int): write your description
+        """
         super(AutoGAN, self).__init__()
         self.n_skip_max = n_skip_max
         self.make_noise = xavier(nn.Linear(in_noise, 4 * 4 * arch[0]))
@@ -72,6 +83,13 @@ class AutoGAN(nn.Module):
 
 
 def autogan_128(in_noise, out_ch=3):
+    """
+    Autogan autogan autogan noise.
+
+    Args:
+        in_noise: (int): write your description
+        out_ch: (todo): write your description
+    """
     return AutoGAN(arch=[512, 512, 256, 128, 64, 32],
                    n_skip_max=3,
                    in_noise=in_noise,
@@ -79,6 +97,13 @@ def autogan_128(in_noise, out_ch=3):
 
 
 def autogan_64(in_noise, out_ch=3):
+    """
+    Autogan autogan noise.
+
+    Args:
+        in_noise: (int): write your description
+        out_ch: (todo): write your description
+    """
     return AutoGAN(arch=[512, 256, 128, 64, 32],
                    n_skip_max=3,
                    in_noise=in_noise,
@@ -86,6 +111,13 @@ def autogan_64(in_noise, out_ch=3):
 
 
 def autogan_32(in_noise, out_ch=3):
+    """
+    Autogan autogan noise noise.
+
+    Args:
+        in_noise: (int): write your description
+        out_ch: (todo): write your description
+    """
     return AutoGAN(arch=[256, 128, 64, 32],
                    n_skip_max=3,
                    in_noise=in_noise,

@@ -37,6 +37,14 @@ class Sampler:
         high (float): higher bound
     """
     def __init__(self, low, high):
+        """
+        Initialize the low - level of the range.
+
+        Args:
+            self: (todo): write your description
+            low: (todo): write your description
+            high: (int): write your description
+        """
         self.low = low
         self.high = high
 
@@ -47,6 +55,13 @@ class Sampler:
         return random.uniform(self.low, self.high)
 
     def inverse(self, x):
+        """
+        Inverse of x.
+
+        Args:
+            self: (todo): write your description
+            x: (int): write your description
+        """
         return x
 
 
@@ -60,6 +75,14 @@ class ExpSampler(Sampler):
         high (float): higher bound
     """
     def __init__(self, low, high):
+        """
+        Initialize the low - level.
+
+        Args:
+            self: (todo): write your description
+            low: (todo): write your description
+            high: (int): write your description
+        """
         low = self.inverse(low)
         high = self.inverse(high)
         super(ExpSampler, self).__init__(low, high)
@@ -71,6 +94,13 @@ class ExpSampler(Sampler):
         return 10**super(ExpSampler, self).sample()
 
     def inverse(self, x):
+        """
+        Inverse of x.
+
+        Args:
+            self: (todo): write your description
+            x: (int): write your description
+        """
         return math.log10(x)
 
 
@@ -84,6 +114,14 @@ class DecaySampler(ExpSampler):
         high (float): higher bound
     """
     def __init__(self, low, high):
+        """
+        Initialize the low - level data.
+
+        Args:
+            self: (todo): write your description
+            low: (todo): write your description
+            high: (int): write your description
+        """
         super(DecaySampler, self).__init__(low, high)
 
     def sample(self):
@@ -93,6 +131,13 @@ class DecaySampler(ExpSampler):
         return 1 - super(DecaySampler, self).sample()
 
     def inverse(self, x):
+        """
+        Inverse of x.
+
+        Args:
+            self: (todo): write your description
+            x: (int): write your description
+        """
         return super(DecaySampler, self).inverse(1 - x)
 
 
@@ -104,6 +149,13 @@ class ChoiceSampler:
         choices (list): list of values
     """
     def __init__(self, choices):
+        """
+        Initialize choices.
+
+        Args:
+            self: (todo): write your description
+            choices: (todo): write your description
+        """
         self.choices = choices
 
     def sample(self):
@@ -113,6 +165,13 @@ class ChoiceSampler:
         return random.choice(self.choices)
 
     def inverse(self, x):
+        """
+        Inverse of self.
+
+        Args:
+            self: (todo): write your description
+            x: (int): write your description
+        """
         return self.choices.index(x)
 
 
@@ -135,6 +194,13 @@ class HyperparamSampler:
         hyperparams (kwargs): hyper params samplers. Names are arbitrary.
     """
     def __init__(self, **hyperparams):
+        """
+        Initialize hyperparams.
+
+        Args:
+            self: (todo): write your description
+            hyperparams: (dict): write your description
+        """
         self.hyperparams = hyperparams
 
     def sample(self):
@@ -162,6 +228,13 @@ class HyperparamSearch:
         hyperparameters (kwargs): named samplers (like for HyperparamSampler).
     """
     def __init__(self, **hyperparams):
+        """
+        Initialize hyperparams.
+
+        Args:
+            self: (todo): write your description
+            hyperparams: (dict): write your description
+        """
         self.sampler = HyperparamSampler(**hyperparams)
 
     def sample(self):
@@ -171,6 +244,12 @@ class HyperparamSearch:
         return self.sampler.sample()
 
     def read_hpsearch(self):
+        """
+        Read hpsearcharcharch. json file.
+
+        Args:
+            self: (todo): write your description
+        """
         try:
             with open('hpsearch.json', 'r') as f:
                 return json.load(f)
@@ -178,6 +257,13 @@ class HyperparamSearch:
             return []
 
     def _str(self, x):
+        """
+        Convert x to a string or none.
+
+        Args:
+            self: (todo): write your description
+            x: (dict): write your description
+        """
         try:
             return float(x)
         except:
@@ -209,6 +295,11 @@ if __name__ == '__main__':
     opts = parser.parse_args()
 
     def make_html():
+        """
+        Make an html table.
+
+        Args:
+        """
         with open(opts.file) as f:
             dat = json.load(f)
 
@@ -379,9 +470,24 @@ if __name__ == '__main__':
         """
     class Server(BaseHTTPRequestHandler):
         def do_GET(self):
+            """
+            Handles the http get request.
+
+            Args:
+                self: (todo): write your description
+            """
             self.handle_http(200, 'text/html', make_html())
 
         def handle_http(self, status, content_type, content):
+            """
+            Handles the http request.
+
+            Args:
+                self: (todo): write your description
+                status: (str): write your description
+                content_type: (str): write your description
+                content: (str): write your description
+            """
             self.send_response(status)
             self.send_header('Content-type', content_type)
             self.end_headers()

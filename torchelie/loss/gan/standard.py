@@ -13,12 +13,30 @@ import torch.nn.functional as F
 
 
 def real(x):
+    """
+    Return the real entropy of x.
+
+    Args:
+        x: (todo): write your description
+    """
     return F.binary_cross_entropy_with_logits(x, torch.ones_like(x))
 
 
 def fake(x):
+    """
+    Calculate the entropy of x.
+
+    Args:
+        x: (todo): write your description
+    """
     return F.binary_cross_entropy_with_logits(x, torch.zeros_like(x))
 
 
 def generated(x):
+    """
+    Compute cross entropy of x.
+
+    Args:
+        x: (str): write your description
+    """
     return F.binary_cross_entropy_with_logits(x, torch.ones_like(x))

@@ -49,6 +49,14 @@ def VggBNBone(arch, in_ch=3, leak=0, block=tnn.Conv2dBNReLU, debug=False):
     return tnn.CondSeq(*layers)
 
 def VggDebugFullyConv(num_classes, in_ch=3, input_size=32):
+    """
+    A stack of vggnet layers.
+
+    Args:
+        num_classes: (int): write your description
+        in_ch: (int): write your description
+        input_size: (int): write your description
+    """
     layers = [32, 'A', 64, 'A', 128, 'A', 256]
 
     input_size = input_size // 32
@@ -118,9 +126,25 @@ class VggImg2ImgGeneratorDebug(nn.Module):
         side_ch (int): number of channels of the input image, 3 for RGB image
     """
     def __init__(self, in_noise, out_ch, side_ch=1):
+        """
+        Initialize the convolution layer.
+
+        Args:
+            self: (todo): write your description
+            in_noise: (int): write your description
+            out_ch: (str): write your description
+            side_ch: (int): write your description
+        """
         super(VggImg2ImgGeneratorDebug, self).__init__()
 
         def make_block(in_ch, out_ch, **kwargs):
+            """
+            Build a block of_chade2d.
+
+            Args:
+                in_ch: (int): write your description
+                out_ch: (todo): write your description
+            """
             return tnn.Conv2dNormReLU(in_ch,
                                       out_ch,
                                       norm=lambda out: tnn.Spade2d(out, side_ch, 64),
@@ -159,9 +183,25 @@ class VggClassCondGeneratorDebug(nn.Module):
         side_ch (int): number of channels of the input image, 3 for RGB image
     """
     def __init__(self, in_noise, out_ch, num_classes):
+        """
+        Initialize kwargs
+
+        Args:
+            self: (todo): write your description
+            in_noise: (int): write your description
+            out_ch: (str): write your description
+            num_classes: (int): write your description
+        """
         super(VggClassCondGeneratorDebug, self).__init__()
 
         def make_block(in_ch, out_ch, **kwargs):
+            """
+            Parameters ---------- block
+
+            Args:
+                in_ch: (int): write your description
+                out_ch: (todo): write your description
+            """
             return tnn.Conv2dNormReLU(in_ch,
                                       out_ch,
                                       norm=lambda out: tnn.ConditionalBN2d(out, 64),

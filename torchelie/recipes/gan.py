@@ -16,19 +16,53 @@ def GANRecipe(G,
               test_every=1000,
               log_every=10,
               g_every=1):
+    """
+    Runs the main function.
+
+    Args:
+        G: (todo): write your description
+        D: (todo): write your description
+        G_fun: (todo): write your description
+        D_fun: (callable): write your description
+        test_fun: (todo): write your description
+        loader: (todo): write your description
+        visdom_env: (todo): write your description
+        checkpoint: (bool): write your description
+        test_every: (bool): write your description
+        log_every: (todo): write your description
+        g_every: (todo): write your description
+    """
     def D_wrap(batch):
+        """
+        Wrap a single array
+
+        Args:
+            batch: (todo): write your description
+        """
         tu.freeze(G)
         tu.unfreeze(D)
 
         return D_fun(batch)
 
     def G_wrap(batch):
+        """
+        Wrap a g ( g g ).
+
+        Args:
+            batch: (todo): write your description
+        """
         tu.freeze(D)
         tu.unfreeze(G)
 
         return G_fun(batch)
 
     def test_wrap(batch):
+        """
+        Decorator into train test.
+
+        Args:
+            batch: (todo): write your description
+        """
         tu.freeze(G)
         tu.freeze(D)
         D.eval()
@@ -52,6 +86,12 @@ def GANRecipe(G,
     D_loop.register('test_loop', test_loop)
 
     def G_test(state):
+        """
+        Test if g_test was run
+
+        Args:
+            state: (todo): write your description
+        """
         G_loop.callbacks.update_state({
             'epoch': state['epoch'],
             'iters': state['iters'],
@@ -59,6 +99,12 @@ def GANRecipe(G,
         })
 
     def prepare_test(state):
+        """
+        Prepare a test state.
+
+        Args:
+            state: (todo): write your description
+        """
         test_loop.callbacks.update_state({
             'epoch': state['epoch'],
             'iters': state['iters'],
@@ -116,6 +162,12 @@ if __name__ == '__main__':
     optD = RAdamW(D.parameters(), 2e-4, betas=(0., 0.99), weight_decay=0)
 
     def G_train(batch):
+        """
+        Train g_train model
+
+        Args:
+            batch: (todo): write your description
+        """
         tu.fast_zero_grad(G)
         imgs = G(torch.randn(opts.batch_size, opts.noise_size, device=device))
         score = gan_loss.generated(D(imgs * 2 - 1))
@@ -124,6 +176,12 @@ if __name__ == '__main__':
         return {'loss': score.item()}
 
     def D_train(batch):
+        """
+        Perform training step.
+
+        Args:
+            batch: (todo): write your description
+        """
         tu.fast_zero_grad(D)
         fake = G(torch.randn(opts.batch_size, opts.noise_size, device=device))
         fake_loss = gan_loss.fake(D(fake * 2 - 1))
@@ -140,6 +198,12 @@ if __name__ == '__main__':
         }
 
     def test(batch):
+        """
+        Decor function and return a dictionary.
+
+        Args:
+            batch: (int): write your description
+        """
         return {}
 
     tfm = TF.Compose([

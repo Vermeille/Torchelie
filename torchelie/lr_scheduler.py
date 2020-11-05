@@ -16,14 +16,36 @@ class CurriculumScheduler:
     """
 
     def __init__(self, optimizer, schedule, last_iter=-1):
+        """
+        Initialize the optimizer.
+
+        Args:
+            self: (todo): write your description
+            optimizer: (todo): write your description
+            schedule: (todo): write your description
+            last_iter: (todo): write your description
+        """
         self.optimizer = optimizer
         self.schedule = schedule
         self.last_iter = last_iter
 
     def state_dict(self):
+        """
+        : return : class as a dictionary.
+
+        Args:
+            self: (todo): write your description
+        """
         return {'last_iter': self.last_iter}
 
     def load_state_dict(self, state):
+        """
+        Loads the state of a dictionary.
+
+        Args:
+            self: (todo): write your description
+            state: (todo): write your description
+        """
         self.last_iter = state['last_iter']
 
     def step(self, *unused):
@@ -50,6 +72,12 @@ class CurriculumScheduler:
                 group['betas'] = (the_mom, group['betas'][1])
 
     def __repr__(self):
+        """
+        Return a human - readable representation of this object.
+
+        Args:
+            self: (todo): write your description
+        """
         return "CurriculumScheduler({})".format(self.schedule)
 
 
@@ -71,6 +99,18 @@ class OneCycle(CurriculumScheduler):
         last_iter (int): last_iteration index
     """
     def __init__(self, opt, lr, num_iters, mom=(0.95, 0.85), log=False, last_iter=-1):
+        """
+        Initialize the consumer.
+
+        Args:
+            self: (todo): write your description
+            opt: (dict): write your description
+            lr: (float): write your description
+            num_iters: (int): write your description
+            mom: (todo): write your description
+            log: (todo): write your description
+            last_iter: (todo): write your description
+        """
         self.log = log
 
         if log:
@@ -85,6 +125,13 @@ class OneCycle(CurriculumScheduler):
             last_iter=last_iter)
 
     def step(self, *unused):
+        """
+        Perform a single step.
+
+        Args:
+            self: (todo): write your description
+            unused: (todo): write your description
+        """
         super(OneCycle, self).step()
 
         if not self.log:
@@ -98,4 +145,10 @@ class OneCycle(CurriculumScheduler):
                 group['betas'] = (math.exp(group['betas'][0]), group['betas'][1])
 
     def __repr__(self):
+        """
+        Return a human - readable representation of this object.
+
+        Args:
+            self: (todo): write your description
+        """
         return 'OneCycle({})'.format(self.schedule)

@@ -17,6 +17,12 @@ class NeuralStyleLoss(nn.Module):
     set the style and content before performing a forward pass.
     """
     def __init__(self):
+        """
+        Initialize the network.
+
+        Args:
+            self: (todo): write your description
+        """
         super(NeuralStyleLoss, self).__init__()
         self.style_layers = [
             'conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'conv5_1'
@@ -26,6 +32,14 @@ class NeuralStyleLoss(nn.Module):
         self.norm = ImageNetInputNorm()
 
     def get_style_content_(self, img, detach):
+        """
+        Return the style of the image
+
+        Args:
+            self: (todo): write your description
+            img: (str): write your description
+            detach: (str): write your description
+        """
         _, activations = self.net(self.norm(img), detach=detach)
         style = {
             l: a

@@ -21,6 +21,13 @@ class ResizeNoCrop:
     """
 
     def __init__(self, size):
+        """
+        Initialize the size.
+
+        Args:
+            self: (todo): write your description
+            size: (int): write your description
+        """
         self.size = size
 
     def __call__(self, x):
@@ -50,6 +57,15 @@ class AdaptPad:
     """
 
     def __init__(self, sz, padding_mode='constant', fill=0):
+        """
+        Initialize the image.
+
+        Args:
+            self: (todo): write your description
+            sz: (array): write your description
+            padding_mode: (str): write your description
+            fill: (str): write your description
+        """
         self.sz = sz
         self.padding_mode = padding_mode
         self.fill = fill
@@ -86,6 +102,13 @@ class MultiBranch:
     """
 
     def __init__(self, transforms):
+        """
+        Initialize the transport.
+
+        Args:
+            self: (todo): write your description
+            transforms: (str): write your description
+        """
         self.transforms = transforms
 
     def __call__(self, x):
@@ -111,6 +134,14 @@ class Canny:
     """
 
     def __init__(self, thresh_low=100, thresh_high=200):
+        """
+        Initialize the threshold.
+
+        Args:
+            self: (todo): write your description
+            thresh_low: (float): write your description
+            thresh_high: (float): write your description
+        """
         self.thresh_low = thresh_low
         self.thresh_high = thresh_high
 
@@ -142,6 +173,18 @@ class ResizedCrop(object):
 
     def __init__(self, size, scale=0.54, ratio=1,
             interpolation=Image.BILINEAR):
+        """
+        Initialize the image.
+
+        Args:
+            self: (todo): write your description
+            size: (int): write your description
+            scale: (float): write your description
+            ratio: (todo): write your description
+            interpolation: (todo): write your description
+            Image: (todo): write your description
+            BILINEAR: (todo): write your description
+        """
         if isinstance(size, tuple):
             self.size = size
         else:
@@ -153,6 +196,12 @@ class ResizedCrop(object):
 
     @staticmethod
     def _get_image_size(img):
+        """
+        Get size of image.
+
+        Args:
+            img: (str): write your description
+        """
         if F._is_pil_image(img):
             return img.size
         elif isinstance(img, torch.Tensor) and img.dim() > 2:
@@ -199,6 +248,12 @@ class ResizedCrop(object):
         return F.resized_crop(img, i, j, h, w, self.size, self.interpolation)
 
     def __repr__(self):
+        """
+        Return a human - readable representation.
+
+        Args:
+            self: (todo): write your description
+        """
         format_string = self.__class__.__name__ + '(size={0}'.format(self.size)
         format_string += ', scale={0}'.format(round(self.scale, 4))
         format_string += ', interpolation={0})'.format(self.interpolation)
@@ -206,9 +261,23 @@ class ResizedCrop(object):
 
 class Noise:
     def __init__(self, std):
+        """
+        Initialize stdout object.
+
+        Args:
+            self: (todo): write your description
+            std: (array): write your description
+        """
         self.std = std
 
     def __call__(self, x):
+        """
+        Implement self ( x [ n ] ).
+
+        Args:
+            self: (todo): write your description
+            x: (array): write your description
+        """
         return x + torch.randn_like(x) * self.std
 
 
