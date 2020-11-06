@@ -475,12 +475,14 @@ class ResidualDiscrBlock(torch.nn.Module):
         self.equal_lr = equal_lr
         self.branch = nn.Sequential(*[
             nn.LeakyReLU(0.2),
-            kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1), dynamic=equal_lr),
+            kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1), dynamic=equal_lr,
+                mode='fan_in'),
             nn.LeakyReLU(0.2, True),
             nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
             xavier(nn.Conv2d(out_ch, out_ch, 3, padding=1),
                    dynamic=equal_lr,
-                   nonlinearity='linear')
+                   nonlinearity='linear',
+                   mode='fan_in')
         ])
 
         with torch.no_grad():
@@ -496,7 +498,8 @@ class ResidualDiscrBlock(torch.nn.Module):
                 nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
                 xavier(nn.Conv2d(in_ch, out_ch, 1),
                        dynamic=equal_lr,
-                       nonlinearity='linear'))
+                       nonlinearity='linear',
+                       mode='fan_in'))
 
     def extra_repr(self):
         return f"equal_lr={self.equal_lr} downsample={self.downsample}"
@@ -559,6 +562,7 @@ class StyleGAN2Block(nn.Module):
                  n_layers: int = 2,
                  equal_lr: bool = True):
         super().__init__()
+        self.upsample_mode = 'bilinear'
         self.equal_lr = equal_lr
         dyn = equal_lr
         self.upsample = upsample
@@ -571,7 +575,7 @@ class StyleGAN2Block(nn.Module):
                                   bias=True),
                     dynamic=dyn,
                     a=0.2),
-            Noise(1, bias=False),
+            Noise(out_ch, inplace=True, bias=False),
             nn.LeakyReLU(0.2, True),
         ]
 
@@ -585,7 +589,7 @@ class StyleGAN2Block(nn.Module):
                                       bias=True),
                         dynamic=dyn,
                         a=0.2),
-                Noise(1, bias=False),
+                Noise(out_ch, inplace=True, bias=False),
                 nn.LeakyReLU(0.2, True),
             ]
 
@@ -625,9 +629,9 @@ class StyleGAN2Block(nn.Module):
         if self.upsample:
             img = nn.functional.interpolate(img,
                                             scale_factor=2,
-                                            mode='bilinear')
+                                            mode=self.upsample_mode)
             maps = nn.functional.interpolate(maps,
                                              scale_factor=2,
-                                             mode='bilinear')
+                                             mode=self.upsample_mode)
         maps = self.inside(maps)
         return img + self.to_rgb(maps), maps

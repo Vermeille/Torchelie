@@ -129,7 +129,8 @@ def StyleGAN2Discriminator(input_sz,
     res = input_sz
     ch = int(512 / (2**(math.log2(res) - 6)) * ch_mul)
     layers = [(f'rgbto{res}x{res}',
-               tu.xavier(tnn.Conv3x3(3, min(max_ch, ch)), dynamic=dyn))]
+               tu.xavier(tnn.Conv3x3(3, min(max_ch, ch)), dynamic=dyn,
+                   mode='fan_in'))]
 
     while res > 4:
         res = res // 2
@@ -145,9 +146,11 @@ def StyleGAN2Discriminator(input_sz,
         (f'mbconv4x4',
          tu.kaiming(tnn.Conv3x3(min(max_ch, ch) + 1, min(max_ch, ch * 2)),
                     a=0.2,
-                    dynamic=dyn)))
+                    dynamic=dyn,
+                    mode='fan_in')))
     layers.append(('relu2', nn.LeakyReLU(0.2, True)))
     model = nn.Sequential(OrderedDict(layers))
     model = ConcatPoolClassifier1(model, min(max_ch, ch), 1, 0.)
-    tu.xavier(model.head[-1], dynamic=dyn)
+    tu.xavier(model.head[-1], dynamic=dyn,
+            mode='fan_in')
     return model
