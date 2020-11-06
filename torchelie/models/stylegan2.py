@@ -89,19 +89,16 @@ class StyleGAN2Generator(nn.Module):
             self.render.condition(w1)
         return torch.sigmoid(self.render(w1)[0])
 
-    def ppl(self, z, amp_scaler=None):
-        with torch.cuda.amp.autocast(amp_scaler is not None):
-            w = self.encode(self.discretize_some(z))
-            self.render.condition(w)
-            gen = torch.sigmoid(self.render(w)[0])
+    def ppl(self, z):
+        w = self.encode(self.discretize_some(z))
+        self.render.condition(w)
+        gen = torch.sigmoid(self.render(w)[0])
         B, C, H, W = gen.shape
         noise = torch.randn_like(gen) / math.sqrt(H * W)
-        scaler = (lambda x: x) if amp_scaler is None else amp_scaler.scale
-        JwTy = torch.autograd.grad(outputs=scaler(torch.sum(gen * noise)),
+        JwTy = torch.autograd.grad(outputs=torch.sum(gen * noise),
                                    inputs=w,
                                    create_graph=True,
                                    only_inputs=True)[0]
-        JwTy = JwTy if amp_scaler is None else JwTy / amp_scaler.get_scale()
         JwTy_norm = JwTy.pow(2).sum(1).mul(1/(2*len(self.render))).sqrt()
 
         E_JwTy_norm = JwTy_norm.detach().mean().item()
