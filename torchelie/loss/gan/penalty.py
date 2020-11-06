@@ -61,7 +61,7 @@ def R1(model, real: torch.Tensor, fake: torch.Tensor, amp_scaler=None):
     Returns:
         A tuple (loss, gradient norm)
     """
-    return gradient_penalty(model, real, 1., amp_scaler)
+    return gradient_penalty(model, real, 0., amp_scaler)
 
 
 def gradient_penalty(model,
@@ -87,16 +87,17 @@ def gradient_penalty(model,
     data = data.detach()
     data.requires_grad_(True)
 
-    with torch.cuda.amp.autocast(enabled=amp_scaler is not None):
+    fp16 = amp_scaler is not None and amp_scaler.is_enabled()
+    with torch.cuda.amp.autocast(enabled=fp16):
         out = model(data).sum()
 
-    scale = amp_scaler.scale if amp_scaler is not None else (lambda x: x)
+    scale = amp_scaler.scale if fp16 else (lambda x: x)
     g = torch.autograd.grad(outputs=scale(out),
                             inputs=data,
                             create_graph=True,
                             only_inputs=True)[0]
-    g = (g / amp_scaler.get_scale()) if amp_scaler is not None else g
 
-    g_norm = g.norm(dim=1)
+    g = (g / amp_scaler.get_scale()) if fp16 else g
 
-    return (g - objective_norm).pow(2).sum(), g_norm.mean().item()
+    g_norm = g.pow(2).sum(dim=(1,2,3)).add_(1e-8).sqrt()
+    return (g_norm - objective_norm).pow(2).mean(), g_norm.mean().item()
