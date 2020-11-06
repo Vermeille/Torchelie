@@ -44,7 +44,9 @@ class WindowedMetricAvg(tu.AutoStateDict):
 
     @torch.no_grad()
     def on_batch_end(self, state):
-        self.avg.log(state[self.name])
+        val = state.get(self.name, None)
+        if val is not None:
+            self.avg.log(val)
         if self.post_each_batch:
             state['metrics'][self.name] = self.avg.get()
 
