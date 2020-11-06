@@ -60,6 +60,8 @@ class WindowAvg(tu.AutoStateDict):
         """
         Return the value averaged over the window
         """
+        if len(self.vals) == 0:
+            return float("nan")
         return sum(self.vals) / len(self.vals)
 
 
