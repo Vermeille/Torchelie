@@ -28,12 +28,25 @@ class StyleGAN2Generator(nn.Module):
                  equal_lr: bool = True):
         super().__init__()
         dyn = equal_lr
+        def eq_lr_linear():
+            if not equal_lr:
+                return tu.kaiming(nn.Linear(noise_size, noise_size), a=0.2,
+                        dynamic=True)
+            lr_mul = 0.01
+            m = nn.Linear(noise_size, noise_size)
+            m.weight.data.normal_(0, 1/lr_mul)
+            tnn.utils.weight_scale(m, scale=lr_mul/math.sqrt(noise_size))
+
+            m.bias.data.normal_(0, 1/lr_mul)
+            tnn.utils.weight_scale(m, name='bias', scale=lr_mul)
+            return m
+
         self.encode = nn.Sequential(
-            tu.kaiming(nn.Linear(noise_size, noise_size), dynamic=dyn, a=0.2),
+            eq_lr_linear(),
             nn.LeakyReLU(0.2, True),
-            tu.kaiming(nn.Linear(noise_size, noise_size), dynamic=dyn, a=0.2),
+            eq_lr_linear(),
             nn.LeakyReLU(0.2, True),
-            tu.kaiming(nn.Linear(noise_size, noise_size), dynamic=dyn, a=0.2),
+            eq_lr_linear(),
             nn.LeakyReLU(0.2, True),
         )
         res = 4
