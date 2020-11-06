@@ -265,6 +265,12 @@ class AllAtOnceColor:
             torch.rand(RND) < prob, torch.bmm(m, self.m), self.m)
 
     def brightness(self, alpha: float, prob: float = 1.) -> 'AllAtOnceColor':
+        """
+        Change brightness by a factor alpha
+
+        Args:
+            alpha (float): scale factor
+        """
         tfm = torch.stack([
             torch.eye(4, 4) * random.uniform(1 - alpha, 1 + alpha)
             for _ in range(self.B)
@@ -275,6 +281,12 @@ class AllAtOnceColor:
         return self
 
     def contrast(self, alpha: float, prob: float = 1.) -> 'AllAtOnceColor':
+        """
+        Scale contrast by factor alpha
+
+        Args:
+            alpha (float): scale factor
+        """
         rot = []
         for _ in range(self.B):
             t = random.uniform(1 - alpha, 1 + alpha)
@@ -285,13 +297,22 @@ class AllAtOnceColor:
         return self
 
     def apply(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Applies transforms on x
+
+        Args:
+            x (torch.Tensor): input
+
+        Returns:
+            transformed x
+        """
         B, C, H, W = x.shape
         w = self.m[:, :3, :3].reshape(3 * self.B, 3, 1, 1)
         b = self.m[:, :3, 3].reshape(self.B, 3, 1, 1)
         x = x.view(1, B * C, H, W)
         w = w.to(x.device)
         b = b.to(x.device)
-        out = nn.functional.conv2d(x, w, None, groups=self.B)
+        out = F.conv2d(x, w, None, groups=self.B)
         out = out.view(B, C, H, W)
         return out + b
 

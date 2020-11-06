@@ -398,8 +398,8 @@ def slerp(z1, z2, t):
     Spherical linear interpolate between `z1` and `z2` according to `t`.
 
     Args:
-        z1 (z dim): z1
-        z2 (z dim): z2
+        z1 (torch.Tensor): ND tensor, interpolating on last dim
+        z2 (torch.Tensor): ND tensor, interpolating on last dim
         t (float): t between 0 and 1
 
     Returns:
@@ -418,8 +418,9 @@ def slerp(z1, z2, t):
     z3 = z2_n - dot * z1_n
     z3 = z3 / z3.pow(2).sum(dim=-1, keepdim=True).sqrt()
 
-    return lerp(z1_l, z2_l,
-                t) * (z1_n * torch.cos(theta) + z3 * torch.sin(theta))
+
+    azimut = lerp(z1_l, z2_l, t)
+    return  azimut * (z1_n * torch.cos(theta) + z3 * torch.sin(theta))
 
 
 def as_multiclass_shape(preds, as_probs=False):

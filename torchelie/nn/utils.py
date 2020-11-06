@@ -3,6 +3,7 @@ from torch.nn import Module
 
 from torch.nn.parameter import Parameter
 from typing import Any, TypeVar
+from torch.nn.utils.weight_norm import WeightNorm
 
 
 class WeightScale:
