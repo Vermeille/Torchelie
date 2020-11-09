@@ -12,6 +12,7 @@ from .maskedconv import MaskedConv2d
 from torchelie.utils import kaiming, xavier, normal_init, constant_init
 from .layers import ModulatedConv
 from .noise import Noise
+from torchelie.nn.graph import ModuleGraph
 
 
 def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0, inplace=False):
@@ -567,39 +568,31 @@ class StyleGAN2Block(nn.Module):
         self.equal_lr = equal_lr
         dyn = equal_lr
         self.upsample = upsample
-        inside = [
-            kaiming(ModulatedConv(in_ch,
-                                  noise_size,
-                                  out_ch,
-                                  kernel_size=3,
-                                  padding=1,
-                                  bias=True),
-                    dynamic=dyn,
-                    a=0.2),
-            Noise(out_ch, inplace=True, bias=False),
-            nn.LeakyReLU(0.2, True),
-        ]
+        inside = []
 
-        for _ in range(n_layers - 1):
-            inside += [
-                kaiming(ModulatedConv(out_ch,
-                                      noise_size,
-                                      out_ch,
-                                      kernel_size=3,
-                                      padding=1,
-                                      bias=True),
-                        dynamic=dyn,
-                        a=0.2),
-                Noise(out_ch, inplace=True, bias=False),
-                nn.LeakyReLU(0.2, True),
-            ]
+        for i in range(n_layers):
+            conv = ModulatedConv(in_ch,
+                                 noise_size,
+                                 out_ch,
+                                 kernel_size=3,
+                                 padding=1,
+                                 bias=True)
+            conv = kaiming(conv, dynamic=dyn, a=0.2)
+
+            noise = Noise(out_ch, inplace=True, bias=False)
+            inside += [((f'in_{i}', 'w'), conv, f'conv_{i}'),
+                       ((f'conv_{i}', f'noise_{i}'), noise, f'plus_noise_{i}'),
+                       (f'plus_noise_{i}', nn.LeakyReLU(0.2,
+                                                        True), f'in_{i+1}')]
+            in_ch = out_ch
+        inside += [(f'in_{n_layers}', nn.Identity(), 'out')]
 
         if dyn:
             for m in inside:
-                if isinstance(m, ModulatedConv):
-                    xavier(m.make_s, dynamic=True)
+                if isinstance(m[1], ModulatedConv):
+                    xavier(m[1].make_s, dynamic=True)
 
-        self.inside = CondSeq(*inside)
+        self.inside = ModuleGraph(inside, outputs='out')
         self.to_rgb = xavier(ModulatedConv(out_ch,
                                            noise_size,
                                            3,
@@ -610,29 +603,30 @@ class StyleGAN2Block(nn.Module):
                              dynamic=dyn,
                              a=0.2)
 
-    def condition(self, z):
-        self.inside.condition(z)
-        self.to_rgb.condition(z)
+    def n_noise(self) -> int:
+        return len(self.inside) // 3
 
     def extra_repr(self):
         return (f"upsample={self.upsample} n_layers={len(self.inside) // 3} "
                 f"equal_lr={self.equal_lr}")
 
-    def forward(self, xs, z=None):
-        if z is not None:
-            self.condition(z)
+    def forward(self, maps, w, rgb, noises=None):
+        if rgb is None:
+            rgb = torch.zeros(maps.shape[0],
+                              3,
+                              *maps.shape[2:],
+                              device=maps.device)
 
-        if not isinstance(xs, tuple):
-            img = torch.zeros(xs.shape[0], 3, *xs.shape[2:], device=xs.device)
-            maps = xs
-        else:
-            img, maps = xs
         if self.upsample:
-            img = nn.functional.interpolate(img,
+            rgb = nn.functional.interpolate(rgb,
                                             scale_factor=2,
                                             mode=self.upsample_mode)
             maps = nn.functional.interpolate(maps,
                                              scale_factor=2,
                                              mode=self.upsample_mode)
-        maps = self.inside(maps)
-        return img + self.to_rgb(maps), maps
+        maps = self.inside(
+            in_0=maps,
+            w=w,
+            **({f'noise_{i}': None
+                for i in range(len(self.inside) // 3)}))['out']
+        return rgb + self.to_rgb(maps, w), maps

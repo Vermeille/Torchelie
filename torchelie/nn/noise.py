@@ -16,9 +16,12 @@ class Noise(nn.Module):
         self.inplace = inplace
         self.bias = nn.Parameter(torch.zeros_like(self.a)) if bias else None
 
-    def forward(self, x):
+    def forward(self, x, z=None):
         N, C, H, W = x.shape
-        z = torch.randn(N, 1, H, W, device=x.device, dtype=x.dtype)
+        if z is None:
+            z = torch.randn(N, 1, H, W, device=x.device, dtype=x.dtype)
+        else:
+            assert z.shape == [N, 1, H, W]
         z = z * self.a
         if self.bias is not None:
             z.add_(self.bias)

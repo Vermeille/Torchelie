@@ -56,17 +56,28 @@ class StyleGAN2Generator(nn.Module):
         while res <= img_size:
             ch = int(512 / (2**(math.log2(res) - 7)) * ch_mul)
             if res == 4:
-                render.append(('const', tnn.Const(min(max_ch, ch), 4, 4)))
-            render.append((f'conv{res}x{res}',
-                           tnn.StyleGAN2Block(min(max_ch, ch),
-                                              min(max_ch, ch // 2),
-                                              noise_size,
-                                              upsample=res != 4,
-                                              n_layers=1 if res == 4 else 2,
-                                              equal_lr=equal_lr)))
-            res *= 2
+                node = ('const', tnn.Const(min(max_ch, ch), 4, 4))
+                render.append(('w', node, f'in_{res}x{res}'))
 
-        self.render = tnn.CondSeq(OrderedDict(render))
+            block = tnn.StyleGAN2Block(min(max_ch, ch),
+                                       min(max_ch, ch // 2),
+                                       noise_size,
+                                       upsample=res != 4,
+                                       n_layers=1 if res == 4 else 2,
+                                       equal_lr=equal_lr)
+            node = (f'conv{res}x{res}', block)
+
+            next_res = min(img_size, res * 2)
+            render.append(
+                ([f'in_{res}x{res}', f'w_{res}x{res}', f'rgb_{res}x{res}'],
+                    node,
+                  [f'rgb_{next_res}x{next_res}', f'in_{next_res}x{next_res}']))
+            res *= 2
+        render.append(
+            (f'rgb_{img_size}x{img_size}', ('dummy', nn.Identity()), 'out'))
+
+        print(render)
+        self.render = tnn.ModuleGraph(render, outputs='out')
 
     def discretize_some(self, z):
         # This is just experimental
@@ -81,20 +92,24 @@ class StyleGAN2Generator(nn.Module):
         return z
 
     def forward(self, z, mixing: bool = True) -> torch.Tensor:
-        w1 = self.encode(self.discretize_some(z))
-        if mixing:
-            L = random.randint(0, len(self.render) - 1)
-            self.render[:L].condition(w1)
-            w2 = self.encode(self.discretize_some(torch.randn_like(z)))
-            self.render[L:].condition(w2)
-        else:
-            self.render.condition(w1)
-        return torch.sigmoid(self.render(w1)[0])
+        w = self.encode(self.discretize_some(z))
+        L = random.randint(0, len(self.render) - 2)  # ignore the nn.Identity
+        mix_res = 2**(L + 2)
+        ws = {'w': w}
+        for i_res in range(len(self.render) - 1):  # ignore the nn.Idendity
+            res = 2**(i_res + 2)
+            if mixing and res == mix_res:
+                w = self.encode(self.discretize_some(torch.randn_like(z)))
+            ws[f'w_{res}x{res}'] = w
+        return torch.sigmoid(self.render(rgb_4x4=None, **ws)['out'])
+
+    def w_to_dict(self, w):
+        return {'w': w, **{f'w_{2**(i+2)}x{2**(i+2)}': w for i in
+            range(len(self.render)-1)}}
 
     def ppl(self, z):
         w = self.encode(self.discretize_some(z))
-        self.render.condition(w)
-        gen = torch.sigmoid(self.render(w)[0])
+        gen = torch.sigmoid(self.render(rgb_4x4=None, **self.w_to_dict(w))['out'])
         B, C, H, W = gen.shape
         noise = torch.randn_like(gen) / math.sqrt(H * W)
         JwTy = torch.autograd.grad(outputs=torch.sum(gen * noise),

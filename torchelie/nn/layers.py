@@ -57,7 +57,9 @@ class ModulatedConv(nn.Conv2d):
     def condition(self, z):
         self.s = self.make_s(z)
 
-    def forward(self, x):
+    def forward(self, x, z=None):
+        if z is not None:
+            self.condition(z)
         N, C, H, W = x.shape
         C_out, C_in = self.weight.shape[:2]
         w_prime = torch.einsum('oihw,bi->boihw', self.weight, self.s)
