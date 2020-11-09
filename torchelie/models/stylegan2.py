@@ -28,16 +28,18 @@ class StyleGAN2Generator(nn.Module):
                  equal_lr: bool = True):
         super().__init__()
         dyn = equal_lr
+
         def eq_lr_linear():
             if not equal_lr:
-                return tu.kaiming(nn.Linear(noise_size, noise_size), a=0.2,
-                        dynamic=True)
+                return tu.kaiming(nn.Linear(noise_size, noise_size),
+                                  a=0.2,
+                                  dynamic=True)
             lr_mul = 0.01
             m = nn.Linear(noise_size, noise_size)
-            m.weight.data.normal_(0, 1/lr_mul)
-            tnn.utils.weight_scale(m, scale=lr_mul/math.sqrt(noise_size))
+            m.weight.data.normal_(0, 1 / lr_mul)
+            tnn.utils.weight_scale(m, scale=lr_mul / math.sqrt(noise_size))
 
-            m.bias.data.normal_(0, 1/lr_mul)
+            m.bias.data.normal_(0, 1 / lr_mul)
             tnn.utils.weight_scale(m, name='bias', scale=lr_mul)
             return m
 
@@ -70,8 +72,8 @@ class StyleGAN2Generator(nn.Module):
         # This is just experimental
         discrete = min(z.shape[1] // 4, 32)
         z = torch.cat([
-            z[:, :discrete].ge(0).float() + z[:, :discrete] - z[:,
-                :discrete].detach(),
+            z[:, :discrete].ge(0).float() + z[:, :discrete] -
+            z[:, :discrete].detach(),
             z[:, discrete:].pow(2).mean(1, keepdim=True).rsqrt() *
             z[:, discrete:]
         ],
@@ -99,7 +101,7 @@ class StyleGAN2Generator(nn.Module):
                                    inputs=w,
                                    create_graph=True,
                                    only_inputs=True)[0]
-        JwTy_norm = JwTy.pow(2).sum(1).mul(1/(2*len(self.render))).sqrt()
+        JwTy_norm = JwTy.pow(2).sum(1).mul(1 / (2 * len(self.render))).sqrt()
 
         E_JwTy_norm = JwTy_norm.detach().mean().item()
         if hasattr(self, 'ppl_goal'):
@@ -129,8 +131,9 @@ def StyleGAN2Discriminator(input_sz,
     res = input_sz
     ch = int(512 / (2**(math.log2(res) - 6)) * ch_mul)
     layers = [(f'rgbto{res}x{res}',
-               tu.xavier(tnn.Conv3x3(3, min(max_ch, ch)), dynamic=dyn,
-                   mode='fan_in'))]
+               tu.xavier(tnn.Conv3x3(3, min(max_ch, ch)),
+                         dynamic=dyn,
+                         mode='fan_in'))]
 
     while res > 4:
         res = res // 2
@@ -151,6 +154,5 @@ def StyleGAN2Discriminator(input_sz,
     layers.append(('relu2', nn.LeakyReLU(0.2, True)))
     model = nn.Sequential(OrderedDict(layers))
     model = ConcatPoolClassifier1(model, min(max_ch, ch), 1, 0.)
-    tu.xavier(model.head[-1], dynamic=dyn,
-            mode='fan_in')
+    tu.xavier(model.head[-1], dynamic=dyn, mode='fan_in')
     return model

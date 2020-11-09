@@ -475,8 +475,9 @@ class ResidualDiscrBlock(torch.nn.Module):
         self.equal_lr = equal_lr
         self.branch = nn.Sequential(*[
             nn.LeakyReLU(0.2),
-            kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1), dynamic=equal_lr,
-                mode='fan_in'),
+            kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1),
+                    dynamic=equal_lr,
+                    mode='fan_in'),
             nn.LeakyReLU(0.2, True),
             nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
             xavier(nn.Conv2d(out_ch, out_ch, 3, padding=1),
