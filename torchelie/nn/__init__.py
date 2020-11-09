@@ -11,4 +11,5 @@ from .pixelnorm import PixelNorm
 from .blocks import *
 from .layers import *
 from .condseq import CondSeq
+from .graph import ModuleGraph
 import torchelie.nn.utils

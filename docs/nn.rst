@@ -90,3 +90,6 @@ Sequential
    :members:
    :undoc-members:
 
+.. autoclass:: torchelie.nn.ModuleGraph
+   :members:
+   :undoc-members:
