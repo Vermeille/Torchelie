@@ -30,6 +30,10 @@ FIXME: Where to put that one?
 Other GANs
 ~~~~~~~~~~
 
+.. autoclass:: torchelie.models.StyleGAN2Generator
+   :members:
+.. autoclass:: torchelie.models.StyleGAN2Discriminator
+   :members:
 .. autoclass:: torchelie.models.AutoGAN
    :members:
 .. autofunction:: torchelie.models.autogan_32

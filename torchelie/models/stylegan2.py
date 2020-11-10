@@ -28,6 +28,7 @@ class StyleGAN2Generator(nn.Module):
                  equal_lr: bool = True):
         super().__init__()
         dyn = equal_lr
+        self.register_buffer('w_avg', torch.zeros(noise_size))
 
         def eq_lr_linear():
             if not equal_lr:
@@ -93,14 +94,22 @@ class StyleGAN2Generator(nn.Module):
 
     def forward(self, z, mixing: bool = True) -> torch.Tensor:
         w = self.encode(self.discretize_some(z))
+
+        if self.training:
+            self.w_avg = 0.995 * self.w_avg + (1-0.995) * w.detach().mean(0)
+
         L = random.randint(0, len(self.render) - 2)  # ignore the nn.Identity
         mix_res = 2**(L + 2)
         ws = {'w': w}
         for i_res in range(len(self.render) - 1):  # ignore the nn.Idendity
             res = 2**(i_res + 2)
-            if mixing and res == mix_res:
+            if mixing and res == mix_res and random.uniform(0, 1) < 0.9:
+                print('mixing at res', res, 'x', res)
                 w = self.encode(self.discretize_some(torch.randn_like(z)))
-            ws[f'w_{res}x{res}'] = w
+            if res <= 32 and not self.training:
+                ws[f'w_{res}x{res}'] = 0.3 * self.w_avg + 0.7 * w
+            else:
+                ws[f'w_{res}x{res}'] = w
         return torch.sigmoid(self.render(rgb_4x4=None, **ws)['out'])
 
     def w_to_dict(self, w):

@@ -218,6 +218,7 @@ def train(rank, world_size):
     tu.freeze(G_polyak)
 
     def test(batch):
+        G_polyak.eval()
         def sample(N, n_iter, alpha=0.01, show_every=10):
             noise = torch.randn(N,
                                 opts.noise_size,
@@ -250,9 +251,9 @@ def train(rank, world_size):
         fake = sample(8, 50, alpha=0.001, show_every=10)
 
         noise1 = torch.randn(
-            opts.batch_size * 2 // 8, 1, opts.noise_size, device=rank) * 0.7
+            opts.batch_size * 2 // 8, 1, opts.noise_size, device=rank)
         noise2 = torch.randn(
-            opts.batch_size * 2 // 8, 1, opts.noise_size, device=rank) * 0.7
+            opts.batch_size * 2 // 8, 1, opts.noise_size, device=rank)
         t = torch.linspace(0, 1, 8, device=noise1.device).view(8, 1)
         noise = noise1 * t + noise2 * (1 - t)
         noise = noise.view(-1, opts.noise_size)
