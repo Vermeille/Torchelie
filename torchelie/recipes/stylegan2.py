@@ -74,20 +74,41 @@ class PPL:
                 state['ppl'] = ppl.item()
 
 
-def StyleGAN2Recipe(G,
-                    D,
+def StyleGAN2Recipe(G: nn.Module,
+                    D: nn.Module,
                     dataloader,
-                    noise_size,
-                    gpu_id,
-                    total_num_gpus,
+                    noise_size: int,
+                    gpu_id: int,
+                    total_num_gpus: int,
                     *,
-                    gp_thresh=0.3,
-                    G_lr=2e-3,
-                    D_lr=4e-3,
-                    tag='model',
-                    lookahead_steps=10,
-                    ada=True):
-    #G_polyak = type(G).instantiate(G.state_dict())
+                    gp_thresh: float = 0.3,
+                    G_lr: float = 2e-3,
+                    D_lr: float = 4e-3,
+                    tag: str = 'model',
+                    lookahead_steps: int = 10,
+                    ada: bool = True):
+    """
+    StyleGAN2 Recipe distributed with DistributedDataParallel
+
+    Args:
+        G (nn.Module): a Generator.
+        D (nn.Module): a Discriminator.
+        dataloader: a dataloader conforming to torchvision's API.
+        noise_size (int): the size of the input noise vector.
+        gpu_id (int): the GPU index on which to run.
+        total_num_gpus (int): how many GPUs are they
+        gp_thresh (float): how much to set the maximum lipschitzness for the
+            0-GP regularizer.
+        G_lr (float): RAdamW lr for G
+        D_lr (float): RAdamW lr for D
+        tag (str): tag for Visdom and checkpoints
+        lookahead_steps (int): how often to merge with Lookahead (-1 to
+            disable)
+        ada (bool): whether to enable Adaptive Data Augmentation
+
+    Returns:
+        recipe, G EMA model
+    """
     G_polyak = copy.copy(G)
 
     G = nn.parallel.DistributedDataParallel(G.to(gpu_id), [gpu_id], gpu_id)
@@ -266,7 +287,7 @@ def StyleGAN2Recipe(G,
     ])
     recipe.register('G_polyak', G_polyak)
     recipe.to(gpu_id)
-    return recipe
+    return recipe, G_polyak
 
 
 def train(rank, world_size):
@@ -316,15 +337,15 @@ def train(rank, world_size):
                                      pin_memory=True,
                                      drop_last=True,
                                      batch_size=opts.batch_size)
-    recipe = StyleGAN2Recipe(G,
-                             D,
-                             dl,
-                             opts.noise_size,
-                             rank,
-                             world_size,
-                             tag=tag,
-                             gp_thresh=opts.gp_thresh,
-                             ada=not opts.no_ada)
+    recipe, _ = StyleGAN2Recipe(G,
+                                D,
+                                dl,
+                                opts.noise_size,
+                                rank,
+                                world_size,
+                                tag=tag,
+                                gp_thresh=opts.gp_thresh,
+                                ada=not opts.no_ada)
     if opts.from_ckpt is not None:
         ckpt = torch.load(opts.from_ckpt, map_location='cpu')
         recipe.load_state_dict(ckpt)
