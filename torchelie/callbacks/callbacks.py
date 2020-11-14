@@ -246,7 +246,6 @@ class Optimizer(tu.AutoStateDict):
                 for pg in self.opt.param_groups:
                     for p in pg['params']:
                         if p.grad is not None:
-                            print('g', p.grad.abs().mean().item())
                             p.grad.data /= self.accumulation
             if self.clip_grad_norm is not None:
                 state['metrics']['grad_norm'] = torch.nn.utils.clip_grad_norm_(
@@ -573,16 +572,22 @@ class Polyak:
         copy (nn.Module): averaged model
         beta (float): decay value
     """
+    original: nn.Module
+    copy: nn.Module
+    beta: float
 
-    def __init__(self, original, copy, beta=0.999):
+    @torch.no_grad()
+    def __init__(self, original: nn.Module, copy: nn.Module, beta:float =0.999):
         self.original = original
         self.copy = copy
         self.beta = beta
+        copy.load_state_dict(original.state_dict(), strict=False)
 
     @torch.no_grad()
     def on_batch_end(self, state):
-        for s, d in zip(self.original.parameters(), self.copy.parameters()):
-            d.mul_(self.beta).add_(1 - self.beta, s)
+        d = self.copy.state_dict()
+        for name, value in self.original.state_dict().items():
+            d[name].mul_(self.beta).add_(1 - self.beta, value)
 
 
 class Counter(tu.AutoStateDict):

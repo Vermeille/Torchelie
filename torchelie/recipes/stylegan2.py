@@ -1,4 +1,5 @@
 import random
+import copy
 import math
 import torch
 import torch.nn as nn
@@ -6,14 +7,19 @@ import torchelie as tch
 import torchelie.utils as tu
 import torchelie.callbacks as tcb
 import torchelie.nn as tnn
+import torchelie.loss.gan.standard as gan_loss
+from torchelie.optim import RAdamW, Lookahead
+from torchelie.loss.gan.penalty import zero_gp
 from torchelie.recipes.gan import GANRecipe
 from collections import OrderedDict
 from typing import Optional
 
+
 class ADATF:
-    def __init__(self, target_loss: float):
+    def __init__(self, target_loss: float, growth: float = 0.01):
         self.p = 0
         self.target_loss = target_loss
+        self.growth = growth
 
     def __call__(self, x):
         if self.p == 0:
@@ -40,10 +46,10 @@ class ADATF:
 
     def log_loss(self, l):
         if l > self.target_loss:
-            self.p -= 0.01
+            self.p -= self.growth
         else:
-            self.p += 0.01
-        self.p = max(0, min(self.p, 1))
+            self.p += self.growth
+        self.p = max(0, min(self.p, 0.9))
 
 
 class PPL:
@@ -60,91 +66,52 @@ class PPL:
         with self.model.no_sync():
             tu.unfreeze(self.model)
             with torch.enable_grad():
-                ppl = self.model.module.ppl(torch.randn(self.batch_size,
-                                               self.noise_size,
-                                               device=self.device))
+                ppl = self.model.module.ppl(
+                    torch.randn(self.batch_size,
+                                self.noise_size,
+                                device=self.device))
                 (self.every * ppl).backward()
                 state['ppl'] = ppl.item()
 
 
-def train(rank, world_size):
-    from torchelie.models import StyleGAN2Generator, StyleGAN2Discriminator
-    import torchelie.loss.gan.standard as gan_loss
-    from torchvision.datasets import ImageFolder
-    import torchvision.transforms as TF
-    from torchelie.optim import RAdamW, Lookahead
-    from torchelie.loss.gan.penalty import zero_gp
-    import argparse
+def StyleGAN2Recipe(G,
+                    D,
+                    dataloader,
+                    noise_size,
+                    gpu_id,
+                    total_num_gpus,
+                    *,
+                    gp_thresh=0.3,
+                    G_lr=2e-3,
+                    D_lr=4e-3,
+                    tag='model',
+                    lookahead_steps=10,
+                    ada=True):
+    #G_polyak = type(G).instantiate(G.state_dict())
+    G_polyak = copy.copy(G)
 
-    parser = argparse.ArgumentParser()
-    #parser.add_argument('--device', default='cuda')
-    parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--noise-size', type=int, default=128)
-    parser.add_argument('--img-size', type=int, default=64)
-    parser.add_argument('--img-dir', required=True)
-    parser.add_argument('--ch-mul', type=float, default=1.)
-    parser.add_argument('--max-ch', type=int, default=512)
-    parser.add_argument('--no-ada', action='store_true')
-    parser.add_argument('--from-ckpt')
-    opts = parser.parse_args()
-
-    tag = opts.img_dir.split('/')[-1] or opts.img_dir.split('/')[-2]
-
-    G = StyleGAN2Generator(opts.noise_size,
-                           img_size=opts.img_size,
-                           ch_mul=opts.ch_mul,
-                           max_ch=opts.max_ch, equal_lr=True)
-    G_polyak = StyleGAN2Generator(opts.noise_size,
-                                  img_size=opts.img_size,
-                                  ch_mul=opts.ch_mul,
-                                  max_ch=opts.max_ch, equal_lr=True)
-    D = StyleGAN2Discriminator(input_sz=opts.img_size,
-                               ch_mul=opts.ch_mul,
-                               max_ch=opts.max_ch, equal_lr=True)
-
-    with torch.no_grad():
-        for gp, g in zip(G_polyak.parameters(), G.parameters()):
-            gp.copy_(g)
-
-    G = nn.parallel.DistributedDataParallel(G.to(rank), [rank], rank)
-    D = nn.parallel.DistributedDataParallel(D.to(rank), [rank], rank)
+    G = nn.parallel.DistributedDataParallel(G.to(gpu_id), [gpu_id], gpu_id)
+    D = nn.parallel.DistributedDataParallel(D.to(gpu_id), [gpu_id], gpu_id)
     print(G)
     print(D)
 
-    optG = Lookahead(
-            RAdamW(G.parameters(), 2e-3, betas=(0., 0.99), weight_decay=0),
-            k=10)
-    optD = Lookahead(
-            RAdamW(D.parameters(), 4e-3, betas=(0., 0.99), weight_decay=0),
-            k=10)
+    optG = RAdamW(G.parameters(), G_lr, betas=(0., 0.99), weight_decay=0)
+    optD = RAdamW(D.parameters(), D_lr, betas=(0., 0.99), weight_decay=0)
+    if lookahead_steps != -1:
+        optG = Lookahead(optG, k=lookahead_steps)
+        optD = Lookahead(optD, k=lookahead_steps)
 
-    tfm = TF.Compose([
-        tch.transforms.ResizeNoCrop(int(opts.img_size * 1.1)),
-        tch.transforms.AdaptPad(
-            (int(1.1 * opts.img_size), int(1.1 * opts.img_size)),
-            padding_mode='edge'),
-        TF.Resize(opts.img_size),
-        TF.RandomHorizontalFlip(),
-        TF.ToTensor()
-    ])
-    ds = tch.datasets.NoexceptDataset(ImageFolder(opts.img_dir, transform=tfm))
-    dl = torch.utils.data.DataLoader(ds,
-                                     num_workers=4,
-                                     shuffle=True,
-                                     pin_memory=True,
-                                     drop_last=True,
-                                     batch_size=opts.batch_size)
-    diffTF = ADATF(-2 if opts.no_ada else -0.6)
+    batch_size = len(next(iter(dataloader))[0])
+    diffTF = ADATF(-2 if not ada else -0.6,
+                   50000 / batch_size * total_num_gpus)
 
     gam = 0.1
-
 
     def G_train(batch):
         ##############
         ### G pass ###
         ##############
-        imgs = G(torch.randn(opts.batch_size, opts.noise_size,
-                             device=rank))
+        imgs = G(torch.randn(batch_size, noise_size, device=gpu_id))
         pred = D(diffTF(imgs) * 2 - 1)
         score = gan_loss.generated(pred)
         score.backward()
@@ -154,6 +121,7 @@ def train(rank, world_size):
     ii = 0
 
     g_norm = 0
+
     def D_train(batch):
         nonlocal ii
         nonlocal gam
@@ -164,9 +132,7 @@ def train(rank, world_size):
         ###################
         with D.no_sync():
             # Sync the gradient on the last backward
-            noise = torch.randn(opts.batch_size,
-                                opts.noise_size,
-                                device=rank)
+            noise = torch.randn(batch_size, noise_size, device=gpu_id)
             with torch.no_grad():
                 fake = G(noise)
             fake.requires_grad_(True)
@@ -174,7 +140,7 @@ def train(rank, world_size):
             fake_tf = diffTF(fake) * 2 - 1
             fakeness = D(fake_tf).squeeze(1)
             fake_loss = gan_loss.fake(fakeness)
-            fakeness = fakeness.argsort(0)
+            fakeness_sort = fakeness.argsort(0)
             fake_loss.backward()
 
             correct = (fakeness < 0).int().eq(1).float().sum()
@@ -191,7 +157,7 @@ def train(rank, world_size):
                 gp, g_norm = zero_gp(D, tfmed.detach_(), fake_tf.detach_())
                 # Sync the gradient on the next backward
                 (16 * gam * gp).backward()
-                gam = max(1e-6, gam / 1.1) if g_norm < 0.3 else gam * 1.1
+                gam = max(1e-6, gam / 1.1) if g_norm < gp_thresh else gam * 1.1
         ii += 1
 
         ###################
@@ -201,28 +167,29 @@ def train(rank, world_size):
         correct += (real_out > 0).detach().int().eq(1).float().sum()
         real_loss = gan_loss.real(real_out)
         real_loss.backward()
-        pos_ratio = real_out.gt(0).float().mean().cpu()
+        pos_ratio = real_out.gt(0).float().mean().cpu().item()
         diffTF.log_loss(-pos_ratio)
         return {
-            'imgs': fake.detach()[fakeness],
-            'i_grad': fake_grad[fakeness],
+            'imgs': fake.detach()[fakeness_sort],
+            'i_grad': fake_grad[fakeness_sort],
             'loss': real_loss.item() + fake_loss.item(),
             'fake_loss': fake_loss.item(),
             'real_loss': real_loss.item(),
             'grad_norm': g_norm,
             'ADA-p': diffTF.p,
             'gamma': gam,
-            'D-correct': correct / (2 * opts.batch_size),
+            'D-correct': correct / (2 * batch_size),
         }
 
     tu.freeze(G_polyak)
 
     def test(batch):
         G_polyak.eval()
+
         def sample(N, n_iter, alpha=0.01, show_every=10):
             noise = torch.randn(N,
-                                opts.noise_size,
-                                device=rank,
+                                noise_size,
+                                device=gpu_id,
                                 requires_grad=True)
             opt = torch.optim.Adam([noise], lr=alpha)
             fakes = []
@@ -230,9 +197,9 @@ def train(rank, world_size):
                 noise += torch.randn_like(noise) / 10
                 fake_batch = []
                 opt.zero_grad()
-                for j in range(0, N, opts.batch_size):
+                for j in range(0, N, batch_size):
                     with torch.enable_grad():
-                        n_batch = noise[j:j + opts.batch_size]
+                        n_batch = noise[j:j + batch_size]
                         fake = G_polyak(n_batch, mixing=False)
                         fake_batch.append(fake)
                         log_prob = n_batch[:, 32:].pow(2).mul_(-0.5)
@@ -250,16 +217,13 @@ def train(rank, world_size):
 
         fake = sample(8, 50, alpha=0.001, show_every=10)
 
-        noise1 = torch.randn(
-            opts.batch_size * 2 // 8, 1, opts.noise_size, device=rank)
-        noise2 = torch.randn(
-            opts.batch_size * 2 // 8, 1, opts.noise_size, device=rank)
+        noise1 = torch.randn(batch_size * 2 // 8, 1, noise_size, device=gpu_id)
+        noise2 = torch.randn(batch_size * 2 // 8, 1, noise_size, device=gpu_id)
         t = torch.linspace(0, 1, 8, device=noise1.device).view(8, 1)
         noise = noise1 * t + noise2 * (1 - t)
-        noise = noise.view(-1, opts.noise_size)
+        noise = noise.view(-1, noise_size)
         interp = torch.cat([
-            G_polyak(n, mixing=False)
-            for n in torch.split(noise, opts.batch_size)
+            G_polyak(n, mixing=False) for n in torch.split(noise, batch_size)
         ],
                            dim=0)
         return {
@@ -272,11 +236,11 @@ def train(rank, world_size):
                        G_train,
                        D_train,
                        test,
-                       dl,
-                       visdom_env='gan_' + tag if rank == 0 else None,
+                       dataloader,
+                       visdom_env=tag if gpu_id == 0 else None,
                        log_every=10,
                        test_every=1000,
-                       checkpoint='gan_' + tag if rank == 0 else None,
+                       checkpoint=tag if gpu_id == 0 else None,
                        g_every=1)
     recipe.callbacks.add_callbacks([
         tcb.Log('batch.0', 'x'),
@@ -291,8 +255,9 @@ def train(rank, world_size):
     ])
     recipe.G_loop.callbacks.add_callbacks([
         tch.callbacks.Optimizer(optG),
-        PPL(G, opts.noise_size, opts.batch_size // 2, rank, every=4),
-        tcb.Polyak(G, G_polyak, 0.5**((opts.batch_size*world_size)/20000)),
+        PPL(G, noise_size, batch_size // 2, gpu_id, every=4),
+        tcb.Polyak(G.module, G_polyak,
+                   0.5**((batch_size * total_num_gpus) / 20000)),
         tcb.WindowedMetricAvg('ppl'),
     ])
     recipe.test_loop.callbacks.add_callbacks([
@@ -300,12 +265,70 @@ def train(rank, world_size):
         tcb.Log('polyak_interp', 'interp'),
     ])
     recipe.register('G_polyak', G_polyak)
+    recipe.to(gpu_id)
+    return recipe
+
+
+def train(rank, world_size):
+    from torchelie.models import StyleGAN2Generator, StyleGAN2Discriminator
+    from torchvision.datasets import ImageFolder
+    import torchvision.transforms as TF
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    #parser.add_argument('--device', default='cuda')
+    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--noise-size', type=int, default=128)
+    parser.add_argument('--img-size', type=int, default=64)
+    parser.add_argument('--img-dir', required=True)
+    parser.add_argument('--ch-mul', type=float, default=1.)
+    parser.add_argument('--max-ch', type=int, default=512)
+    parser.add_argument('--no-ada', action='store_true')
+    parser.add_argument('--gp-thresh', type=float, default=0.3)
+    parser.add_argument('--from-ckpt')
+    opts = parser.parse_args()
+
+    tag = opts.img_dir.split('/')[-1] or opts.img_dir.split('/')[-2]
+    tag = 'gan_' + tag
+
+    G = StyleGAN2Generator(opts.noise_size,
+                           img_size=opts.img_size,
+                           ch_mul=opts.ch_mul,
+                           max_ch=opts.max_ch,
+                           equal_lr=True)
+    D = StyleGAN2Discriminator(input_sz=opts.img_size,
+                               ch_mul=opts.ch_mul,
+                               max_ch=opts.max_ch,
+                               equal_lr=True)
+
+    tfm = TF.Compose([
+        tch.transforms.ResizeNoCrop(opts.img_size),
+        tch.transforms.AdaptPad((opts.img_size, opts.img_size),
+                                padding_mode='edge'),
+        TF.Resize(opts.img_size),
+        TF.RandomHorizontalFlip(),
+        TF.ToTensor()
+    ])
+    ds = tch.datasets.NoexceptDataset(ImageFolder(opts.img_dir, transform=tfm))
+    dl = torch.utils.data.DataLoader(ds,
+                                     num_workers=4,
+                                     shuffle=True,
+                                     pin_memory=True,
+                                     drop_last=True,
+                                     batch_size=opts.batch_size)
+    recipe = StyleGAN2Recipe(G,
+                             D,
+                             dl,
+                             opts.noise_size,
+                             rank,
+                             world_size,
+                             tag=tag,
+                             gp_thresh=opts.gp_thresh,
+                             ada=not opts.no_ada)
     if opts.from_ckpt is not None:
         ckpt = torch.load(opts.from_ckpt, map_location='cpu')
-        print('G_polyak:', G_polyak.load_state_dict(ckpt['G_polyak'], strict=False))
-        print('G:', G.module.load_state_dict(ckpt['G'], strict=False))
-        print('D:', D.module.load_state_dict(ckpt['D'], strict=False))
-    recipe.to(rank)
+        recipe.load_state_dict(ckpt)
+    torch.autograd.set_detect_anomaly(True)
     recipe.run(5000)
 
 

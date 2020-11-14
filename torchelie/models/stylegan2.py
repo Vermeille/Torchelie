@@ -70,9 +70,9 @@ class StyleGAN2Generator(nn.Module):
 
             next_res = min(img_size, res * 2)
             render.append(
-                ([f'in_{res}x{res}', f'w_{res}x{res}', f'rgb_{res}x{res}'],
-                    node,
-                  [f'rgb_{next_res}x{next_res}', f'in_{next_res}x{next_res}']))
+                ([f'in_{res}x{res}', f'w_{res}x{res}',
+                  f'rgb_{res}x{res}'], node,
+                 [f'rgb_{next_res}x{next_res}', f'in_{next_res}x{next_res}']))
             res *= 2
         render.append(
             (f'rgb_{img_size}x{img_size}', ('dummy', nn.Identity()), 'out'))
@@ -96,7 +96,7 @@ class StyleGAN2Generator(nn.Module):
         w = self.encode(self.discretize_some(z))
 
         if self.training:
-            self.w_avg = 0.995 * self.w_avg + (1-0.995) * w.detach().mean(0)
+            self.w_avg = 0.995 * self.w_avg + (1 - 0.995) * w.detach().mean(0)
 
         L = random.randint(0, len(self.render) - 2)  # ignore the nn.Identity
         mix_res = 2**(L + 2)
@@ -104,7 +104,6 @@ class StyleGAN2Generator(nn.Module):
         for i_res in range(len(self.render) - 1):  # ignore the nn.Idendity
             res = 2**(i_res + 2)
             if mixing and res == mix_res and random.uniform(0, 1) < 0.9:
-                print('mixing at res', res, 'x', res)
                 w = self.encode(self.discretize_some(torch.randn_like(z)))
             if res <= 32 and not self.training:
                 ws[f'w_{res}x{res}'] = 0.3 * self.w_avg + 0.7 * w
@@ -113,12 +112,18 @@ class StyleGAN2Generator(nn.Module):
         return torch.sigmoid(self.render(rgb_4x4=None, **ws)['out'])
 
     def w_to_dict(self, w):
-        return {'w': w, **{f'w_{2**(i+2)}x{2**(i+2)}': w for i in
-            range(len(self.render)-1)}}
+        return {
+            'w': w,
+            **{
+                f'w_{2**(i+2)}x{2**(i+2)}': w
+                for i in range(len(self.render) - 1)
+            }
+        }
 
     def ppl(self, z):
         w = self.encode(self.discretize_some(z))
-        gen = torch.sigmoid(self.render(rgb_4x4=None, **self.w_to_dict(w))['out'])
+        gen = torch.sigmoid(
+            self.render(rgb_4x4=None, **self.w_to_dict(w))['out'])
         B, C, H, W = gen.shape
         noise = torch.randn_like(gen) / math.sqrt(H * W)
         JwTy = torch.autograd.grad(outputs=torch.sum(gen * noise),
@@ -141,16 +146,16 @@ def StyleGAN2Discriminator(input_sz,
                            ch_mul: int = 1,
                            equal_lr: bool = True):
     """
-    Build the discriminator for StyleGAN2
+        Build the discriminator for StyleGAN2
 
-    Args:
-        input_sz (int): image size
-        max_ch (int): maximum number of channels (default: 512)
-        ch_mul (float): multiply the number of channels on each layer by this
-            value (default, 1.)
-        equal_lr (bool): equalize the learning rates with dynamic weight
-            scaling
-    """
+        Args:
+            input_sz (int): image size
+            max_ch (int): maximum number of channels (default: 512)
+            ch_mul (float): multiply the number of channels on each layer by this
+                value (default, 1.)
+            equal_lr (bool): equalize the learning rates with dynamic weight
+                scaling
+        """
     dyn = equal_lr
     res = input_sz
     ch = int(512 / (2**(math.log2(res) - 6)) * ch_mul)
