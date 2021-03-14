@@ -11,6 +11,7 @@ import os
 from shutil import copyfile
 from pathlib import Path
 import torch
+import torch.nn as nn
 from visdom import Visdom
 
 from torchelie.utils import dict_by_key, recursive_state_dict
