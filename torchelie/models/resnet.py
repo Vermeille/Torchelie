@@ -299,17 +299,17 @@ def resnet18(num_classes, in_ch=3, debug=False):
                        dropout=0)
 
 
-def preact_resnet18(num_classes, in_ch=3, input_size=224, debug=False):
+def preact_resnet18(num_classes, in_ch=3, input_size=224, dropout=0, debug=False):
     head = _preact_head(in_ch, 64, input_size)
     return Classifier1(PreactResNetBone(
         head,
         64,
         ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1', '512:2', '512:1'],
-        tnn.PreactResBlock,
+        functools.partial(tnn.PreactResBlock, dropout=dropout),
         debug=debug),
                        512,
                        num_classes,
-                       dropout=0.)
+                       dropout=dropout)
 
 
 def preact_resnet34(num_classes, in_ch=3, input_size=224, debug=False):
