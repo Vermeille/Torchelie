@@ -184,7 +184,7 @@ def make_preact_resnet_shortcut(in_ch, out_ch, stride):
 
     sc = []
     if stride != 1:
-        sc.append(('pool', nn.MaxPool2d(3, stride, 1)))
+        sc.append(('pool', nn.AvgPool2d(3, stride, 1)))
     sc.append(('conv', kaiming(Conv1x1(in_ch, out_ch))))
 
     return CondSeq(collections.OrderedDict(sc))
@@ -347,12 +347,12 @@ class PreactResBlock(nn.Module):
                     ('conv1',
                      kaiming(Conv3x3(in_ch, out_ch, stride=stride,
                                      bias=bias))),
-                    ('dropout1', nn.Dropout2d(dropout)),
+                    ('dropout1', nn.Dropout2d(dropout, inplace=True)),
                     ('bn2',
                      constant_init(norm(out_ch), 1) if norm else Dummy()),
                     ('relu2', nn.ReLU(True)),
                     ('conv2', constant_init(Conv3x3(out_ch, out_ch), 0)),
-                    ('dropout2', nn.Dropout2d(dropout)),
+                    ('dropout2', nn.Dropout2d(dropout, inplace=True)),
                 ]))
 
         if use_se:
@@ -497,11 +497,12 @@ class ResidualDiscrBlock(torch.nn.Module):
         self.sc = None
         if in_ch != out_ch or force_shortcut:
             self.sc = nn.Sequential(
-                nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
-                xavier(nn.Conv2d(in_ch, out_ch, 1),
+                kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1),
                        dynamic=equal_lr,
                        nonlinearity='linear',
-                       mode='fan_in'))
+                       mode='fan_in'),
+                nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
+                )
 
     def extra_repr(self):
         return f"equal_lr={self.equal_lr} downsample={self.downsample}"
@@ -516,12 +517,15 @@ class ResidualDiscrBlock(torch.nn.Module):
         Returns:
             output tensor
         """
-        res = self.branch(x)
         if self.sc is not None:
             # FIXME: we can share the relu and have it inplace
+            x = self.branch[0](x)
+            res = self.branch[1:](x)
             x = self.sc(x)
-        elif self.downsample:
-            x = nn.functional.avg_pool2d(x, 3, 2, 1)
+        else:
+            res = self.branch(x)
+            if self.downsample:
+                x = nn.functional.avg_pool2d(x, 3, 2, 1)
         return x + res
 
 
