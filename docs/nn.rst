@@ -93,3 +93,18 @@ Sequential
 .. autoclass:: torchelie.nn.ModuleGraph
    :members:
    :undoc-members:
+
+Utils
+=====
+
+.. autoclass:: torchelie.nn.utils.WeightLambda
+   :members:
+   :undoc-members:
+
+.. autofunction:: torchelie.nn.utils.weight_lambda
+
+.. autofunction:: torchelie.nn.utils.remove_weight_lambda
+
+.. autofunction:: torchelie.nn.utils.weight_scale
+
+.. autofunction:: torchelie.nn.utils.remove_weight_scale
