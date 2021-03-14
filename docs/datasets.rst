@@ -36,6 +36,8 @@ Datasets wrappers
    :members:
    :undoc-members:
 
+.. autofunction:: torchelie.datasets.FastImageFolder
+
 Functions
 ~~~~~~~~~
 

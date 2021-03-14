@@ -7,6 +7,33 @@ from .concat import HorizontalConcatDataset, MergedDataset
 
 import torch
 
+def FastImageFolder(root, *args, **kwargs):
+    """
+    This loads an ImageFolder dataset faster by caching the file list the first
+    time it is accessed.
+
+    Forwards all arguments to torchvision.datasets.ImageFolder
+
+    Returns:
+        The ImageFolder transparently loaded faster.
+    """
+    from torchvision.datasets import ImageFolder
+    from pathlib import Path
+    import os
+    cache = Path(root) / 'cached_list.pth'
+    fields = ['samples', 'imgs', 'classes', 'class_to_idx']
+    if cache.exists():
+        os.makedirs('/tmp/empty/0', exist_ok=True)
+        open('/tmp/empty/0/0.jpg', 'a').close()
+        ds = ImageFolder('/tmp/empty', *args, **kwargs)
+        save = torch.load(str(cache))
+        for f in fields:
+            setattr(ds, f, save[f])
+    else:
+        ds = ImageFolder(root, *args, **kwargs)
+        torch.save({f: getattr(ds, f) for f in fields}, str(cache))
+    return ds
+
 
 class PairedDataset(torch.utils.data.Dataset):
     """
