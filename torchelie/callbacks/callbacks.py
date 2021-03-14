@@ -322,12 +322,18 @@ class Log(tu.AutoStateDict):
     @torch.no_grad()
     def on_batch_end(self, state):
         if self.post_each_batch:
-            state['metrics'][self.to] = dict_by_key(state, self.from_k)
+            try:
+                state['metrics'][self.to] = dict_by_key(state, self.from_k)
+            except:
+                pass
 
     @torch.no_grad()
     def on_epoch_end(self, state):
         if not self.post_each_batch:
-            state['metrics'][self.to] = dict_by_key(state, self.from_k)
+            try:
+                state['metrics'][self.to] = dict_by_key(state, self.from_k)
+            except:
+                pass
 
 
 class VisdomLogger:
