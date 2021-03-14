@@ -21,8 +21,9 @@ class ResizeNoCrop:
         size (int): max size of the image
     """
 
-    def __init__(self, size):
+    def __init__(self, size, mode=Image.BILINEAR):
         self.size = size
+        self.mode = mode
 
     def __call__(self, x):
         """
@@ -36,9 +37,9 @@ class ResizeNoCrop:
         width = x.width
         height = x.height
         if width > height:
-            return x.resize((size, int(size * height / width)), Image.BILINEAR)
+            return x.resize((size, int(size * height / width)), self.mode)
         else:
-            return x.resize((int(size * width / height), size), Image.BILINEAR)
+            return x.resize((int(size * width / height), size), self.mode)
 
 
 class AdaptPad:

@@ -44,6 +44,8 @@ def center_crop(batch, size):
     Returns:
         The cropped image
     """
+    if batch.shape[-2] == size[0] and batch.shape[-1] == size[1]:
+        return batch
     y_off = (batch.shape[-2] - size[0]) // 2
     x_off = (batch.shape[-1] - size[1]) // 2
     return batch[..., y_off:y_off + size[0], x_off:x_off + size[1]]
