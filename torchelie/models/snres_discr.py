@@ -5,7 +5,8 @@ from .classifier import Classifier2, ProjectionDiscr, ConcatPoolClassifier1
 
 
 def _parse_snres(arch, in_ch):
-    blocks = [nn.utils.spectral_norm(tnn.Conv3x3(3, in_ch))]
+    blocks = [nn.utils.spectral_norm(tnn.Conv3x3(in_ch, arch[0]))]
+    in_ch = arch[0]
     for x, x2 in zip(arch, arch[1:] + ['dummy']):
         if x == 'D':
             continue
