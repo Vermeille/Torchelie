@@ -157,7 +157,8 @@ def CrossEntropyClassification(model,
                                wd=1e-2,
                                visdom_env='main',
                                test_every=1000,
-                               log_every=100):
+                               log_every=100,
+                               checkpoint='model'):
     """
     Extends Classification with default cross entropy forward passes. Also adds
     RAdamW and ReduceLROnPlateau.
@@ -231,7 +232,8 @@ def CrossEntropyClassification(model,
                           classes,
                           visdom_env=visdom_env,
                           test_every=test_every,
-                          log_every=log_every)
+                          log_every=log_every,
+                          checkpoint=checkpoint)
 
     opt = RAdamW(model.parameters(),
                  lr=lr,
