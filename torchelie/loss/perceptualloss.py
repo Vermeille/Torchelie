@@ -15,14 +15,16 @@ class PerceptualLoss(nn.Module):
 
     Args:
         l (list of str): the layers on which to compare the representations
-        rescale (bool): whether to scale images to 224x224 as expected by the
-            underlying vgg net
+        rescale (bool): whether to scale images smaller side to 224 as
+            expected by the underlying vgg net
         loss_fn (distance function): a distance function to compare the
             representations, like mse_loss or l1_loss
     """
-    def __init__(self, l, rescale=False, loss_fn=F.mse_loss):
+    def __init__(self, l, rescale=False, loss_fn=F.mse_loss, use_avg_pool=True,
+            remove_unused_layers=True):
         super(PerceptualLoss, self).__init__()
-        self.m = PerceptualNet(l)
+        self.m = PerceptualNet(l, use_avg_pool=use_avg_pool,
+                remove_unused_layers=remove_unused_layers)
         self.norm = ImageNetInputNorm()
         self.rescale = rescale
         self.loss_fn = loss_fn
@@ -32,12 +34,14 @@ class PerceptualLoss(nn.Module):
         Return the perceptual loss between batch of images `x` and `y`
         """
         if self.rescale:
-            y = F.interpolate(y, size=(224, 224), mode='nearest')
-            x = F.interpolate(x, size=(224, 224), mode='nearest')
+            s = 224 / min(y.shape[-2:])
+            y = F.interpolate(y, scale_factor=s, mode='bicubic')
+            s = 224 / min(x.shape[-2:])
+            x = F.interpolate(x, scale_factor=s, mode='bicubic')
 
         _, ref = self.m(self.norm(y), detach=True)
         _, acts = self.m(self.norm(x), detach=False)
         loss = 0
         for k in acts.keys():
             loss += self.loss_fn(acts[k], ref[k])
-        return loss
+        return loss / len(acts)
