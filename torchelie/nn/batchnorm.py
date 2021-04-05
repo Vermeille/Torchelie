@@ -21,7 +21,7 @@ class BatchNorm2dBase_(nn.Module):
     def update_moments(self, x):
         if self.training:
             m = x.mean(dim=(0, 2, 3), keepdim=True)
-            v = torch.sqrt(x.var(dim=(0, 2, 3), keepdim=True) + 1e-8)
+            v = torch.sqrt(x.var(dim=(0, 2, 3), unbiased=False, keepdim=True) + 1e-8)
 
             self.running_mean.copy_((self.momentum * self.running_mean +
                                      (1 - self.momentum) * m))
