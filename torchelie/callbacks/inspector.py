@@ -104,7 +104,7 @@ class ClassificationInspector:
             html.append(
                 ('<div onclick="javascript:prompt(\'path\', \'{path}\')">'
                  '<div style="padding:3px;width:{px_sz}px">'
-                 '{img}{bar}{checkmark}{true_label} ({pred_label})'
+                 '{img}{bar}{checkmark}{true_label} (pred: {pred_label})'
                  '</div>'
                  '</div>').format(
                      path=path,
