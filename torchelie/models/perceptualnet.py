@@ -5,7 +5,7 @@ import torchvision.models as M
 from torchelie.nn import WithSavedActivations
 
 
-def PerceptualNet(layers, use_avg_pool=True):
+def PerceptualNet(layers, use_avg_pool=True, remove_unused_layers=True):
     """
     Make a VGG16 with appropriately named layers that records intermediate
     activations.
@@ -13,6 +13,10 @@ def PerceptualNet(layers, use_avg_pool=True):
     Args:
         layers (list of str): the names of the layers for which to save the
             activations.
+        use_avg_pool (bool): Whether to replace max pooling with averange
+            pooling (default: True)
+        remove_unused_layers (bool): whether to remove layers past the last one
+            used (default: True)
     """
     layer_names = [
         'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'maxpool1',
@@ -34,6 +38,10 @@ def PerceptualNet(layers, use_avg_pool=True):
             setattr(m, nm, nn.ReLU(False))
         elif 'pool' in nm and use_avg_pool:
             setattr(m, nm,  nn.AvgPool2d(2 ,2))
+
+    if remove_unused_layers:
+        m = m[:max([layer_names.index(l) for l in layers])+1]
+
     m = WithSavedActivations(m, names=layers)
     return m
 
