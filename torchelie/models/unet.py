@@ -10,8 +10,9 @@ from torchelie.transforms.differentiable import center_crop
 
 
 class UBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, inner=None):
+    def __init__(self, in_ch, out_ch, inner=None, skip=True, up_mode='bilinear'):
         super(UBlock, self).__init__()
+        self.up_mode = up_mode
         self.in_conv = nn.Sequential(
             OrderedDict([
                 ('pad1', nn.ReflectionPad2d(1)),
@@ -24,15 +25,12 @@ class UBlock(nn.Module):
 
         self.inner = inner
         if inner is not None:
-            self.inner = nn.Sequential(
-                    nn.MaxPool2d(2, 2),
-                    inner,
-                    nn.UpsamplingNearest2d(scale_factor=2),
-                    nn.ReflectionPad2d(1),
-                    tu.kaiming(nn.Conv2d(out_ch, out_ch, 3)),
-                )
-            self.skip = nn.Sequential(
-                    tu.kaiming(nn.Conv2d(out_ch, out_ch, 1)))
+            if skip:
+                self.skip = nn.Sequential(
+                    tu.kaiming(nn.Conv2d(out_ch, out_ch, 1)),
+                    nn.ReLU(True))
+            else:
+                self.skip = nn.Identity()
 
         inner_ch = out_ch * (1 if inner is None else 2)
         self.out_conv = nn.Sequential(
@@ -49,7 +47,12 @@ class UBlock(nn.Module):
         x = self.in_conv(x_orig)
         if self.inner is not None:
             x2 = x
-            x = self.inner(x)
+            x = F.interpolate(
+                    self.inner(
+                        F.avg_pool2d(x, 3, 2, 1)
+                    ),
+                mode=self.up_mode, size=x.shape[2:]
+                )
             x = torch.cat([
                 x,
                 self.skip(center_crop(x2, x.shape[2:]))
@@ -75,7 +78,8 @@ class UNetBone(nn.Module):
         out_ch (int): number of output channels
     """
 
-    def __init__(self, arch, in_ch=3, out_ch=1):
+    def __init__(self, arch, in_ch=3, out_ch=1, *, skip=True,
+        up_mode='bilinear'):
         super(UNetBone, self).__init__()
         self.in_conv = nn.Sequential(
                 tu.kaiming(nn.Conv2d(in_ch, arch[0], 5, padding=2)),
@@ -90,7 +94,7 @@ class UNetBone(nn.Module):
             nn.ReLU(True),
         )
         for x1, x2 in zip(reversed(arch[:-1]), reversed(arch[1:])):
-            self.conv = UBlock(x1, x2, self.conv)
+            self.conv = UBlock(x1, x2, self.conv, skip=skip, up_mode=up_mode)
         self.out_conv = nn.Sequential(
                 tu.kaiming(nn.Conv2d(arch[0], out_ch, 1)),
             )
