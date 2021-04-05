@@ -538,9 +538,10 @@ class SNResidualDiscrBlock(ResidualDiscrBlock):
         out_ch (int): number of output channels
         downsample (bool): whether to downsample
     """
-    def __init__(self, in_ch: int, out_ch: int, downsample: bool = False):
+    def __init__(self, in_ch: int, out_ch: int, downsample: bool = False,
+            equal_lr: bool = False):
         super().__init__(in_ch, out_ch, downsample, equal_lr=False)
-        xavier(self.branch[-1].weight_g, nonlinearity='linear')
+        xavier(self.branch[-1], nonlinearity='linear')
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.utils.spectral_norm(m)
