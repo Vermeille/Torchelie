@@ -517,3 +517,17 @@ def parallel_run(fun, *args, n_gpus: int = torch.cuda.device_count(),
     mp.spawn(WrapFun(fun, *args, **kwargs, world_size=n_gpus),
              nprocs=n_gpus,
              join=True)
+
+
+def indent(text: str, amount: int = 4):
+    """
+    Indent :code:`text` by :code:`amount` spaces.
+
+    Args:
+        text (str): some text
+        amount (int): an indentation amount
+
+    Returns:
+        indented text
+    """
+    return '\n'.join((' ' * amount + l) for l in text.splitlines())

@@ -62,6 +62,10 @@ class PairedDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.dataset1) * len(self.dataset2)
 
+    def __repr__(self):
+        return ("PairedDataset:\n" + tu.indent(repr(self.dataset1)) +
+                "\n--\n" + tu.indent(repr(self.dataset2)))
+
 
 def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
     r"""
@@ -128,7 +132,6 @@ class MixUpDataset(_Wrap):
         alpha (float): the alpha that parameterizes the beta distribution from
             which the blending factor is sampled
     """
-
     def __init__(self, dataset, alpha=0.4):
         super(MixUpDataset, self).__init__(dataset)
         self.ds = dataset
@@ -144,6 +147,8 @@ class MixUpDataset(_Wrap):
 
         return mixup(x1, x2, y1, y2, len(self.ds.classes), self.mixer)
 
+    def __repr__(self):
+        return f"MixUpDataset({self.mixer}):\n" + tu.indent(repr(self.ds))
 
 class _Proxy:
     def __init__(self, ds, indices, remap_unused_classes, cls_map):
@@ -162,6 +167,7 @@ class _Proxy:
             b[1] = self.cls_map[b[1]]
         return b
 
+
 class Subset:
     """
     Create a subset that is a random ratio of a dataset.
@@ -177,9 +183,7 @@ class Subset:
     def __init__(self, ds, ratio, remap_unused_classes=False):
         self.ratio = ratio
         self.ds = ds
-        indices = [
-            i for i in range(len(ds)) if random.uniform(0, 1) < ratio
-        ]
+        indices = [i for i in range(len(ds)) if random.uniform(0, 1) < ratio]
         self.indices = indices
 
         self.remap_classes = remap_unused_classes
@@ -205,10 +209,9 @@ class Subset:
         self.samples = _Proxy(ds, indices, remap_unused_classes, cls_map)
         self.imgs = self.samples
 
-
     def __repr__(self):
-        return "Subset(len={}, n_classes={}, {})".format(len(self.indices),
-                len(self.classes), self.ds)
+        return "Subset(len={}, n_classes={}):\n{}".format(
+            len(self.indices), len(self.classes), tu.indent(repr(self.ds)))
 
     def __len__(self):
         return len(self.indices)
@@ -221,8 +224,6 @@ class Subset:
         return b
 
 
-
-
 class NoexceptDataset(_Wrap):
     """
     Wrap a dataset and absorbs the exceptions it raises.  Useful in case of a
@@ -231,7 +232,6 @@ class NoexceptDataset(_Wrap):
     Args:
         ds (Dataset): a dataset
     """
-
     def __init__(self, ds):
         super(NoexceptDataset, self).__init__(ds)
         self.ds = ds
@@ -251,7 +251,7 @@ class NoexceptDataset(_Wrap):
                 i = 0
 
     def __repr__(self):
-        return "NoexceptDataset({})".format(self.ds)
+        return "NoexceptDataset:\n{}".format(tu.indent(repr(self.ds)))
 
 
 class WithIndexDataset(_Wrap):
@@ -278,6 +278,9 @@ class WithIndexDataset(_Wrap):
 
     def __len__(self):
         return len(self.ds)
+
+    def __repr__(self):
+        return "WithIndexDataset:\n{}".format(tu.indent(repr(self.ds)))
 
 
 class CachedDataset(_Wrap):
@@ -306,8 +309,9 @@ class CachedDataset(_Wrap):
             available
         """
         if self.cache[i] is None:
-            self.cache[i] = tu.send_to_device(self.ds[i], self.device,
-                    non_blocking=True)
+            self.cache[i] = tu.send_to_device(self.ds[i],
+                                              self.device,
+                                              non_blocking=True)
 
         x, *y = self.cache[i]
 
@@ -317,4 +321,4 @@ class CachedDataset(_Wrap):
         return [x] + y
 
     def __repr__(self):
-        return "CachedDataset({})".format(self.ds)
+        return "CachedDataset:\n{}".format(tu.indent(repr(self.ds)))

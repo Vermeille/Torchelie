@@ -1,5 +1,6 @@
 import torch
 from torch.utils.data import Dataset
+from torchelie.utils import indent
 
 
 class CatedSamples:
@@ -68,8 +69,9 @@ class HorizontalConcatDataset(Dataset):
         raise IndexError
 
     def __repr__(self):
-        return "DatasetConcat(" + ", ".join([repr(d)
-                                             for d in self.datasets]) + ")"
+        return "DatasetConcat:\n" + '\n--\n'.join(
+            [indent(repr(d)) for d in self.datasets])
+
 
 class MergedSamples:
     def __init__(self, ds):
@@ -94,7 +96,6 @@ class MergedDataset(Dataset):
         self.classes.sort()
         self.class_to_idx = {c: i for i, c in enumerate(self.classes)}
 
-
         self.samples = MergedSamples(self)
 
     def __len__(self):
@@ -109,4 +110,5 @@ class MergedDataset(Dataset):
         raise IndexError
 
     def __repr__(self):
-        return "MergedDatasets({})".format(self.datasets)
+        return "MergedDatasets: \n" + "\n".join(
+            [indent(repr(ds)) for ds in self.datasets])
