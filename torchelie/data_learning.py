@@ -75,7 +75,7 @@ class SpectralImage(nn.Module):
                                          1.0 / max(h, w))**self.decay_power
         spertum_scale *= np.sqrt(w * h)
         spertum_scale = torch.tensor(spertum_scale).unsqueeze(-1)
-        self.register_buffer('spertum_scale', spertum_scale)
+        self.register_buffer('spertum_scale', spertum_scale.float())
 
         if init_img is not None:
             self.init_img(init_img)
@@ -132,7 +132,7 @@ class CorrelateColors(torch.nn.Module):
         t_flat = t.view(t.shape[0], 3, -1).transpose(2, 1)
         t_flat = torch.matmul(t_flat,
                               self.color_correlation.inverse().t()[None])
-        t = t_flat.transpose(2, 1).view(t.shape)
+        t = t_flat.transpose(2, 1).reshape(*t.shape)
         return t
 
 

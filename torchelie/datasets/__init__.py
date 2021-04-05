@@ -4,8 +4,10 @@ import multiprocessing
 import torchelie.utils as tu
 from torchelie.datasets.debug import *
 from .concat import HorizontalConcatDataset, MergedDataset
+from .ms1m import MS1M
 
 import torch
+
 
 def FastImageFolder(root, *args, **kwargs):
     """
@@ -43,7 +45,6 @@ class PairedDataset(torch.utils.data.Dataset):
         dataset1 (Dataset): a dataset
         dataset2 (Dataset): another dataset
     """
-
     def __init__(self, dataset1, dataset2):
         super(PairedDataset, self).__init__()
         self.dataset1 = dataset1
