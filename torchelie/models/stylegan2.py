@@ -144,7 +144,9 @@ class StyleGAN2Generator(nn.Module):
 def StyleGAN2Discriminator(input_sz,
                            max_ch: int = 512,
                            ch_mul: int = 1,
-                           equal_lr: bool = True):
+                           equal_lr: bool = True,
+                           input_ch: int = 3,
+                           with_minibatch_std: bool = True):
     """
         Build the discriminator for StyleGAN2
 
@@ -160,7 +162,7 @@ def StyleGAN2Discriminator(input_sz,
     res = input_sz
     ch = int(512 / (2**(math.log2(res) - 6)) * ch_mul)
     layers = [(f'rgbto{res}x{res}',
-               tu.xavier(tnn.Conv3x3(3, min(max_ch, ch)),
+               tu.xavier(tnn.Conv3x3(input_ch, min(max_ch, ch)),
                          dynamic=dyn,
                          mode='fan_in'))]
 
@@ -173,14 +175,15 @@ def StyleGAN2Discriminator(input_sz,
                                               equal_lr=dyn)))
         ch *= 2
     layers.append(('relu1', nn.LeakyReLU(0.2, True)))
-    layers.append(('mbstd', tnn.MinibatchStddev()))
-    layers.append(
-        (f'mbconv4x4',
-         tu.kaiming(tnn.Conv3x3(min(max_ch, ch) + 1, min(max_ch, ch * 2)),
-                    a=0.2,
-                    dynamic=dyn,
-                    mode='fan_in')))
-    layers.append(('relu2', nn.LeakyReLU(0.2, True)))
+    if with_minibatch_std:
+        layers.append(('mbstd', tnn.MinibatchStddev()))
+        layers.append(
+            (f'mbconv4x4',
+             tu.kaiming(tnn.Conv3x3(min(max_ch, ch) + 1, min(max_ch, ch * 2)),
+                        a=0.2,
+                        dynamic=dyn,
+                        mode='fan_in')))
+        layers.append(('relu2', nn.LeakyReLU(0.2, True)))
     model = nn.Sequential(OrderedDict(layers))
     model = ConcatPoolClassifier1(model, min(max_ch, ch), 1, 0.)
     tu.xavier(model.head[-1], dynamic=dyn, mode='fan_in')

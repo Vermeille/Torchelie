@@ -349,7 +349,6 @@ def train(rank, world_size):
     if opts.from_ckpt is not None:
         ckpt = torch.load(opts.from_ckpt, map_location='cpu')
         recipe.load_state_dict(ckpt)
-    torch.autograd.set_detect_anomaly(True)
     recipe.run(5000)
 
 

@@ -42,14 +42,34 @@ def GANRecipe(G: nn.Module,
         G.train()
         return out
 
+
+    class NoLim:
+        def __init__(self):
+            self.i = iter(loader)
+            self.did_send = False
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            if self.did_send:
+                self.did_send = False
+                raise StopIteration
+            self.did_send = True
+            try:
+                return next(self.i)
+            except:
+                self.i = iter(loader)
+                return next(self.i)
+
     D_loop = Recipe(D_wrap, loader)
     D_loop.register('G', G)
     D_loop.register('D', D)
-    G_loop = Recipe(G_wrap, range(1))
+    G_loop = Recipe(G_wrap, NoLim())
     D_loop.G_loop = G_loop
     D_loop.register('G_loop', G_loop)
 
-    test_loop = Recipe(test_wrap, range(1))
+    test_loop = Recipe(test_wrap, NoLim())
     D_loop.test_loop = test_loop
     D_loop.register('test_loop', test_loop)
 
