@@ -3,6 +3,7 @@ import torch.nn as nn
 import torchelie.utils as tu
 import torchelie.callbacks as tcb
 from torchelie.recipes.recipebase import Recipe
+from typing import Optional, Iterable, Any
 
 
 def GANRecipe(G: nn.Module,
@@ -10,13 +11,13 @@ def GANRecipe(G: nn.Module,
               G_fun,
               D_fun,
               test_fun,
-              loader,
+              loader: Iterable[Any],
               *,
-              visdom_env: str='main',
-              checkpoint: str='model',
-              test_every: int=1000,
-              log_every: int=10,
-              g_every: int=1):
+              visdom_env: Optional[str] = 'main',
+              checkpoint: Optional[str] = 'model',
+              test_every: int = 1000,
+              log_every: int = 10,
+              g_every: int = 1) -> Recipe:
     def D_wrap(batch):
         tu.freeze(G)
         tu.unfreeze(D)
@@ -41,7 +42,6 @@ def GANRecipe(G: nn.Module,
         D.train()
         G.train()
         return out
-
 
     class NoLim:
         def __init__(self):
@@ -114,5 +114,3 @@ def GANRecipe(G: nn.Module,
         ])
 
     return D_loop
-
-

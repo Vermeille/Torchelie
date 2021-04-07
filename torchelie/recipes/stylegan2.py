@@ -17,13 +17,14 @@ from torchelie.callbacks.avg import ExponentialAvg
 
 
 class ADATF:
+    p: float
     def __init__(self, target_loss: float, growth: float = 0.01):
         self.p = 0
         self.target_loss = target_loss
         self.growth = growth
         self.loss = ExponentialAvg(0.95)
 
-    def __call__(self, x):
+    def __call__(self, x: torch.Tensor) -> torch.Tensor:
         if self.p == 0:
             return x
         p = self.p
@@ -46,7 +47,7 @@ class ADATF:
         x = geom.apply(x)
         return x
 
-    def log_loss(self, l):
+    def log_loss(self, l: float) -> None:
         self.loss.log(l)
         if self.loss.get() > self.target_loss:
             self.p -= self.growth
@@ -119,8 +120,8 @@ def StyleGAN2Recipe(G: nn.Module,
     print(G)
     print(D)
 
-    optG = RAdamW(G.parameters(), G_lr, betas=(0., 0.99), weight_decay=0)
-    optD = RAdamW(D.parameters(), D_lr, betas=(0., 0.99), weight_decay=0)
+    optG: torch.optim.Optimizer = RAdamW(G.parameters(), G_lr, betas=(0., 0.99), weight_decay=0)
+    optD: torch.optim.Optimizer = RAdamW(D.parameters(), D_lr, betas=(0., 0.99), weight_decay=0)
     if lookahead_steps != -1:
         optG = Lookahead(optG, k=lookahead_steps)
         optD = Lookahead(optD, k=lookahead_steps)

@@ -127,7 +127,7 @@ class StyleGAN2Generator(nn.Module):
     def ppl(self, z):
         w = self.encode(self.discretize_some(z))
         gen = torch.sigmoid(
-            self.render(rgb_4x4=None, **self.w_to_dict(w))['out'])
+            self.render(rgb_constxconst=None, **self.w_to_dict(w))['out'])
         B, C, H, W = gen.shape
         noise = torch.randn_like(gen) / math.sqrt(H * W)
         JwTy = torch.autograd.grad(outputs=torch.sum(gen * noise),
