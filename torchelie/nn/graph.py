@@ -72,3 +72,14 @@ class ModuleGraph(nn.Sequential):
                 variables[k] = o
 
         return {k: variables[k] for k in self.outputs}
+
+    def to_dot(self) -> None:
+        txt = ''
+        for i_names, f_nm, o_names in zip(self.ins, self._modules.keys(),
+                                       self.outs):
+            for k in i_names:
+                txt += f'{k} -> {f_nm};\n'
+            for k in o_names:
+                txt += f'{f_nm} -> {k};\n'
+            txt += f'{f_nm} [shape=square];\n'
+        return txt

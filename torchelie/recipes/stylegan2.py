@@ -13,6 +13,7 @@ from torchelie.loss.gan.penalty import zero_gp
 from torchelie.recipes.gan import GANRecipe
 from collections import OrderedDict
 from typing import Optional
+from torchelie.callbacks.avg import ExponentialAvg
 
 
 class ADATF:
@@ -20,6 +21,7 @@ class ADATF:
         self.p = 0
         self.target_loss = target_loss
         self.growth = growth
+        self.loss = ExponentialAvg(0.95)
 
     def __call__(self, x):
         if self.p == 0:
@@ -45,7 +47,8 @@ class ADATF:
         return x
 
     def log_loss(self, l):
-        if l > self.target_loss:
+        self.loss.log(l)
+        if self.loss.get() > self.target_loss:
             self.p -= self.growth
         else:
             self.p += self.growth
@@ -123,7 +126,7 @@ def StyleGAN2Recipe(G: nn.Module,
         optD = Lookahead(optD, k=lookahead_steps)
 
     batch_size = len(next(iter(dataloader))[0])
-    diffTF = ADATF(-2 if not ada else -0.6,
+    diffTF = ADATF(-2 if not ada else -0.9,
                    50000 / batch_size * total_num_gpus)
 
     gam = 0.1

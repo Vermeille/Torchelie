@@ -54,11 +54,16 @@ class StyleGAN2Generator(nn.Module):
         )
         res = 4
         render = []
+
         while res <= img_size:
             ch = int(512 / (2**(math.log2(res) - 7)) * ch_mul)
             if res == 4:
-                node = ('const', tnn.Const(min(max_ch, ch), 4, 4))
-                render.append(('w', node, f'in_{res}x{res}'))
+                render.append(('w',
+                    ('const', tnn.Const(min(max_ch, ch), 4, 4)),
+                    f'fmap_constxconst'))
+                prev_res = 'const'
+            else:
+                prev_res = res // 2
 
             block = tnn.StyleGAN2Block(min(max_ch, ch),
                                        min(max_ch, ch // 2),
@@ -68,11 +73,10 @@ class StyleGAN2Generator(nn.Module):
                                        equal_lr=equal_lr)
             node = (f'conv{res}x{res}', block)
 
-            next_res = min(img_size, res * 2)
             render.append(
-                ([f'in_{res}x{res}', f'w_{res}x{res}',
-                  f'rgb_{res}x{res}'], node,
-                 [f'rgb_{next_res}x{next_res}', f'in_{next_res}x{next_res}']))
+                ([f'fmap_{prev_res}x{prev_res}', f'w_{res}x{res}',
+                    f'rgb_{prev_res}x{prev_res}'], node,
+                    [f'rgb_{res}x{res}', f'fmap_{res}x{res}']))
             res *= 2
         render.append(
             (f'rgb_{img_size}x{img_size}', ('dummy', nn.Identity()), 'out'))
@@ -109,7 +113,7 @@ class StyleGAN2Generator(nn.Module):
                 ws[f'w_{res}x{res}'] = 0.3 * self.w_avg + 0.7 * w
             else:
                 ws[f'w_{res}x{res}'] = w
-        return torch.sigmoid(self.render(rgb_4x4=None, **ws)['out'])
+        return torch.sigmoid(self.render(rgb_constxconst=None, **ws)['out'])
 
     def w_to_dict(self, w):
         return {
