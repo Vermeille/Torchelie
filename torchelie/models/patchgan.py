@@ -1,37 +1,41 @@
 import torch.nn as nn
-
 import torchelie.nn as tnn
+import torchelie.utils as tu
 from torchelie.utils import kaiming, xavier
 from .classifier import Classifier2, ProjectionDiscr
+from typing import Callable, Optional, List
 
 
-def base_patch_discr(arch, in_ch=3, out_ch=1, norm=None):
-    def block(in_ch, out_ch, norm):
-        if norm is None:
-            return [
-                kaiming(nn.Conv2d(in_ch, out_ch, 4, stride=2, padding=1),
-                        a=0.2),
-                nn.LeakyReLU(0.2, inplace=True)
-            ]
-        else:
-            return [
-                kaiming(nn.Conv2d(in_ch, out_ch, 4, stride=2, padding=1),
-                        a=0.2),
-                norm(out_ch),
-                nn.LeakyReLU(0.2, inplace=True)
-            ]
+def base_patch_discr(arch: List[int],
+                     in_ch: int = 3,
+                     out_ch: int = 1) -> tnn.CondSeq:
 
-    layers = block(in_ch, arch[0], None)
+    layers = [
+        tnn.Conv2dBNReLU(in_ch,
+                         arch[0],
+                         ks=4,
+                         stride=2,
+                         leak=0.2,
+                         inplace=True)
+    ]
+    layers[0].norm = nn.Identity()
 
     in_ch = arch[0]
-    for out_ch in arch[1:]:
-        layers += block(in_ch, out_ch, norm)
-        in_ch = out_ch
+    for next_ch in arch[1:]:
+        layers.append(
+            tnn.Conv2dBNReLU(in_ch,
+                             next_ch,
+                             ks=4,
+                             stride=2,
+                             leak=0.2,
+                             inplace=True))
+        in_ch = next_ch
+    layers.append(tnn.Conv1x1(in_ch, out_ch))
 
     return tnn.CondSeq(*layers)
 
 
-def patch_discr(arch, in_ch=3, out_ch=1, norm=None):
+def patch_discr(arch: List[int], in_ch: int = 3, out_ch: int = 1) -> nn.Module:
     """
     Construct a PatchGAN discriminator
 
@@ -42,52 +46,39 @@ def patch_discr(arch, in_ch=3, out_ch=1, norm=None):
         in_ch (int): number of input channels, 3 for RGB images
         out_ch (int): number of output channels, 1 for fake / real
             discriminator
-        norm (fn): a normalization layer ctor
 
     Returns:
         the specified patchGAN as CondSeq
     """
-    return Classifier2(base_patch_discr(arch, in_ch=in_ch, out_ch=out_ch, norm=norm),
-                      arch[-1], out_ch)
+    return base_patch_discr(arch, in_ch=in_ch, out_ch=out_ch)
 
 
-def proj_patch_discr(arch, num_classes, in_ch=3, out_ch=1, norm=None):
-    """
-    Construct a PatchGAN discriminator with projection
-
-    Args:
-        arch (list of ints): a list of number of filters. For instance `[64,
-            128, 256]` generates a PatchGAN with 3 conv layers, with respective
-            number of kernels 64, 128 and 256.
-        num_classes (int): number of classes to discriminate
-        in_ch (int): number of input channels, 3 for RGB images
-        out_ch (int): number of output channels, 1 for fake / real
-            discriminator
-        norm (fn): a normalization layer ctor
-
-    Returns:
-        the specified patchGAN as CondSeq
-    """
-    return ProjectionDiscr(base_patch_discr(arch, in_ch=in_ch, out_ch=out_ch, norm=norm),
-                      arch[-1], num_classes=num_classes)
-
-
-def Patch286(in_ch=3, out_ch=1, norm=nn.BatchNorm2d):
+def Patch286(in_ch: int = 3, out_ch: int = 1) -> nn.Module:
     """
     Patch Discriminator from pix2pix
 
     Args:
         in_ch (int): input channels, 3 for pictures
         out_ch (int): output channels, 1 for binary real / fake classification
-        norm (function): the normalization layer to use
     """
     return patch_discr([64, 128, 256, 512, 512, 512],
                        in_ch=in_ch,
-                       out_ch=out_ch,
-                       norm=norm)
+                       out_ch=out_ch)
 
 
-def Patch70(in_ch=3, out_ch=1, norm=nn.BatchNorm2d):
+def Patch70(in_ch: int = 3, out_ch: int = 1) -> nn.Module:
+    """
+    Patch Discriminator from pix2pix
+
+    Args:
+        in_ch (int): input channels, 3 for pictures
+        out_ch (int): output channels, 1 for binary real / fake classification
+    """
+    return patch_discr([64, 128, 256, 512], in_ch=in_ch, out_ch=out_ch)
+
+
+# Not sure about the receptive field but ok
+def Patch32(in_ch: int = 3, out_ch: int = 1) -> nn.Module:
     """
     Patch Discriminator from pix2pix
 
@@ -96,40 +87,7 @@ def Patch70(in_ch=3, out_ch=1, norm=nn.BatchNorm2d):
         out_ch (int): output channels, 1 for binary real / fake classification
         norm (function): the normalization layer to use
     """
-    return patch_discr([64, 128, 256, 512],
-                       in_ch=in_ch,
-                       out_ch=out_ch,
-                       norm=norm)
-
-
-# Not sure about the receptive field but ok
-def Patch32(in_ch=3, out_ch=1, norm=nn.BatchNorm2d):
-    """
-    Patch Discriminator from pix2pix
-
-    Args:
-        in_ch (int): input channels, 3 for pictures
-        out_ch (int): output channels, 1 for binary real / fake classification
-        norm (function): the normalization layer to use
-    """
-    return patch_discr([64, 128, 256], in_ch=in_ch, out_ch=out_ch, norm=norm)
-
-
-# Not sure about the receptive field but ok
-def ProjPatch32(in_ch=3, out_ch=1, norm=nn.BatchNorm2d, num_classes=10):
-    """
-    Patch Discriminator from pix2pix, with projection for conditional GANs
-
-    Args:
-        in_ch (int): input channels, 3 for pictures
-        out_ch (int): output channels, 1 for binary real / fake classification
-        norm (function): the normalization layer to use
-        num_classes (int): how many classes to discriminate
-    """
-    return proj_patch_discr([64, 128, 256], num_classes=num_classes,
-                            in_ch=in_ch,
-                            out_ch=out_ch,
-                            norm=norm)
+    return patch_discr([64, 128, 256], in_ch=in_ch, out_ch=out_ch)
 
 
 def Patch16(in_ch=3, out_ch=1, norm=nn.BatchNorm2d):
