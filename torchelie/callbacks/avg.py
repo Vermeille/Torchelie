@@ -13,8 +13,8 @@ class RunningAvg(tu.AutoStateDict):
     """
     def __init__(self) -> None:
         super(RunningAvg, self).__init__()
-        self.count = 0
-        self.val = 0
+        self.count = 0.0
+        self.val = 0.0
 
     def log(self, x: float, total: int=1):
         """
@@ -88,4 +88,5 @@ class ExponentialAvg(tu.AutoStateDict):
 
     def get(self) -> float:
         """Return the exponential average at this time step"""
+        assert self.val is not None, 'no value yet'
         return self.val

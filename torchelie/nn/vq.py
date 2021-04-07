@@ -22,6 +22,14 @@ class VQ(nn.Module):
         return_indices (bool): whether to return the indices of the quantized
             code points
     """
+    embedding: nn.Embedding
+    dim: int
+    commitment: float
+    initialized: torch.Tensor
+    mode: str
+    return_indices: bool
+    init_mode: str
+
     def __init__(self,
                  latent_dim: int,
                  num_tokens: int,
@@ -114,7 +122,7 @@ class MultiVQ(nn.Module):
                  init_mode: str = 'normal',
                  return_indices: bool = True):
         assert latent_dim % num_codebooks == 0, (
-                "num_codebooks must divide evenly latent_dim")
+            "num_codebooks must divide evenly latent_dim")
         super(MultiVQ, self).__init__()
         self.dim = dim
         self.num_codebooks = num_codebooks

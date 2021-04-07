@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from typing import List
+from typing_extensions import Literal
 
 
 def _rfft2d_freqs(h, w):
@@ -10,7 +11,20 @@ def _rfft2d_freqs(h, w):
     return np.sqrt(fx * fx + fy * fy)
 
 
-class PixelImage(nn.Module):
+class LearnableImage(nn.Module):
+    def init_img(self, init: torch.Tensor) -> None:
+        raise NotImplementedError
+
+
+class ColorTransform:
+    def __call__(self, img: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError
+
+    def invert(self, t: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError
+
+
+class PixelImage(LearnableImage):
     """
     A learnable image parameterized by its pixel values
 
@@ -21,6 +35,9 @@ class PixelImage(nn.Module):
         init_img (tensor, optional): an image tensor to initialize the pixel
             values
     """
+    shape: List[int]
+    pixels: torch.Tensor
+
     def __init__(self,
                  shape: List[int],
                  sd: float = 0.01,
@@ -29,7 +46,7 @@ class PixelImage(nn.Module):
         self.shape = shape
         n, ch, h, w = shape
         self.pixels = torch.nn.Parameter(sd * torch.randn(n, ch, h, w),
-                requires_grad=True)
+                                         requires_grad=True)
 
         if init_img is not None:
             self.init_img(init_img)
@@ -44,7 +61,7 @@ class PixelImage(nn.Module):
         return self.pixels
 
 
-class SpectralImage(nn.Module):
+class SpectralImage(LearnableImage):
     """
     A learnable image parameterized by its Fourier representation.
 
@@ -59,7 +76,16 @@ class SpectralImage(nn.Module):
             mean 0.5 and standard deviation `sd`
         init_img (tensor, optional): an image tensor to initialize the image
     """
-    def __init__(self, shape, sd=0.01, decay_power=1, init_img=None):
+    shape: List[int]
+    decay_power: float
+    spectrum_var: torch.Tensor
+    spertum_scale: torch.Tensor
+
+    def __init__(self,
+                 shape: List[int],
+                 sd: float = 0.01,
+                 decay_power: int = 1,
+                 init_img: torch.Tensor = None) -> None:
         super(SpectralImage, self).__init__()
         self.shape = shape
         n, ch, h, w = shape
@@ -80,10 +106,10 @@ class SpectralImage(nn.Module):
         if init_img is not None:
             self.init_img(init_img)
 
-    def init_img(self, init_img: torch.Tensor):
+    def init_img(self, init_img: torch.Tensor) -> None:
         if init_img.shape[2] % 2 == 1:
             init_img = nn.functional.pad(init_img, [1, 0, 0, 0])
-        fft = torch.rfft(init_img * 4, 2, onesided=True, normalized=False)
+        fft = torch.fft.rfft(init_img * 4, 2, onesided=True, normalized=False)
         self.spectrum_var.data.copy_(fft / self.spertum_scale)
 
     def forward(self) -> torch.Tensor:
@@ -93,18 +119,23 @@ class SpectralImage(nn.Module):
         n, ch, h, w = self.shape
 
         scaled_spectrum = self.spectrum_var * self.spertum_scale
-        img = torch.irfft(scaled_spectrum, 2, onesided=True, normalized=False)
+        img = torch.fft.irfft(scaled_spectrum,
+                              2,
+                              onesided=True,
+                              normalized=False)
 
         img = img[:, :ch, :h, :w]
         return img / 4.
 
 
-class CorrelateColors(torch.nn.Module):
+class CorrelateColors(ColorTransform):
     """
     Takes an learnable image and applies the inverse color decorrelation from
     ImageNet (ie, it correlates the color like ImageNet to ease optimization)
     """
-    def __init__(self):
+    color_correlation: torch.Tensor
+
+    def __init__(self) -> None:
         super(CorrelateColors, self).__init__()
         color_correlation_svd_sqrt = torch.tensor([[0.26, 0.09, 0.02],
                                                    [0.27, 0.00, -0.05],
@@ -114,15 +145,15 @@ class CorrelateColors(torch.nn.Module):
             np.max(np.linalg.norm(color_correlation_svd_sqrt, axis=0)))
 
         cc = color_correlation_svd_sqrt / max_norm_svd_sqrt
-        self.register_buffer('color_correlation', cc)
+        self.color_correlation = cc
 
-    def forward(self, t: torch.Tensor) -> torch.Tensor:
+    def __call__(self, img: torch.Tensor) -> torch.Tensor:
         """
-        Correlate the color of the image `t` and return the result
+        Correlate the color of the image `img` and return the result
         """
-        t_flat = t.view(t.shape[0], 3, -1).transpose(2, 1)
+        t_flat = img.view(img.shape[0], 3, -1).transpose(2, 1)
         t_flat = torch.matmul(t_flat, self.color_correlation.t())
-        t = t_flat.transpose(2, 1).view(t.shape)
+        t = t_flat.transpose(2, 1).view(img.shape)
         return t
 
     def invert(self, t: torch.Tensor) -> torch.Tensor:
@@ -136,11 +167,11 @@ class CorrelateColors(torch.nn.Module):
         return t
 
 
-class RGB:
-    def __call__(self, x):
+class RGB(ColorTransform):
+    def __call__(self, x: torch.Tensor) -> torch.Tensor:
         return x
 
-    def invert(self, x):
+    def invert(self, x: torch.Tensor) -> torch.Tensor:
         return x
 
 
@@ -159,12 +190,15 @@ class ParameterizedImg(nn.Module):
         colors (str): either `"corr"` or `"uncorr"`, to use a correlated or
             decorrelated color space
     """
+    color: ColorTransform
+    img: LearnableImage
+
     def __init__(self,
-                 *shape,
-                 init_sd=0.06,
-                 init_img=None,
-                 space='spectral',
-                 colors='uncorr'):
+                 *shape: int,
+                 init_sd: float = 0.06,
+                 init_img: torch.Tensor = None,
+                 space: Literal['spectral', 'pixel'] = 'spectral',
+                 colors: Literal['uncorr', 'corr'] = 'uncorr') -> None:
         super(ParameterizedImg, self).__init__()
 
         assert colors in ['uncorr', 'corr']
@@ -175,9 +209,9 @@ class ParameterizedImg(nn.Module):
 
         assert space in ['spectral', 'pixel']
         if space == 'spectral':
-            self.img = SpectralImage(shape, sd=init_sd)
+            self.img = SpectralImage(list(shape), sd=init_sd)
         else:
-            self.img = PixelImage(shape, sd=init_sd)
+            self.img = PixelImage(list(shape), sd=init_sd)
 
         if init_img is not None:
             self.init_img(init_img)

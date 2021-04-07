@@ -1,5 +1,5 @@
 import torch.nn as nn
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Callable, cast
 
 
 class CondSeq(nn.Sequential):
@@ -7,20 +7,18 @@ class CondSeq(nn.Sequential):
     An extension to torch's Sequential that allows conditioning either as a
     second forward argument or `condition()`
     """
-    _modules: Dict[str, nn.Module]
-
-    def condition(self, z: Any):
+    def condition(self, z: Any) -> None:
         """
         Conditions all the layers on z
 
         Args:
             z: conditioning
         """
-        for m in self._modules.values():
-            if hasattr(m, 'condition'):
-                m.condition(z)
+        for m in self:
+            if hasattr(m, 'condition') and m is not self:
+                cast(Callable, m.condition)(z)
 
-    def forward(self, x, z=None):
+    def forward(self, x: Any, z: Optional[Any] = None) -> Any:
         """
         Forward pass
 
@@ -29,7 +27,7 @@ class CondSeq(nn.Sequential):
             z (optional): conditioning. condition() must be called first if
                 left None
         """
-        for m in self._modules.values():
+        for m in self:
             if hasattr(m, 'condition') and z is not None:
                 x = m(x, z)
             else:

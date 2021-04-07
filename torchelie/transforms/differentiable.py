@@ -3,7 +3,7 @@ import random
 import torch
 import torch.nn.functional as F
 import numpy as np
-from typing import Optional
+from typing import Optional, cast, List
 
 # FIXME: The API is not that great, improve it.
 
@@ -223,8 +223,8 @@ class AllAtOnceGeometric:
         for _ in range(self.B):
             p_rot = math.copysign(1, random.random() - (1 - p))
             tfm.append([[p_rot, 0., 0], [0, 1, 0], [0, 0, 1]])
-        tfm = torch.tensor(tfm)
-        self._mix(tfm, prob)
+        tfm_matrix = torch.tensor(tfm)
+        self._mix(tfm_matrix, prob)
         return self
 
     def flip_y(self, p: float, prob: float = 1.) -> 'AllAtOnceGeometric':
@@ -232,12 +232,12 @@ class AllAtOnceGeometric:
         for _ in range(self.B):
             p_rot = math.copysign(1, random.random() - (1 - p))
             tfm.append([[1, 0., 0], [0, p_rot, 0], [0, 0, 1]])
-        tfm = torch.tensor(tfm)
-        self._mix(tfm, prob)
+        tfm_matrix = torch.tensor(tfm)
+        self._mix(tfm_matrix, prob)
         return self
 
     def apply(self, x: torch.Tensor) -> torch.Tensor:
-        grid = F.affine_grid(self.m[:, :2, :], x.size())
+        grid = F.affine_grid(self.m[:, :2, :], cast(List[int], x.shape))
         grid = grid.to(x.device)
         return F.grid_sample(x, grid, mode='bilinear', padding_mode='reflection')
 
@@ -294,8 +294,8 @@ class AllAtOnceColor:
             t = random.uniform(1 - alpha, 1 + alpha)
             rot.append([[t, 0, 0, (1 - t) / 2], [0, t, 0, (1 - t) / 2],
                         [0, 0, t, (1 - t) / 2], [0, 0, 0, 1]])
-        rot = torch.tensor(rot)
-        self._mix(rot, prob)
+        rot_matrix = torch.tensor(rot)
+        self._mix(rot_matrix, prob)
         return self
 
     def apply(self, x: torch.Tensor) -> torch.Tensor:

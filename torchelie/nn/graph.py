@@ -10,7 +10,7 @@ def tup(x):
 
 
 ArgNames = Union[str, List[str]]
-NamedModule = Union[nn.Module, Tuple[str, nn.Module]]
+NamedModule = Tuple[str, nn.Module]
 
 
 class ModuleGraph(nn.Sequential):
@@ -47,7 +47,9 @@ class ModuleGraph(nn.Sequential):
     >>> m.fc
     Linear(10, 20, bias=True)
     """
-    def __init__(self, graph: Sequence[Tuple[ArgNames, NamedModule, ArgNames]],
+    def __init__(self,
+                 graph: Union[Sequence[Tuple[ArgNames, NamedModule, ArgNames]],
+                              Sequence[Tuple[ArgNames, nn.Module, ArgNames]]],
                  outputs: ArgNames) -> None:
         if isinstance(graph[0][1], (tuple, list)):
             super().__init__(OrderedDict([g[1] for g in graph]))
@@ -73,10 +75,10 @@ class ModuleGraph(nn.Sequential):
 
         return {k: variables[k] for k in self.outputs}
 
-    def to_dot(self) -> None:
+    def to_dot(self) -> str:
         txt = ''
         for i_names, f_nm, o_names in zip(self.ins, self._modules.keys(),
-                                       self.outs):
+                                          self.outs):
             for k in i_names:
                 txt += f'{k} -> {f_nm};\n'
             for k in o_names:
