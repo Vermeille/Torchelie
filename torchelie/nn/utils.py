@@ -123,6 +123,6 @@ def remove_weight_scale(module: Module, name: str = 'weight') -> Module:
     Remove a weight_scale hook previously applied on
     :code:`getattr(module, name)`.
     """
-    remove_weight_lambda(module, 'scale', name)
+    return remove_weight_lambda(module, 'scale', name)
 
 

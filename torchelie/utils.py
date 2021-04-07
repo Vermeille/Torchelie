@@ -4,14 +4,19 @@ import torch.distributed as dist
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import Optional, Iterable, Generator, TypeVar, Union, Any, overload
+from typing import Callable
+
+T = TypeVar('T')
+Numeric = TypeVar('Numeric', torch.Tensor, float)
 
 
-def fast_zero_grad(net):
+def fast_zero_grad(net: nn.Module) -> None:
     for p in net.parameters():
         p.grad = None
 
 
-def freeze(net):
+def freeze(net: nn.Module) -> nn.Module:
     """
     Freeze all parameters of `net`
     """
@@ -20,7 +25,7 @@ def freeze(net):
     return net
 
 
-def unfreeze(net):
+def unfreeze(net: nn.Module) -> nn.Module:
     """
     Unfreeze all parameters of `net`
     """
@@ -29,7 +34,9 @@ def unfreeze(net):
     return net
 
 
-def entropy(out, dim=1, reduce='mean'):
+def entropy(out: torch.Tensor,
+            dim: int = 1,
+            reduce: str = 'mean') -> torch.Tensor:
     """
     Compute the entropy of the categorical distribution specified by the logits
     `out` along dimension `dim`.
@@ -47,9 +54,14 @@ def entropy(out, dim=1, reduce='mean'):
         return h.mean()
     if reduce == 'sum':
         return h.sum()
+    assert False, reduce + ' is not a valid reduction method'
 
 
-def kaiming(m, a=0, nonlinearity='relu', mode='fan_out', dynamic=False):
+def kaiming(m: nn.Module,
+            a: float = 0,
+            nonlinearity: str = 'relu',
+            mode: str = 'fan_out',
+            dynamic: bool = False) -> nn.Module:
     """
     Initialize a module with kaiming normal init
 
@@ -63,6 +75,7 @@ def kaiming(m, a=0, nonlinearity='relu', mode='fan_out', dynamic=False):
     Returns:
         the initialized module
     """
+    assert isinstance(m.weight, torch.Tensor)
     if nonlinearity in ['relu', 'leaky_relu']:
         if a == 0:
             nonlinearity = 'relu'
@@ -82,11 +95,16 @@ def kaiming(m, a=0, nonlinearity='relu', mode='fan_out', dynamic=False):
         weight_scale(m, scale=gain / math.sqrt(fan))
 
     if hasattr(m, 'biais') and m.bias is not None:
+        assert isinstance(m.bias, torch.Tensor)
         nn.init.constant_(m.bias, 0)
     return m
 
 
-def xavier(m, a=0, nonlinearity='relu', mode='fan_out', dynamic=False):
+def xavier(m: nn.Module,
+           a: float = 0,
+           nonlinearity: str = 'relu',
+           mode: str = 'fan_out',
+           dynamic: bool = False) -> nn.Module:
     """
     Initialize a module with xavier normal init
 
@@ -98,6 +116,7 @@ def xavier(m, a=0, nonlinearity='relu', mode='fan_out', dynamic=False):
     Returns:
         the initialized module
     """
+    assert isinstance(m.weight, torch.Tensor)
     if nonlinearity in ['relu', 'leaky_relu']:
         if a == 0:
             nonlinearity = 'relu'
@@ -111,14 +130,15 @@ def xavier(m, a=0, nonlinearity='relu', mode='fan_out', dynamic=False):
         nn.init.normal_(m.weight, 0, 1)
         fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(m.weight)
         gain = nn.init.calculate_gain(nonlinearity, param=a)
-        weight_scale(m, scale=gain*math.sqrt(2. / (fan_in + fan_out)))
+        weight_scale(m, scale=gain * math.sqrt(2. / (fan_in + fan_out)))
 
     if hasattr(m, 'biais') and m.bias is not None:
+        assert isinstance(m.bias, torch.Tensor)
         nn.init.constant_(m.bias, 0)
     return m
 
 
-def normal_init(m, std=0.02):
+def normal_init(m: nn.Module, std: float = 0.02) -> nn.Module:
     """
     Initialize a module with gaussian weights of standard deviation std
 
@@ -128,13 +148,15 @@ def normal_init(m, std=0.02):
     Returns:
         the initialized module
     """
+    assert isinstance(m.weight, torch.Tensor)
     nn.init.normal_(m.weight, 0, std)
     if hasattr(m, 'biais') and m.bias is not None:
+        assert isinstance(m.bias, torch.Tensor)
         nn.init.constant_(m.bias, 0)
     return m
 
 
-def constant_init(m, val):
+def constant_init(m: nn.Module, val: float) -> nn.Module:
     """
     Initialize a module with gaussian weights of standard deviation std
 
@@ -144,13 +166,15 @@ def constant_init(m, val):
     Returns:
         the initialized module
     """
+    assert isinstance(m.weight, torch.Tensor)
     nn.init.constant_(m.weight, val)
     if hasattr(m, 'biais') and m.bias is not None:
+        assert isinstance(m.bias, torch.Tensor)
         nn.init.constant_(m.bias, 0)
     return m
 
 
-def nb_parameters(net):
+def nb_parameters(net: nn.Module) -> int:
     """
     Counts the number of parameters of `net`
 
@@ -163,7 +187,7 @@ def nb_parameters(net):
     return sum(p.numel() for p in net.parameters())
 
 
-def layer_by_name(net, name):
+def layer_by_name(net: nn.Module, name: str) -> Optional[nn.Module]:
     """
     Get a submodule at any depth of a net by its name
 
@@ -177,9 +201,10 @@ def layer_by_name(net, name):
     for l in net.named_modules():
         if l[0] == name:
             return l[1]
+    return None
 
 
-def forever(iterable):
+def forever(iterable: Iterable[T]) -> Iterable[T]:
     """
     Cycle through `iterable` forever
 
@@ -195,7 +220,7 @@ def forever(iterable):
             it = iter(iterable)
 
 
-def gram(m):
+def gram(m: torch.Tensor) -> torch.Tensor:
     """
     Return the Gram matrix of `m`
 
@@ -209,7 +234,7 @@ def gram(m):
     return g
 
 
-def bgram(m):
+def bgram(m: torch.Tensor) -> torch.Tensor:
     """
     Return the batched Gram matrix of `m`
 
@@ -224,7 +249,7 @@ def bgram(m):
     return g
 
 
-def dict_by_key(d, k):
+def dict_by_key(d: Any, k: str) -> Any:
     """
     Recursively index a `dict` by a hierarchical key
 
@@ -240,17 +265,17 @@ def dict_by_key(d, k):
     Returns:
         The value in `d` indexed by `k`
     """
-    k = k.split('.')
-    while len(k) != 0:
+    ks = k.split('.')
+    while len(ks) != 0:
         if isinstance(d, dict):
-            d = d[k[0]]
+            d = d[ks[0]]
         else:
-            d = d[int(k[0])]
-        k = k[1:]
+            d = d[int(ks[0])]
+        ks = ks[1:]
     return d
 
 
-def send_to_device(x, device, non_blocking=False):
+def send_to_device(x: Any, device, non_blocking: bool = False) -> Any:
     """
     Send all tensors contained in `x` to `device`, when `x` is an arbitrary
     nested datastructure of dicts and lists containing tensors
@@ -280,7 +305,7 @@ def send_to_device(x, device, non_blocking=False):
     return x
 
 
-def recursive_state_dict(x):
+def recursive_state_dict(x: Any) -> Any:
     """
     Recursively call state_dict() on all elements contained in a list / tuple /
     dict so that it can be saved safely via torch.save().
@@ -300,9 +325,10 @@ def recursive_state_dict(x):
         return [recursive_state_dict(xx) for xx in x]
     if isinstance(x, dict):
         return {k: recursive_state_dict(v) for k, v in x.items()}
+    return x
 
 
-def load_recursive_state_dict(x, obj):
+def load_recursive_state_dict(x: Any, obj: Any) -> None:
     """
     Reload a state dict saved with `recursive_state_dict()`
 
@@ -316,7 +342,7 @@ def load_recursive_state_dict(x, obj):
         for xx, oo in zip(x, obj):
             load_recursive_state_dict(xx, oo)
     if isinstance(x, dict):
-        for k in objs.keys():
+        for k in obj.keys():
             load_recursive_state_dict(xx[k], oo[k])
 
 
@@ -327,11 +353,11 @@ class FrozenModule(nn.Module):
     Args:
         m (nn.Module): a module
     """
-    def __init__(self, m):
+    def __init__(self, m: nn.Module) -> None:
         super(FrozenModule, self).__init__()
         self.m = freeze(m).eval()
 
-    def train(self, mode=True):
+    def train(self, mode: bool = True) -> 'FrozenModule':
         return self
 
     def __getattr__(self, name):
@@ -357,6 +383,24 @@ class DetachedModule:
         return getattr(self.m, name)
 
 
+@overload
+def lerp(a: float, b: float, t: float) -> float:
+    ...
+
+
+@overload
+def lerp(a: float, b: float, t: torch.Tensor) -> torch.Tensor:
+    ...
+
+
+@overload
+def lerp(a: torch.Tensor, b: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+    ...
+
+@overload
+def lerp(a: torch.Tensor, b: torch.Tensor, t: float) -> torch.Tensor:
+    ...
+
 def lerp(a, b, t):
     r"""
     Linearly interpolate between `a` and `b` according to `t`.
@@ -375,7 +419,7 @@ def lerp(a, b, t):
     return (1 - t) * a + t * b
 
 
-def ilerp(a, b, t):
+def ilerp(a: Numeric, b: Numeric, t: Numeric) -> Numeric:
     r"""
     Inverse or lerp. For `t` between `a` and `b`, returns the fraction or `a`
     and `b` in `t`.
@@ -393,7 +437,7 @@ def ilerp(a, b, t):
     return (t - a) / (b - a)
 
 
-def slerp(z1, z2, t):
+def slerp(z1: torch.Tensor, z2: torch.Tensor, t: float) -> torch.Tensor:
     r"""
     Spherical linear interpolate between `z1` and `z2` according to `t`.
 
@@ -418,9 +462,8 @@ def slerp(z1, z2, t):
     z3 = z2_n - dot * z1_n
     z3 = z3 / z3.pow(2).sum(dim=-1, keepdim=True).sqrt()
 
-
     azimut = lerp(z1_l, z2_l, t)
-    return  azimut * (z1_n * torch.cos(theta) + z3 * torch.sin(theta))
+    return azimut * (z1_n * torch.cos(theta) + z3 * torch.sin(theta))
 
 
 def as_multiclass_shape(preds, as_probs=False):
@@ -519,7 +562,7 @@ def parallel_run(fun, *args, n_gpus: int = torch.cuda.device_count(),
              join=True)
 
 
-def indent(text: str, amount: int = 4):
+def indent(text: str, amount: int = 4) -> str:
     """
     Indent :code:`text` by :code:`amount` spaces.
 
@@ -533,7 +576,7 @@ def indent(text: str, amount: int = 4):
     return '\n'.join((' ' * amount + l) for l in text.splitlines())
 
 
-def edit_model(m, f):
+def edit_model(m: nn.Module, f: Callable[[nn.Module], nn.Module]) -> nn.Module:
     """
     Allow to edit any part of a model by recursively edit its modules.
 
@@ -558,8 +601,7 @@ def edit_model(m, f):
     Returns:
         The edited model.
     """
-    for name, mod in m.modules():
+    for name, mod in m.named_modules():
         m._modules[name] = edit_model(mod, f)
         m._modules[name] = f(mod)
     return f(m)
-
