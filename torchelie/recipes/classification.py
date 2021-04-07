@@ -50,7 +50,6 @@ def Classification(model,
     - ConfusionMatrix if len(classes) <= 25
     - ClassificationInspector
     - MetricsTable
-    - ImageGradientVis
 
     Inherited training callbacks:
 
@@ -129,7 +128,6 @@ def Classification(model,
         if len(classes) <= 50:
             loop.callbacks.add_epilogues([
                 tcb.ConfusionMatrix(classes),
-                tcb.ImageGradientVis(),
             ])
         loop.callbacks.add_epilogues([
             tcb.ClassificationInspector(30, classes),
@@ -170,7 +168,6 @@ def CrossEntropyClassification(model,
     - ConfusionMatrix if len(classes) <= 25
     - ClassificationInspector
     - MetricsTable
-    - ImageGradientVis
     - Counter for counting iterations, connected to the testing loop as well
     - VisdomLogger
     - StdoutLogger
@@ -317,7 +314,6 @@ def MixupClassification(model,
 
     if visdom_env is not None:
         loop.callbacks.add_epilogues([
-            tcb.ImageGradientVis(),
             tcb.MetricsTable()
         ])
 
