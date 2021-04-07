@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 import torchelie.nn as tnn
 from torchelie.utils import xavier, kaiming
+from typing import List
 
 
 class AutoGAN(nn.Module):
@@ -23,20 +24,24 @@ class AutoGAN(nn.Module):
             projecting to RGB. I have found it better on False, but the
             official AutoGAN repo has it.
     """
+    n_skip_max: int
+    make_noise: nn.Module
+    blocks: nn.ModuleList
+    to_rgb: nn.Sequential
 
     def __init__(self,
-                 arch,
-                 n_skip_max=2,
-                 in_noise=256,
-                 out_ch=3,
-                 batchnorm_in_output=False):
+                 arch: List[int],
+                 n_skip_max: int = 2,
+                 in_noise: int = 256,
+                 out_ch: int = 3,
+                 batchnorm_in_output: bool = False) -> None:
         super(AutoGAN, self).__init__()
         self.n_skip_max = n_skip_max
         self.make_noise = xavier(nn.Linear(in_noise, 4 * 4 * arch[0]))
 
         in_ch = arch[0]
         blocks = []
-        lasts = []
+        lasts: List[int] = []
         for i, out in enumerate(arch[1:]):
             mode = 'nearest' if i % 2 == 0 else 'bilinear'
             blocks.append(tnn.AutoGANGenBlock(in_ch, out, lasts, mode=mode))
@@ -51,7 +56,7 @@ class AutoGAN(nn.Module):
             self.to_rgb = nn.Sequential(nn.ReLU(True),
                                         xavier(tnn.Conv3x3(arch[-1], out_ch)))
 
-    def forward(self, z):
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
         """
         Forward pass
 
@@ -64,28 +69,28 @@ class AutoGAN(nn.Module):
         x = self.make_noise(z)
         x = x.view(x.shape[0], -1, 4, 4)
 
-        skips = []
+        skips: List[torch.Tensor] = []
         for b in self.blocks:
             x, sk = b(x, skips)
             skips = ([sk] + skips)[:self.n_skip_max]
         return torch.sigmoid(self.to_rgb(F.leaky_relu(x, 0.2)))
 
 
-def autogan_128(in_noise, out_ch=3):
+def autogan_128(in_noise: int, out_ch: int = 3) -> AutoGAN:
     return AutoGAN(arch=[512, 512, 256, 128, 64, 32],
                    n_skip_max=3,
                    in_noise=in_noise,
                    out_ch=out_ch)
 
 
-def autogan_64(in_noise, out_ch=3):
+def autogan_64(in_noise: int, out_ch: int = 3) -> AutoGAN:
     return AutoGAN(arch=[512, 256, 128, 64, 32],
                    n_skip_max=3,
                    in_noise=in_noise,
                    out_ch=out_ch)
 
 
-def autogan_32(in_noise, out_ch=3):
+def autogan_32(in_noise: int, out_ch: int = 3) -> AutoGAN:
     return AutoGAN(arch=[256, 128, 64, 32],
                    n_skip_max=3,
                    in_noise=in_noise,

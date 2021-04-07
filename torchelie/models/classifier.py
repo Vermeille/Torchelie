@@ -15,7 +15,8 @@ class Classifier2(nn.Module):
             feature extractor
         num_classes (int): the number of output classes
     """
-    def __init__(self, feat_extractor, feature_size, num_classes):
+    def __init__(self, feat_extractor: nn.Module, feature_size: int,
+                 num_classes: int) -> None:
         super(Classifier2, self).__init__()
         self.bone = feat_extractor
 
@@ -28,7 +29,7 @@ class Classifier2(nn.Module):
             xavier(nn.Linear(feature_size, num_classes)),
         )
 
-    def forward(self, *xs):
+    def forward(self, *xs) -> torch.Tensor:
         """
         Forward pass
 
@@ -49,7 +50,11 @@ class Classifier1(nn.Module):
             feature extractor
         num_classes (int): the number of output classes
     """
-    def __init__(self, feat_extractor, feature_size, num_classes, dropout=0.5):
+    def __init__(self,
+                 feat_extractor: nn.Module,
+                 feature_size: int,
+                 num_classes: int,
+                 dropout: float = 0.5) -> None:
         super(Classifier1, self).__init__()
         self.bone = feat_extractor
 
@@ -60,7 +65,7 @@ class Classifier1(nn.Module):
             kaiming(nn.Linear(feature_size, num_classes)),
         )
 
-    def forward(self, *xs):
+    def forward(self, *xs) -> torch.Tensor:
         """
         Forward pass
 
@@ -82,7 +87,11 @@ class ConcatPoolClassifier1(nn.Module):
             feature extractor
         num_classes (int): the number of output classes
     """
-    def __init__(self, feat_extractor, feature_size, num_classes, dropout=0.5):
+    def __init__(self,
+                 feat_extractor: nn.Module,
+                 feature_size: int,
+                 num_classes: int,
+                 dropout: float = 0.5) -> None:
         super(ConcatPoolClassifier1, self).__init__()
         self.bone = feat_extractor
 
@@ -93,7 +102,7 @@ class ConcatPoolClassifier1(nn.Module):
             kaiming(nn.Linear(feature_size * 2, num_classes)),
         )
 
-    def forward(self, *xs):
+    def forward(self, *xs) -> torch.Tensor:
         """
         Forward pass
 
@@ -115,17 +124,18 @@ class ProjectionDiscr(nn.Module):
             feature extractor
         num_classes (int): the number of output classes
     """
-    def __init__(self, feat_extractor, feature_size, num_classes):
+    def __init__(self, feat_extractor: nn.Module, feature_size: int,
+                 num_classes: int) -> None:
         super(ProjectionDiscr, self).__init__()
         self.bone = feat_extractor
         self.head = nn.Sequential(
-            nn.AdaptiveMaxPool2d(1),
+            nn.AdaptiveAvgPool2d(1),
             tnn.Reshape(feature_size),
         )
         self.emb = nn.Embedding(num_classes, feature_size)
         self.discr = nn.Linear(feature_size, 1)
 
-    def forward(self, x, y):
+    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
         Forward pass
 
@@ -136,5 +146,3 @@ class ProjectionDiscr(nn.Module):
         feats = self.head(self.bone(x, y))
         y_emb = self.emb(y)
         return self.discr(feats) + torch.mm(y_emb, feats.t())
-
-

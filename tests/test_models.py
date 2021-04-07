@@ -7,10 +7,6 @@ def test_patchgan():
         m = M()
         m(torch.randn(1, 3, 128, 128))
 
-    for M in [ProjPatch32]:
-        m = M()
-        m(torch.randn(1, 3, 128, 128), torch.LongTensor([0]))
-
 
 def test_pnet():
     pnet = PerceptualNet(['conv5_2'])
