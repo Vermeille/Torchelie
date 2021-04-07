@@ -601,7 +601,7 @@ def edit_model(m: nn.Module, f: Callable[[nn.Module], nn.Module]) -> nn.Module:
     Returns:
         The edited model.
     """
-    for name, mod in m.named_modules():
+    for name, mod in m._modules.items():
         m._modules[name] = edit_model(mod, f)
         m._modules[name] = f(mod)
     return f(m)
