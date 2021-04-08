@@ -87,6 +87,9 @@ class ConcatPoolClassifier1(nn.Module):
             feature extractor
         num_classes (int): the number of output classes
     """
+    bone: nn.Module
+    head: nn.Sequential
+
     def __init__(self,
                  feat_extractor: nn.Module,
                  feature_size: int,

@@ -46,16 +46,13 @@ def test_attnnorm():
 
 
 def test_blocks():
-    m = Conv2dNormReLU(4, 8, 3, nn.BatchNorm2d)
-    m(torch.randn(1, 4, 8, 8))
-
-    m = MConvNormReLU(4, 8, 3, nn.BatchNorm2d)
-    m(torch.randn(1, 4, 8, 8))
-
     m = MConvBNrelu(4, 8, 3)
     m(torch.randn(1, 4, 8, 8))
 
     m = Conv2dBNReLU(4, 8, 3)
+    m(torch.randn(1, 4, 8, 8))
+
+    m = Conv2dBNReLU(4, 8, 3).remove_bn().leaky()
     m(torch.randn(1, 4, 8, 8))
 
     m = ResBlock(4, 8, 1)

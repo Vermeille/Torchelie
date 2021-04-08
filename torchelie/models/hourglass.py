@@ -18,7 +18,7 @@ class Hourglass(nn.Module):
                  up_kernel=[3, 3, 3, 3, 3],
                  upsampling='bilinear',
                  pad=nn.ReflectionPad2d,
-                 relu=nn.LeakyReLU(0.2, True)):
+                 relu=nn.LeakyReLU(0.2, True))->None:
         super(Hourglass, self).__init__()
 
         assert (len(down_channels) == len(down_kernel)), (len(down_channels),
@@ -51,7 +51,7 @@ class Hourglass(nn.Module):
             self.pad(up_kernel[-1] // 2),
             (nn.Conv2d(down_channels[0], 3, up_kernel[-1])), nn.BatchNorm2d(3))
 
-    def down(self, in_ch, out_ch, ks):
+    def down(self, in_ch, out_ch, ks)->nn.Sequential:
         return nn.Sequential(
             self.pad(ks // 2),
             (nn.Conv2d(in_ch, out_ch, ks, stride=2)),
@@ -63,7 +63,7 @@ class Hourglass(nn.Module):
             self.relu,
         )
 
-    def up(self, in_ch, out_ch, ks):
+    def up(self, in_ch, out_ch, ks)->nn.Sequential:
         return nn.Sequential(
             nn.BatchNorm2d(in_ch),
             self.pad(ks // 2),
@@ -72,14 +72,14 @@ class Hourglass(nn.Module):
             self.relu,
         )
 
-    def skip(self, in_ch, out_ch):
+    def skip(self, in_ch, out_ch)->nn.Sequential:
         return nn.Sequential(
             (nn.Conv2d(in_ch, out_ch, 1)),
             nn.BatchNorm2d(out_ch),
             self.relu,
         )
 
-    def forward(self, x):
+    def forward(self, x)-> torch.Tensor:
         acts = [x]
         for d in self.downs:
             acts.append(d(acts[-1]))

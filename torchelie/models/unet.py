@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from typing import Optional, List, Tuple, cast
 
 import torchelie as tch
 import torchelie.utils as tu
@@ -10,7 +11,14 @@ from torchelie.transforms.differentiable import center_crop
 
 
 class UBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, inner=None, skip=True, up_mode='bilinear'):
+    skip: nn.Module
+
+    def __init__(self,
+                 in_ch: int,
+                 out_ch: int,
+                 inner: Optional[nn.Module] = None,
+                 skip: bool = True,
+                 up_mode: str = 'bilinear') -> None:
         super(UBlock, self).__init__()
         self.up_mode = up_mode
         self.in_conv = nn.Sequential(
@@ -27,8 +35,7 @@ class UBlock(nn.Module):
         if inner is not None:
             if skip:
                 self.skip = nn.Sequential(
-                    tu.kaiming(nn.Conv2d(out_ch, out_ch, 1)),
-                    nn.ReLU(True))
+                    tu.kaiming(nn.Conv2d(out_ch, out_ch, 1)), nn.ReLU(True))
             else:
                 self.skip = nn.Identity()
 
@@ -43,23 +50,16 @@ class UBlock(nn.Module):
                 ('relu2', nn.ReLU(inplace=True)),
             ]))
 
-    def forward(self, x_orig):
+    def forward(self, x_orig: torch.Tensor) -> torch.Tensor:
         x = self.in_conv(x_orig)
         if self.inner is not None:
             x2 = x
-            x = F.interpolate(
-                    self.inner(
-                        F.avg_pool2d(x, 3, 2, 1)
-                    ),
-                mode=self.up_mode, size=x.shape[2:]
-                )
-            x = torch.cat([
-                x,
-                self.skip(center_crop(x2, x.shape[2:]))
-            ], dim=1)
+            x = F.interpolate(self.inner(F.avg_pool2d(x, 3, 2, 1)),
+                              mode=self.up_mode,
+                              size=x.shape[2:])
+            x = torch.cat([x, self.skip(center_crop(x2, x.shape[2:]))], dim=1)
 
         return self.out_conv(x)
-
 
 
 class UNetBone(nn.Module):
@@ -77,14 +77,18 @@ class UNetBone(nn.Module):
         in_ch (int): number of input channels
         out_ch (int): number of output channels
     """
+    conv: nn.Module
 
-    def __init__(self, arch, in_ch=3, out_ch=1, *, skip=True,
-        up_mode='bilinear'):
+    def __init__(self,
+                 arch: List[int],
+                 in_ch: int = 3,
+                 out_ch: int = 1,
+                 *,
+                 skip: bool = True,
+                 up_mode: str = 'bilinear') -> None:
         super(UNetBone, self).__init__()
         self.in_conv = nn.Sequential(
-                tu.kaiming(nn.Conv2d(in_ch, arch[0], 5, padding=2)),
-                nn.ReLU(True)
-            )
+            tu.kaiming(nn.Conv2d(in_ch, arch[0], 5, padding=2)), nn.ReLU(True))
         self.conv = nn.Sequential(
             nn.ReflectionPad2d(1),
             tu.kaiming(nn.Conv2d(arch[-1], arch[-1], 3)),
@@ -96,10 +100,9 @@ class UNetBone(nn.Module):
         for x1, x2 in zip(reversed(arch[:-1]), reversed(arch[1:])):
             self.conv = UBlock(x1, x2, self.conv, skip=skip, up_mode=up_mode)
         self.out_conv = nn.Sequential(
-                tu.kaiming(nn.Conv2d(arch[0], out_ch, 1)),
-            )
+            tu.kaiming(nn.Conv2d(arch[0], out_ch, 1)), )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass.
 
@@ -110,7 +113,7 @@ class UNetBone(nn.Module):
         return out
 
 
-def UNet(in_ch=3, out_ch=1):
+def UNet(in_ch: int = 3, out_ch: int = 1) -> UNetBone:
     """
     Instantiate the UNet network specified in _U-Net: Convolutional Networks
     for Biomedical Image Segmentation_ (Ronneberger, 2015)

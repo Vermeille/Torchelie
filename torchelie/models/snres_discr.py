@@ -2,41 +2,48 @@ import torch
 import torch.nn as nn
 import torchelie.nn as tnn
 from .classifier import Classifier2, ProjectionDiscr, ConcatPoolClassifier1
+from typing import List, Union, Tuple, cast
 
 
-def _parse_snres(arch, in_ch):
+def _parse_snres(arch: List[Union[str, int]],
+                 in_ch: int) -> Tuple[nn.Module, int]:
     blocks = [nn.utils.spectral_norm(tnn.Conv3x3(in_ch, arch[0]))]
+    assert isinstance(arch[0], int)
     in_ch = arch[0]
+
     for x, x2 in zip(arch, arch[1:] + ['dummy']):
         if x == 'D':
             continue
 
         downsample = x2 == 'D'
+        assert isinstance(x, int)
         blocks.append(tnn.SNResidualDiscrBlock(in_ch, x, downsample))
         in_ch = x
     return tnn.CondSeq(*blocks), in_ch
 
 
-def snres_discr(num_classes,
-                in_ch=3,
-                input_sz=32,
-                max_channels=1024,
-                base_ch=32):
+def snres_discr(num_classes: int,
+                in_ch: int = 3,
+                input_sz: int = 32,
+                max_channels: int = 1024,
+                base_ch: int = 32) -> nn.Module:
     ch = base_ch
-    layers = [
+    layers: List[Union[int, str]] = [
         ch, 'D',
         min(max_channels, ch * 2), 'D',
         min(max_channels, ch * 4), 'D'
     ]
     input_sz = input_sz // 32
     while input_sz != 1:
-        layers += [min(max_channels, layers[-2] * 2), 'D']
+        layers += [min(max_channels, cast(int, layers[-2]) * 2), 'D']
         input_sz = input_sz // 2
 
     return snres_discr_ctor(layers, in_ch=in_ch, out_ch=num_classes)
 
 
-def snres_discr_ctor(arch, in_ch=3, out_ch=1):
+def snres_discr_ctor(arch: List[Union[int, str]],
+                     in_ch: int = 3,
+                     out_ch: int = 1) -> nn.Module:
     """
     Make a resnet discriminator with spectral norm, using
     `SNResidualDiscrBlock`.
@@ -61,7 +68,9 @@ def snres_discr_ctor(arch, in_ch=3, out_ch=1):
     return clf
 
 
-def snres_projdiscr(arch, num_classes, in_ch=3):
+def snres_projdiscr(arch: List[Union[int, str]],
+                    num_classes: int,
+                    in_ch: int = 3) -> nn.Module:
     """
     Make a resnet discriminator with spectral norm and projection, using
     `SNResidualDiscrBlock`.
@@ -84,7 +93,7 @@ def snres_projdiscr(arch, num_classes, in_ch=3):
     return clf
 
 
-def snres_discr_4l(in_ch=3, out_ch=1):
+def snres_discr_4l(in_ch: int = 3, out_ch: int = 1) -> nn.Module:
     """
     Make a 4 layers resnet discriminator with spectral norm, using
     `SNResidualDiscrBlock`.
@@ -101,7 +110,7 @@ def snres_discr_4l(in_ch=3, out_ch=1):
                             out_ch=out_ch)
 
 
-def snres_projdiscr_4l(num_classes, in_ch=3):
+def snres_projdiscr_4l(num_classes: int, in_ch: int = 3) -> nn.Module:
     """
     Make a 4 layers resnet discriminator with spectral norm and projection,
     using `SNResidualDiscrBlock`.
@@ -113,12 +122,12 @@ def snres_projdiscr_4l(num_classes, in_ch=3):
     Returns:
         an instance
     """
-    return snres_discr_ctor(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D'],
-                            in_ch=in_ch,
-                            num_classes=num_classes)
+    return snres_projdiscr(arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D'],
+                           in_ch=in_ch,
+                           num_classes=num_classes)
 
 
-def snres_discr_5l(in_ch=3, out_ch=1):
+def snres_discr_5l(in_ch: int = 3, out_ch: int = 1) -> nn.Module:
     """
     Make a 5 layers resnet discriminator with spectral norm, using
     `SNResidualDiscrBlock`.
@@ -136,7 +145,7 @@ def snres_discr_5l(in_ch=3, out_ch=1):
         out_ch=out_ch)
 
 
-def snres_discr_6l(in_ch=3, out_ch=1):
+def snres_discr_6l(in_ch: int = 3, out_ch: int = 1) -> nn.Module:
     """
     Make a 6 layers resnet discriminator with spectral norm, using
     `SNResidualDiscrBlock`.
@@ -154,7 +163,7 @@ def snres_discr_6l(in_ch=3, out_ch=1):
         out_ch=out_ch)
 
 
-def snres_discr_7l(in_ch=3, out_ch=1):
+def snres_discr_7l(in_ch: int = 3, out_ch: int = 1) -> nn.Module:
     """
     Make a 7 layers resnet discriminator with spectral norm, using
     `SNResidualDiscrBlock`.
@@ -173,7 +182,7 @@ def snres_discr_7l(in_ch=3, out_ch=1):
                             out_ch=out_ch)
 
 
-def snres_projdiscr_5l(num_classes, in_ch=3):
+def snres_projdiscr_5l(num_classes: int, in_ch: int = 3) -> nn.Module:
     """
     Make a 5 layers resnet discriminator with spectral norm and projection,
     using `SNResidualDiscrBlock`.
@@ -185,7 +194,7 @@ def snres_projdiscr_5l(num_classes, in_ch=3):
     Returns:
         an instance
     """
-    return snres_discr_ctor(
+    return snres_projdiscr(
         arch=[32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D'],
         in_ch=in_ch,
         num_classes=num_classes)

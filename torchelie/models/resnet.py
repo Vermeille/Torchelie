@@ -1,6 +1,7 @@
 """
 WARNING: THIS FILE HAS A VERY UNSTABLE API
 """
+import torch
 import functools
 import torch.nn as nn
 import torchelie.nn as tnn
@@ -21,7 +22,7 @@ def VectorCondResNetBone(arch: List[str],
                          head: nn.Module,
                          hidden: int,
                          head_ch: int,
-                         debug: bool = False):
+                         debug: bool = False) -> nn.Module:
     """
     A resnet with vector side condition.
 
@@ -40,7 +41,9 @@ def VectorCondResNetBone(arch: List[str],
     return ResNetBone(head, head_ch, arch, block_ctor, debug)
 
 
-def VectorCondResNetDebug(vector_size, in_ch=3, debug=False):
+def VectorCondResNetDebug(vector_size: int,
+                          in_ch: int = 3,
+                          debug: bool = False) -> nn.Module:
     """
     A not so big predefined resnet classifier for debugging purposes.
 
@@ -81,7 +84,7 @@ class ClassCondResNetBone(nn.Module):
                  hidden: int,
                  num_classes: int,
                  head_ch: int = 3,
-                 debug: bool = False):
+                 debug: bool = False) -> None:
         super(ClassCondResNetBone, self).__init__()
         norm_ctor = functools.partial(tnn.ConditionalBN2d,
                                       cond_channels=hidden)
@@ -89,12 +92,15 @@ class ClassCondResNetBone(nn.Module):
         self.bone = ResNetBone(head, head_ch, arch, block_ctor, debug)
         self.emb = nn.Embedding(num_classes, hidden)
 
-    def forward(self, x, y):
+    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         y_emb = self.emb(y)
         return self.bone(x, y_emb)
 
 
-def ClassCondResNetDebug(num_classes, num_cond_classes, in_ch=3, debug=False):
+def ClassCondResNetDebug(num_classes: int,
+                         num_cond_classes: int,
+                         in_ch: int = 3,
+                         debug: bool = False) -> nn.Module:
     """
     A not so big predefined resnet classifier for debugging purposes.
 
@@ -110,7 +116,7 @@ def ClassCondResNetDebug(num_classes, num_cond_classes, in_ch=3, debug=False):
     return Classifier1(
         ClassCondResNetBone(
             ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
-            tnn.Conv2dBNReLU(in_ch, 64, ks=7, stride=2),
+            tnn.Conv2dBNReLU(in_ch, 64, kernel_size=7, stride=2),
             32,
             num_cond_classes,
             64,
@@ -163,7 +169,12 @@ def ResNetBone(head: nn.Module,
     return tnn.CondSeq(*layers)
 
 
-def PreactResNetBone(head, head_ch, arch, block, widen=1, debug=False):
+def PreactResNetBone(head,
+                     head_ch,
+                     arch,
+                     block,
+                     widen=1,
+                     debug=False) -> nn.Module:
     """
     A resnet
 
@@ -204,13 +215,14 @@ def PreactResNetBone(head, head_ch, arch, block, widen=1, debug=False):
     return tnn.CondSeq(*layers)
 
 
-def ResNetGeneratorDebug(noise_size, image_size, debug=False):
-    return ResNetBone(tnn.Conv2dBNReLU(noise_size, 64, ks=7, stride=2),
-                   64, ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
-                   tnn.ResBlock,
-                   debug=debug)
+def ResNetGeneratorDebug(noise_size, image_size, debug=False) -> nn.Module:
+    return ResNetBone(tnn.Conv2dBNReLU(noise_size, 64, kernel_size=7, stride=2),
+                      64, ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
+                      tnn.ResBlock,
+                      debug=debug)
 
-def ResNetDebug(num_classes, in_ch=3, debug=False):
+
+def ResNetDebug(num_classes, in_ch=3, debug=False) -> nn.Module:
     """
     A not so big predefined resnet classifier for debugging purposes.
 
@@ -223,13 +235,13 @@ def ResNetDebug(num_classes, in_ch=3, debug=False):
         a resnet instance
     """
     return Classifier1(
-        ResNetBone(tnn.Conv2dBNReLU(in_ch, 64, ks=7, stride=2),
+        ResNetBone(tnn.Conv2dBNReLU(in_ch, 64, kernel_size=7, stride=2),
                    64, ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
                    tnn.ResBlock,
                    debug=debug), 256, num_classes)
 
 
-def PreactResNetDebug(num_classes, in_ch=3, debug=False):
+def PreactResNetDebug(num_classes, in_ch=3, debug=False) -> nn.Module:
     """
     A not so big predefined preactivation resnet classifier for debugging purposes.
 
@@ -242,25 +254,27 @@ def PreactResNetDebug(num_classes, in_ch=3, debug=False):
         a resnet instance
     """
     return Classifier1(
-        ResNetBone(tnn.Conv2dBNReLU(in_ch, 64, ks=5, stride=2),
+        ResNetBone(tnn.Conv2dBNReLU(in_ch, 64, kernel_size=5, stride=2),
                    64, ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1'],
                    tnn.PreactResBlock,
                    debug=debug), 256, num_classes)
 
 
-def resnet20_cifar(num_classes, in_ch=3, dropout=0.2, debug=False):
-    return Classifier1(ResNetBone(tnn.Conv2dBNReLU(in_ch, 16, ks=3, stride=1),
-                                  16, [
-                                      '16:1', '16:1', '16:1', '32:2', '32:1',
-                                      '32:1', '64:2', '64:1', '64:1'
-                                  ],
-                                  tnn.ResBlock,
-                                  debug=debug),
-                       64,
-                       num_classes)
+def resnet20_cifar(num_classes,
+                   in_ch=3,
+                   dropout=0.2,
+                   debug=False) -> nn.Module:
+    return Classifier1(
+        ResNetBone(tnn.Conv2dBNReLU(in_ch, 16, kernel_size=3, stride=1),
+                   16, [
+                       '16:1', '16:1', '16:1', '32:2', '32:1', '32:1', '64:2',
+                       '64:1', '64:1'
+                   ],
+                   tnn.ResBlock,
+                   debug=debug), 64, num_classes)
 
 
-def _preact_head(in_ch, out_ch, input_size=128):
+def _preact_head(in_ch, out_ch, input_size=128) -> nn.Module:
     if input_size <= 64:
         return tu.kaiming(tnn.Conv2d(in_ch, out_ch, ks=3))
     elif input_size <= 128:
@@ -271,7 +285,10 @@ def _preact_head(in_ch, out_ch, input_size=128):
             nn.MaxPool2d(3, 2, 1))
 
 
-def preact_resnet20_cifar(num_classes, in_ch=3, debug=False, **kwargs):
+def preact_resnet20_cifar(num_classes,
+                          in_ch=3,
+                          debug=False,
+                          **kwargs) -> nn.Module:
     widen = kwargs.pop('widen', 1)
     return Classifier1(PreactResNetBone(
         tnn.Conv2d(in_ch, 16 * widen, ks=3),
@@ -287,9 +304,9 @@ def preact_resnet20_cifar(num_classes, in_ch=3, debug=False, **kwargs):
                        dropout=0)
 
 
-def resnet18(num_classes, in_ch=3, debug=False):
+def resnet18(num_classes, in_ch=3, debug=False) -> nn.Module:
     return Classifier1(ResNetBone(
-        tnn.Conv2dBNReLU(3, 64, ks=7, stride=2),
+        tnn.Conv2dBNReLU(3, 64, kernel_size=7, stride=2),
         64,
         ['64:1', '64:1', '128:2', '128:1', '256:2', '256:1', '512:2', '512:1'],
         tnn.ResBlock,
@@ -299,7 +316,11 @@ def resnet18(num_classes, in_ch=3, debug=False):
                        dropout=0)
 
 
-def preact_resnet18(num_classes, in_ch=3, input_size=224, dropout=0, debug=False):
+def preact_resnet18(num_classes,
+                    in_ch=3,
+                    input_size=224,
+                    dropout=0,
+                    debug=False) -> nn.Module:
     head = _preact_head(in_ch, 64, input_size)
     return Classifier1(PreactResNetBone(
         head,
@@ -312,7 +333,10 @@ def preact_resnet18(num_classes, in_ch=3, input_size=224, dropout=0, debug=False
                        dropout=dropout)
 
 
-def preact_resnet34(num_classes, in_ch=3, input_size=224, debug=False):
+def preact_resnet34(num_classes,
+                    in_ch=3,
+                    input_size=224,
+                    debug=False) -> nn.Module:
     head = _preact_head(in_ch, 64, input_size)
     return Classifier1(PreactResNetBone(
         head,
@@ -325,7 +349,10 @@ def preact_resnet34(num_classes, in_ch=3, input_size=224, debug=False):
                        dropout=0)
 
 
-def preact_resnet26_reduce(num_classes, in_ch=3, input_size=224, debug=False):
+def preact_resnet26_reduce(num_classes,
+                           in_ch=3,
+                           input_size=224,
+                           debug=False) -> nn.Module:
     head = _preact_head(in_ch, 64, input_size)
     return Classifier1(PreactResNetBone(
         head,
@@ -340,7 +367,7 @@ def preact_resnet26_reduce(num_classes, in_ch=3, input_size=224, debug=False):
                        dropout=0)
 
 
-def preact_resnet18_exp(num_classes, in_ch=3, debug=False):
+def preact_resnet18_exp(num_classes, in_ch=3, debug=False) -> nn.Module:
     head = tu.kaiming(tnn.Conv2d(3, 64, ks=5, stride=2))
     return Classifier1(PreactResNetBone(
         head,

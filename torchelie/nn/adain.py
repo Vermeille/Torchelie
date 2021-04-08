@@ -16,14 +16,19 @@ class AdaIN2d(nn.Module):
         cond_channels (int): number of conditioning channels from which bias
             and scale will be derived
     """
-    def __init__(self, channels, cond_channels):
+    weight: torch.Tensor
+    bias: torch.Tensor
+
+    def __init__(self, channels: int, cond_channels: int) -> None:
         super(AdaIN2d, self).__init__()
         self.make_weight = nn.Linear(cond_channels, channels)
         self.make_bias = nn.Linear(cond_channels, channels)
         self.register_buffer('weight', torch.zeros(0))
         self.register_buffer('bias', torch.zeros(0))
 
-    def forward(self, x, z: Optional[torch.Tensor] = None):
+    def forward(self,
+                x: torch.Tensor,
+                z: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Forward pass
 
@@ -46,7 +51,7 @@ class AdaIN2d(nn.Module):
         out = weight * x + bias
         return out
 
-    def condition(self, z):
+    def condition(self, z: torch.Tensor) -> None:
         """
         Conditions the layer before the forward pass if z will not be present
         when calling forward
@@ -73,16 +78,17 @@ class FiLM2d(nn.Module):
     weight: Optional[torch.Tensor]
     bias: Optional[torch.Tensor]
 
-    def __init__(self, channels, cond_channels):
+    def __init__(self, channels: int, cond_channels: int) -> None:
         super(FiLM2d, self).__init__()
-        self.make_weight = tu.normal_init(nn.Linear(cond_channels, channels),
-                                          0.01)
-        self.make_bias = tu.normal_init(nn.Linear(cond_channels, channels),
-                                        0.01)
+        self.make_weight = nn.Linear(cond_channels, channels)
+        tu.normal_init(self.make_weight, 0.01)
+        self.make_bias = nn.Linear(cond_channels, channels)
+        tu.normal_init(self.make_bias, 0.01)
+
         self.weight = None
         self.bias = None
 
-    def forward(self, x, z: Optional[torch.Tensor] = None):
+    def forward(self, x, z: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Forward pass
 
@@ -102,7 +108,7 @@ class FiLM2d(nn.Module):
         assert w is not None and b is not None
         return w * x + b
 
-    def condition(self, z):
+    def condition(self, z: torch.Tensor) -> None:
         """
         Conditions the layer before the forward pass if z will not be present
         when calling forward

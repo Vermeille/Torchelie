@@ -64,15 +64,6 @@ def test_vgg():
     m = VggDebug(2)
     m(torch.randn(1, 1, 32, 32))
 
-    m = VggGeneratorDebug()
-    m(torch.randn(1, 32))
-
-    m = VggImg2ImgGeneratorDebug(8, 1, 1)
-    m(torch.randn(1, 8), torch.randn(1, 1, 32, 32))
-
-    m = VggClassCondGeneratorDebug(8, 1, 1)
-    m(torch.randn(1, 8), torch.LongTensor([0]))
-
 
 def test_attention():
     m = attention56(2)

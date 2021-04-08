@@ -5,6 +5,14 @@ import torch.nn.functional as F
 import torchelie.utils as tu
 import torchelie as tch
 
+class InterpolateBilinear2d(nn.Module):
+    def __init__(self, scale_factor:float)->None:
+        super().__init__()
+        self.scale_factor = scale_factor
+
+    def forward(self, x: torch.Tensor)->torch.Tensor:
+        return F.interpolate(x, scale_factor=self.scale_factor,
+                mode='bilinear', align_corners=False)
 
 def Conv2d(in_ch, out_ch, ks, stride=1, bias=True):
     """

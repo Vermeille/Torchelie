@@ -13,42 +13,102 @@ from torchelie.utils import kaiming, xavier, normal_init, constant_init
 from .layers import ModulatedConv
 from .noise import Noise
 from torchelie.nn.graph import ModuleGraph
+from typing import List, Tuple, Optional, cast
 
 
-def Conv2dNormReLU(in_ch, out_ch, ks, norm, stride=1, leak=0, inplace=False):
-    """
-    A packed block with Conv-Norm-ReLU
+class Conv2dBNReLU(CondSeq):
+    conv: nn.Conv2d
+    norm: Optional[nn.Module]
+    relu: Optional[nn.Module]
+    dropout: Optional[nn.Module]
 
-    Args:
-        in_ch (int): input channels
-        out_ch (int): output channels
-        ks (int): kernel size
-        norm (ctor): A normalization layer constructor in the form
-            :code:`(num_layers) -> norm layer` or None
-        stride (int): stride of the conv
-        leak (float): negative slope of the LeakyReLU or 0 for ReLU
+    out_channels: int
+    in_channels: int
+    kernel_size: Tuple[int, int]
+    stride: Tuple[int, int]
 
-    Returns:
-        A packed block with Conv-Norm-ReLU as a CondSeq
-    """
-    layer = [('conv',
-              kaiming(Conv2d(in_ch,
-                             out_ch,
-                             ks,
+    def __init__(self,
+                 in_channels: int,
+                 out_channels: int,
+                 kernel_size: int,
+                 stride: int = 1) -> None:
+        """
+        A packed block with Conv-Norm-ReLU
+
+        Args:
+            in_channels (int): input channels
+            out_channels (int): output channels
+            kernel_size (int): kernel size
+            stride (int): stride of the conv
+
+        Returns:
+            A packed block with Conv-Norm-ReLU as a CondSeq
+        """
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = (kernel_size, kernel_size)
+        self.stride = (stride, stride)
+
+        layer = [('conv',
+                  kaiming(
+                      Conv2d(in_channels,
+                             out_channels,
+                             kernel_size,
                              stride=stride,
-                             bias=norm is None),
-                      a=leak))]
+                             bias=False)))]
+        layer.append(('norm', nn.BatchNorm2d(out_channels)))
+        layer.append(('relu', nn.ReLU(inplace=True)))
 
-    inplace = inplace or norm is not None
-    if norm is not None:
-        layer.append(('norm', norm(out_ch)))
+        super().__init__(collections.OrderedDict(layer))
 
-    if leak != 0:
-        layer.append(('relu', nn.LeakyReLU(leak, inplace=inplace)))
-    else:
-        layer.append(('relu', nn.ReLU(inplace=inplace)))
+    def remove_bn(self) -> 'Conv2dBNReLU':
+        """
+        Remove the BatchNorm, restores the bias term in conv.
 
-    return CondSeq(collections.OrderedDict(layer))
+        Returns:
+            self
+        """
+        if self.norm is not None and self.norm.bias is not None:
+            with torch.no_grad():
+                self.conv.bias = cast(torch.Tensor, self.norm.bias)
+        else:
+            with torch.no_grad():
+                self.conv.bias = nn.Parameter(torch.zeros(self.out_channels))
+        del self._modules['norm']
+
+        return self
+
+    def no_bias(self) -> 'Conv2dBNReLU':
+        """
+        Remove the bias term.
+
+        Returns:
+            self
+        """
+        if self.norm:
+            self.norm = None
+        else:
+            self.conv.bias = None
+        return self
+
+    def leaky(self, leak: float = 0.2) -> 'Conv2dBNReLU':
+        """
+        Change the ReLU to a LeakyReLU, also rescaling the weights in the conv
+        to preserve the variance.
+
+        Returns:
+            self
+        """
+        new_gain = nn.init.calculate_gain('leaky_relu', param=leak)
+        if isinstance(self.relu, nn.LeakyReLU):
+            old_gain = nn.init.calculate_gain('leaky_relu',
+                    param=self.relu.negative_slope)
+        else:
+            old_gain = nn.init.calculate_gain('relu')
+
+        self.relu = nn.LeakyReLU(leak, inplace=True)
+        self.conv.weight.data *= new_gain / old_gain
+        return self
 
 
 class SEBlock(nn.Module):
@@ -60,7 +120,7 @@ class SEBlock(nn.Module):
         reduction (int): channels reduction factor for the hidden number of
             channels
     """
-    def __init__(self, in_ch, reduction=16):
+    def __init__(self, in_ch: int, reduction: int = 16) -> None:
         super(SEBlock, self).__init__()
         reduc = in_ch // reduction
         self.proj = nn.Sequential(
@@ -72,11 +132,15 @@ class SEBlock(nn.Module):
                 ('attn', nn.Sigmoid())
             ]))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x * self.proj(x)
 
 
-def MConvNormReLU(in_ch, out_ch, ks, norm, center=True):
+def MConvNormReLU(in_ch: int,
+                  out_ch: int,
+                  ks: int,
+                  norm,
+                  center: bool = True) -> CondSeq:
     """
     A packed block with Masked Conv-Norm-ReLU
 
@@ -92,7 +156,8 @@ def MConvNormReLU(in_ch, out_ch, ks, norm, center=True):
     Returns:
         A packed block with MaskedConv-Norm-ReLU as a CondSeq
     """
-    layers = [('conv', MaskedConv2d(in_ch, out_ch, ks, center=center))]
+    layers: List[Tuple[str, nn.Module]] = []
+    layers.append(('conv', MaskedConv2d(in_ch, out_ch, ks, center=center)))
 
     if norm is not None:
         layers.append(('norm', norm(out_ch)))
@@ -101,7 +166,7 @@ def MConvNormReLU(in_ch, out_ch, ks, norm, center=True):
     return CondSeq(collections.OrderedDict(layers))
 
 
-def MConvBNrelu(in_ch, out_ch, ks, center=True):
+def MConvBNrelu(in_ch: int, out_ch: int, ks: int, center=True) -> CondSeq:
     """
     A packed block with Masked Conv-BN-ReLU
 
@@ -118,41 +183,24 @@ def MConvBNrelu(in_ch, out_ch, ks, center=True):
     return MConvNormReLU(in_ch, out_ch, ks, nn.BatchNorm2d, center=center)
 
 
-def Conv2dBNReLU(in_ch, out_ch, ks, stride=1, leak=0, inplace=False):
-    """
-    A packed block with Conv-BN-ReLU
-
-    Args:
-        in_ch (int): input channels
-        out_ch (int): output channels
-        ks (int): kernel size
-        stride (int): stride of the conv
-        leak (float): negative slope of the LeakyReLU or 0 for ReLU
-        inplace (bool): if relu should be inplace
-
-    Returns:
-        A packed block with Conv-BN-ReLU as a CondSeq
-    """
-    return Conv2dNormReLU(in_ch,
-                          out_ch,
-                          ks,
-                          nn.BatchNorm2d,
-                          leak=leak,
-                          stride=stride,
-                          inplace=inplace)
-
-
 class Conv2dCondBNReLU(nn.Module):
-    def __init__(self, in_ch, out_ch, cond_ch, ks, leak=0):
+    def __init__(self,
+                 in_ch: int,
+                 out_ch: int,
+                 cond_ch: int,
+                 ks: int,
+                 leak: float = 0) -> None:
         super(Conv2dCondBNReLU, self).__init__()
         self.conv = kaiming(Conv2d(in_ch, out_ch, ks, bias=False), a=leak)
         self.cbn = ConditionalBN2d(out_ch, cond_ch)
         self.leak = leak
 
-    def condition(self, z):
+    def condition(self, z: torch.Tensor) -> None:
         self.cbn.condition(z)
 
-    def forward(self, x, z=None):
+    def forward(self,
+                x: torch.Tensor,
+                z: Optional[torch.Tensor] = None) -> torch.Tensor:
         x = self.conv(x)
         x = self.cbn(x, z)
         if self.leak == 0:
@@ -162,11 +210,14 @@ class Conv2dCondBNReLU(nn.Module):
         return x
 
 
-def make_resnet_shortcut(in_ch, out_ch, stride, norm=nn.BatchNorm2d):
+def make_resnet_shortcut(in_ch: int,
+                         out_ch: int,
+                         stride: int,
+                         norm=nn.BatchNorm2d) -> CondSeq:
     if in_ch == out_ch and stride == 1:
         return CondSeq()
 
-    sc = []
+    sc: List[Tuple[str, nn.Module]] = []
     if stride != 1:
         sc.append(('pool', nn.AvgPool2d(3, stride, 1)))
 
@@ -178,11 +229,12 @@ def make_resnet_shortcut(in_ch, out_ch, stride, norm=nn.BatchNorm2d):
     return CondSeq(collections.OrderedDict(sc))
 
 
-def make_preact_resnet_shortcut(in_ch, out_ch, stride):
+def make_preact_resnet_shortcut(in_ch: int, out_ch: int,
+                                stride: int) -> CondSeq:
     if in_ch == out_ch and stride == 1:
         return CondSeq()
 
-    sc = []
+    sc: List[Tuple[str, nn.Module]] = []
     if stride != 1:
         sc.append(('pool', nn.AvgPool2d(3, stride, 1)))
     sc.append(('conv', kaiming(Conv1x1(in_ch, out_ch))))
@@ -207,12 +259,12 @@ class ResBlock(nn.Module):
             or the bottleneck block with 1x1 -> 3x3 -> 1x1 convs.
     """
     def __init__(self,
-                 in_ch,
-                 out_ch,
-                 stride=1,
+                 in_ch: int,
+                 out_ch: int,
+                 stride: int = 1,
                  norm=nn.BatchNorm2d,
-                 use_se=False,
-                 bottleneck=False):
+                 use_se: bool = False,
+                 bottleneck: bool = False):
         super(ResBlock, self).__init__()
         self.in_ch = in_ch
         self.out_ch = out_ch
@@ -255,17 +307,19 @@ class ResBlock(nn.Module):
 
         self.shortcut = make_resnet_shortcut(in_ch, out_ch, stride, norm=None)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}({}, {}, stride={}, norm={})".format(
             ("SE-" if self.use_se else "") +
             ("Bottleneck" if self.bottleneck else "ResBlock"), self.in_ch,
             self.out_ch, self.stride, self.branch.bn1.__class__.__name__)
 
-    def condition(self, z):
+    def condition(self, z: torch.Tensor) -> None:
         self.branch.condition(z)
         self.shortcut.condition(z)
 
-    def forward(self, x, z=None):
+    def forward(self,
+                x: torch.Tensor,
+                z: Optional[torch.Tensor] = None) -> torch.Tensor:
         if z is not None:
             self.condition(z)
 
@@ -276,7 +330,7 @@ class HardSigmoid(nn.Module):
     """
     Hard Sigmoid
     """
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x.add_(0.5).clamp_(min=0, max=1)
 
 
@@ -284,7 +338,7 @@ class HardSwish(nn.Module):
     """
     Hard Swish
     """
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x.add(0.5).clamp_(min=0, max=1).mul_(x)
 
 
@@ -304,15 +358,18 @@ class PreactResBlock(nn.Module):
         bottleneck (bool): whether to use the standard block with two 3x3 convs
             or the bottleneck block with 1x1 -> 3x3 -> 1x1 convs.
     """
+    branch: CondSeq
+    shortcut: CondSeq
+
     def __init__(self,
-                 in_ch,
-                 out_ch,
-                 stride=1,
+                 in_ch: int,
+                 out_ch: int,
+                 stride: int = 1,
                  norm=nn.BatchNorm2d,
-                 dropout=0.,
-                 use_se=False,
-                 bottleneck=False,
-                 first_layer=False):
+                 dropout: float = 0.,
+                 use_se: bool = False,
+                 bottleneck: bool = False,
+                 first_layer: bool = False) -> None:
         super(PreactResBlock, self).__init__()
         self.in_ch = in_ch
         self.out_ch = out_ch
@@ -360,11 +417,13 @@ class PreactResBlock(nn.Module):
 
         self.shortcut = make_preact_resnet_shortcut(in_ch, out_ch, stride)
 
-    def condition(self, z):
+    def condition(self, z: torch.Tensor) -> None:
         self.branch.condition(z)
         self.shortcut.condition(z)
 
-    def forward(self, x, z=None):
+    def forward(self,
+                x: torch.Tensor,
+                z: Optional[torch.Tensor] = None) -> torch.Tensor:
         if z is not None:
             self.condition(z)
 
@@ -498,11 +557,11 @@ class ResidualDiscrBlock(torch.nn.Module):
         if in_ch != out_ch or force_shortcut:
             self.sc = nn.Sequential(
                 kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1),
-                       dynamic=equal_lr,
-                       nonlinearity='linear',
-                       mode='fan_in'),
+                        dynamic=equal_lr,
+                        nonlinearity='linear',
+                        mode='fan_in'),
                 nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
-                )
+            )
 
     def extra_repr(self):
         return f"equal_lr={self.equal_lr} downsample={self.downsample}"
@@ -538,8 +597,11 @@ class SNResidualDiscrBlock(ResidualDiscrBlock):
         out_ch (int): number of output channels
         downsample (bool): whether to downsample
     """
-    def __init__(self, in_ch: int, out_ch: int, downsample: bool = False,
-            equal_lr: bool = False):
+    def __init__(self,
+                 in_ch: int,
+                 out_ch: int,
+                 downsample: bool = False,
+                 equal_lr: bool = False):
         super().__init__(in_ch, out_ch, downsample, equal_lr=False)
         xavier(self.branch[-1], nonlinearity='linear')
         for m in self.modules():
@@ -582,7 +644,7 @@ class StyleGAN2Block(nn.Module):
                                  kernel_size=3,
                                  padding=1,
                                  bias=True)
-            conv = kaiming(conv, dynamic=dyn, a=0.2)
+            kaiming(conv, dynamic=dyn, a=0.2)
 
             noise = Noise(out_ch, inplace=True, bias=False)
             inside += [((f'in_{i}', 'w'), conv, f'conv_{i}'),

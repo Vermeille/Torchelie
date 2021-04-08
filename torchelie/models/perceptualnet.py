@@ -1,11 +1,15 @@
 from collections import OrderedDict
 
+from torchelie.utils import edit_model
 import torch.nn as nn
 import torchvision.models as M
 from torchelie.nn import WithSavedActivations
+from typing import List
 
 
-def PerceptualNet(layers, use_avg_pool=True, remove_unused_layers=True):
+def PerceptualNet(layers: List[str],
+                  use_avg_pool: bool = True,
+                  remove_unused_layers: bool = True) -> nn.Module:
     """
     Make a VGG16 with appropriately named layers that records intermediate
     activations.
@@ -18,6 +22,7 @@ def PerceptualNet(layers, use_avg_pool=True, remove_unused_layers=True):
         remove_unused_layers (bool): whether to remove layers past the last one
             used (default: True)
     """
+    # yapf: disable
     layer_names = [
         'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'maxpool1',
         'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'maxpool2',
@@ -28,25 +33,26 @@ def PerceptualNet(layers, use_avg_pool=True, remove_unused_layers=True):
         'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3', 'relu5_3',
                 'conv5_4', 'relu5_4',# 'maxpool5'
     ]
+    # yapf: enable
 
     m = M.vgg19(pretrained=True).eval().features
-    m = nn.Sequential(OrderedDict(
-        [(l_name, l) for l_name, l in zip(layer_names, m)]
-    ))
+    m = nn.Sequential(
+        OrderedDict([(l_name, l) for l_name, l in zip(layer_names, m)]))
     for nm, mod in m.named_modules():
         if 'relu' in nm:
             setattr(m, nm, nn.ReLU(False))
         elif 'pool' in nm and use_avg_pool:
-            setattr(m, nm,  nn.AvgPool2d(2 ,2))
+            setattr(m, nm, nn.AvgPool2d(2, 2))
 
     if remove_unused_layers:
-        m = m[:max([layer_names.index(l) for l in layers])+1]
+        m = m[:max([layer_names.index(l) for l in layers]) + 1]
 
     m = WithSavedActivations(m, names=layers)
     return m
 
 
-def PaddedPerceptualNet(layers, use_avg_pool=True):
+def PaddedPerceptualNet(layers: List[str],
+                        use_avg_pool: bool = True) -> nn.Module:
     """
     Make a VGG16 with appropriately named layers that records intermediate
     activations.
@@ -55,6 +61,7 @@ def PaddedPerceptualNet(layers, use_avg_pool=True):
         layers (list of str): the names of the layers for which to save the
             activations.
     """
+    # yapf: disable
     layer_names = [
         'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'maxpool1',
         'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'maxpool2',
@@ -65,6 +72,7 @@ def PaddedPerceptualNet(layers, use_avg_pool=True):
         'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3', 'relu5_3',
                 'conv5_4', 'relu5_4',# 'maxpool5'
     ]
+    # yapf: enable
 
     m = M.vgg19(pretrained=True).eval().features
 
@@ -79,9 +87,8 @@ def PaddedPerceptualNet(layers, use_avg_pool=True):
         if 'relu' in nm:
             setattr(m, nm, nn.ReLU(True))
         elif 'pool' in nm and use_avg_pool:
-            setattr(m, nm,  nn.AvgPool2d(2, 2))
+            setattr(m, nm, nn.AvgPool2d(2, 2))
         elif 'conv' in nm:
             mod.padding = (0, 0)
     m = WithSavedActivations(m, names=layers)
     return m
-

@@ -20,6 +20,8 @@ class StyleGAN2Generator(nn.Module):
         max_ch (int): maximum number of channels (default: 512)
         equal_lr (bool): whether to use equalized lr or not (default: True)
     """
+    w_avg: torch.Tensor
+
     def __init__(self,
                  noise_size: int,
                  ch_mul: float = 1,
@@ -63,7 +65,7 @@ class StyleGAN2Generator(nn.Module):
                     f'fmap_constxconst'))
                 prev_res = 'const'
             else:
-                prev_res = res // 2
+                prev_res = str(res // 2)
 
             block = tnn.StyleGAN2Block(min(max_ch, ch),
                                        min(max_ch, ch // 2),
