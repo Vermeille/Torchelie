@@ -74,13 +74,15 @@ class NeuralStyle(torch.nn.Module):
             torch.nn.functional.interpolate(pil2t(style_img)[None],
                                             scale_factor=0.5,
                                             mode='bilinear',
-                                            align_corners=False)[0].to(
+                                            align_corners=False,
+                                            recompute_scale_factor=True)[0].to(
                                                 self.device), style_ratio)
         self.loss2.set_content(
             torch.nn.functional.interpolate(pil2t(content_img)[None],
                                             scale_factor=0.5,
                                             mode='bilinear',
-                                            align_corners=False)[0].to(
+                                            align_corners=False,
+                                            recompute_scale_factor=True)[0].to(
                                                 self.device), content_layers)
 
         canvas = ParameterizedImg(1,
@@ -103,7 +105,8 @@ class NeuralStyle(torch.nn.Module):
                 torch.nn.functional.interpolate(canvas(),
                                                 scale_factor=0.5,
                                                 mode='bilinear',
-                                                align_corners=False))
+                                                align_corners=False,
+                                                recompute_scale_factor=True))
             (second_scale_ratio * loss).backward()
 
             return {
