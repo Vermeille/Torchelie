@@ -4,24 +4,64 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchelie.utils as tu
 import torchelie as tch
+from typing import List, Optional, Tuple, Union
+
+
+class Interpolate2d(nn.Module):
+    def __init__(self,
+                 mode: str,
+                 size: Optional[List[str]] = None,
+                 scale_factor: Optional[float] = None) -> None:
+        super().__init__()
+        self.size = size
+        self.scale_factor = scale_factor
+        self.mode = mode
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        rsf = True if self.scale_factor is not None else None
+        return F.interpolate(x,
+                             mode=self.mode,
+                             size=self.size,
+                             scale_factor=self.scale_factor,
+                             recompute_scale_factor=rsf,
+                             align_corners=False)
+
+
+class InterpolateBilinear2d(Interpolate2d):
+    def __init__(
+        self,
+        size: Optional[List[str]] = None,
+        scale_factor: Optional[float] = None,
+    ) -> None:
+        super().__init__(size=size, scale_factor=scale_factor, mode='bilinear')
 
 
 def Conv2d(in_ch, out_ch, ks, stride=1, bias=True):
     """
     A Conv2d with 'same' padding
     """
-    return nn.Conv2d(in_ch, out_ch, ks, padding=ks // 2, stride=stride,
-            bias=bias)
+    return nn.Conv2d(in_ch,
+                     out_ch,
+                     ks,
+                     padding=ks // 2,
+                     stride=stride,
+                     bias=bias)
 
 
-def Conv3x3(in_ch, out_ch, stride=1, bias=True):
+def Conv3x3(in_ch: int,
+            out_ch: int,
+            stride: int = 1,
+            bias: bool = True) -> nn.Conv2d:
     """
     A 3x3 Conv2d with 'same' padding
     """
     return Conv2d(in_ch, out_ch, 3, stride=stride, bias=bias)
 
 
-def Conv1x1(in_ch, out_ch, stride=1, bias=True):
+def Conv1x1(in_ch: int,
+            out_ch: int,
+            stride: int = 1,
+            bias: bool = True) -> nn.Conv2d:
     """
     A 1x1 Conv2d
     """
@@ -45,20 +85,28 @@ class AdaptiveConcatPool2d(nn.Module):
         return torch.cat([
             nn.functional.adaptive_avg_pool2d(x, self.target_size),
             nn.functional.adaptive_max_pool2d(x, self.target_size),
-        ], dim=1)
+        ],
+                         dim=1)
 
 
 class ModulatedConv(nn.Conv2d):
-    def __init__(self, in_channels, noise_channels, *args, demodulate=True, **kwargs):
+    def __init__(self,
+                 in_channels: int,
+                 noise_channels: int,
+                 *args,
+                 demodulate: bool = True,
+                 **kwargs):
         super(ModulatedConv, self).__init__(in_channels, *args, **kwargs)
         self.make_s = tu.xavier(nn.Linear(noise_channels, in_channels))
         self.make_s.bias.data.fill_(1)
         self.demodulate = demodulate
 
-    def condition(self, z):
+    def condition(self, z: torch.Tensor) -> None:
         self.s = self.make_s(z)
 
-    def forward(self, x, z=None):
+    def forward(self,
+                x: torch.Tensor,
+                z: Optional[torch.Tensor] = None) -> torch.Tensor:
         if z is not None:
             self.condition(z)
         N, C, H, W = x.shape
@@ -73,7 +121,7 @@ class ModulatedConv(nn.Conv2d):
 
         w = w.view(-1, *w.shape[2:])
         x = F.conv2d(x.view(1, -1, H, W), w, None, self.stride, self.padding,
-                       self.dilation, N)
+                     self.dilation, N)
         x = x.view(N, C_out, H, W)
         if self.bias is not None:
             return x.add_(self.bias.view(-1, 1, 1))
@@ -112,6 +160,7 @@ class SelfAttention2d(nn.Module):
 
 from torch.autograd import Function
 
+
 class GaussianPriorFunc(Function):
     @staticmethod
     def forward(ctx, mu, sigma, mu2, sigma2, strength=1):
@@ -138,10 +187,11 @@ class GaussianPriorFunc(Function):
         diff_mu_over_s2sq = diff_mu / s2sq
         d_mu = d_out + strength * diff_mu_over_s2sq
         d_mu2 = -strength * diff_mu_over_s2sq
-        d_sigma = d_out * z - strength/sigma + strength*sigma / s2sq
-        d_sigma2 = 1/sigma2 - (sigma.pow(2) + diff_mu.pow(2)) / sigma2.pow(3)
+        d_sigma = d_out * z - strength / sigma + strength * sigma / s2sq
+        d_sigma2 = 1 / sigma2 - (sigma.pow(2) + diff_mu.pow(2)) / sigma2.pow(3)
         d_sigma2 *= strength
         return d_mu, d_sigma, d_mu2, d_sigma2
+
 
 class UnitGaussianPrior(nn.Module):
     """
@@ -166,10 +216,13 @@ class UnitGaussianPrior(nn.Module):
             samples. 'sum' means the kl term of each sample is summed, while
             'mean' divides the loss by the number of examples.
     """
-    def __init__(self, in_channels, num_latents, strength=1,
-            kl_reduction='mean'):
+    def __init__(self,
+                 in_channels,
+                 num_latents,
+                 strength=1,
+                 kl_reduction='mean'):
         super().__init__()
-        self.project = tu.kaiming(nn.Linear(in_channels, 2*num_latents))
+        self.project = tu.kaiming(nn.Linear(in_channels, 2 * num_latents))
         self.project.bias.data[num_latents:].fill_(1)
         self.strength = strength
         assert kl_reduction in ['mean', 'sum']
@@ -195,6 +248,7 @@ class UnitGaussianPrior(nn.Module):
         else:
             return mu
 
+
 class InformationBottleneck(UnitGaussianPrior):
     pass
 
@@ -207,7 +261,7 @@ class Const(nn.Module):
     Args:
         *size (ints): the shape of the volume to learn
     """
-    def __init__(self, *size):
+    def __init__(self, *size: int) -> None:
         super().__init__()
         self.size = size
         self.const = nn.Parameter(torch.randn(1, *size))
@@ -215,7 +269,7 @@ class Const(nn.Module):
     def extra_repr(self):
         return repr(self.size)
 
-    def forward(self, n):
+    def forward(self, n: Union[int, torch.Tensor]) -> torch.Tensor:
         """
         Args:
             n (int or torch.Tensor): batch size to use, n if n is int or
@@ -228,7 +282,7 @@ class Const(nn.Module):
 
 class MinibatchStddev(nn.Module):
     """Minibatch Stddev layer from Progressive GAN"""
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         stddev_map = torch.sqrt(x.var(dim=0) + 1e-8).mean()
         stddev = stddev_map.expand(x.shape[0], 1, *x.shape[2:])
         return torch.cat([x, stddev], dim=1)

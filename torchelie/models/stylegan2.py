@@ -6,6 +6,7 @@ import torch.nn as nn
 import torchelie.utils as tu
 import torchelie.nn as tnn
 from .classifier import ConcatPoolClassifier1
+from typing import List, Tuple
 
 
 class StyleGAN2Generator(nn.Module):
@@ -55,14 +56,16 @@ class StyleGAN2Generator(nn.Module):
             nn.LeakyReLU(0.2, True),
         )
         res = 4
-        render = []
+        render = tnn.ModuleGraph(f'rgb_{img_size}x{img_size}')
 
         while res <= img_size:
             ch = int(512 / (2**(math.log2(res) - 7)) * ch_mul)
             if res == 4:
-                render.append(('w',
-                    ('const', tnn.Const(min(max_ch, ch), 4, 4)),
-                    f'fmap_constxconst'))
+                render.add_operation(inputs=['w'],
+                                     outputs=[f'fmap_constxconst'],
+                                     name='const',
+                                     operation=tnn.Const(
+                                         min(max_ch, ch), 4, 4))
                 prev_res = 'const'
             else:
                 prev_res = str(res // 2)
@@ -73,18 +76,18 @@ class StyleGAN2Generator(nn.Module):
                                        upsample=res != 4,
                                        n_layers=1 if res == 4 else 2,
                                        equal_lr=equal_lr)
-            node = (f'conv{res}x{res}', block)
-
-            render.append(
-                ([f'fmap_{prev_res}x{prev_res}', f'w_{res}x{res}',
-                    f'rgb_{prev_res}x{prev_res}'], node,
-                    [f'rgb_{res}x{res}', f'fmap_{res}x{res}']))
+            render.add_operation(
+                inputs=[
+                    f'fmap_{prev_res}x{prev_res}', f'w_{res}x{res}',
+                    f'rgb_{prev_res}x{prev_res}'
+                ],
+                operation=block,
+                name=f'conv{res}x{res}',
+                outputs=[f'rgb_{res}x{res}', f'fmap_{res}x{res}'])
             res *= 2
-        render.append(
-            (f'rgb_{img_size}x{img_size}', ('dummy', nn.Identity()), 'out'))
 
         print(render)
-        self.render = tnn.ModuleGraph(render, outputs='out')
+        self.render = render
 
     def discretize_some(self, z):
         # This is just experimental
@@ -115,7 +118,7 @@ class StyleGAN2Generator(nn.Module):
                 ws[f'w_{res}x{res}'] = 0.3 * self.w_avg + 0.7 * w
             else:
                 ws[f'w_{res}x{res}'] = w
-        return torch.sigmoid(self.render(rgb_constxconst=None, **ws)['out'])
+        return torch.sigmoid(self.render(rgb_constxconst=None, **ws))
 
     def w_to_dict(self, w):
         return {
@@ -167,10 +170,12 @@ def StyleGAN2Discriminator(input_sz,
     dyn = equal_lr
     res = input_sz
     ch = int(512 / (2**(math.log2(res) - 6)) * ch_mul)
-    layers = [(f'rgbto{res}x{res}',
-               tu.xavier(tnn.Conv3x3(input_ch, min(max_ch, ch)),
-                         dynamic=dyn,
-                         mode='fan_in'))]
+    layers: List[Tuple[str, nn.Module]] = [
+        (f'rgbto{res}x{res}',
+         tu.xavier(tnn.Conv3x3(input_ch, min(max_ch, ch)),
+                   dynamic=dyn,
+                   mode='fan_in'))
+    ]
 
     while res > 4:
         res = res // 2
@@ -190,7 +195,7 @@ def StyleGAN2Discriminator(input_sz,
                         dynamic=dyn,
                         mode='fan_in')))
         layers.append(('relu2', nn.LeakyReLU(0.2, True)))
-    model = nn.Sequential(OrderedDict(layers))
+    model: nn.Module = nn.Sequential(OrderedDict(layers))
     model = ConcatPoolClassifier1(model, min(max_ch, ch), 1, 0.)
     tu.xavier(model.head[-1], dynamic=dyn, mode='fan_in')
     return model

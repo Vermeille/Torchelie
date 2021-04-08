@@ -7,8 +7,10 @@ from typing import List, Union, Tuple, cast
 
 def _parse_snres(arch: List[Union[str, int]],
                  in_ch: int) -> Tuple[nn.Module, int]:
-    blocks = [nn.utils.spectral_norm(tnn.Conv3x3(in_ch, arch[0]))]
     assert isinstance(arch[0], int)
+    blocks: List[nn.Module] = [
+        nn.utils.spectral_norm(tnn.Conv3x3(in_ch, arch[0]))
+    ]
     in_ch = arch[0]
 
     for x, x2 in zip(arch, arch[1:] + ['dummy']):

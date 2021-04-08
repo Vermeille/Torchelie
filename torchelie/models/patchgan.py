@@ -10,7 +10,7 @@ def base_patch_discr(arch: List[int],
                      in_ch: int = 3,
                      out_ch: int = 1) -> tnn.CondSeq:
 
-    layers = [
+    layers: List[nn.Module] = [
         tnn.Conv2dBNReLU(in_ch, arch[0], kernel_size=4,
                          stride=2).remove_bn().leaky()
     ]

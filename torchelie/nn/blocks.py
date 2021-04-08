@@ -635,7 +635,7 @@ class StyleGAN2Block(nn.Module):
         self.equal_lr = equal_lr
         dyn = equal_lr
         self.upsample = upsample
-        inside = []
+        inside = ModuleGraph(outputs=f'in_{n_layers}')
 
         for i in range(n_layers):
             conv = ModulatedConv(in_ch,
@@ -645,21 +645,34 @@ class StyleGAN2Block(nn.Module):
                                  padding=1,
                                  bias=True)
             kaiming(conv, dynamic=dyn, a=0.2)
+            inside.add_operation(
+                    inputs=[f'in_{i}', 'w'],
+                    outputs=[f'conv_{i}'],
+                    name=f'conv_{i}',
+                    operation=conv)
 
             noise = Noise(out_ch, inplace=True, bias=False)
-            inside += [((f'in_{i}', 'w'), conv, f'conv_{i}'),
-                       ((f'conv_{i}', f'noise_{i}'), noise, f'plus_noise_{i}'),
-                       (f'plus_noise_{i}', nn.LeakyReLU(0.2,
-                                                        True), f'in_{i+1}')]
+            inside.add_operation(
+                    inputs=[f'conv_{i}', f'noise_{i}'],
+                    operation=noise,
+                    name=f'plus_noise_{i}',
+                    outputs=[f'plus_noise_{i}'])
+
+
+            inside.add_operation(
+                    inputs=[f'plus_noise_{i}'],
+                    operation=nn.LeakyReLU(0.2, True),
+                    outputs=[f'in_{i+1}'],
+                    name=f'in_{i+1}')
+
             in_ch = out_ch
-        inside += [(f'in_{n_layers}', nn.Identity(), 'out')]
 
         if dyn:
             for m in inside:
-                if isinstance(m[1], ModulatedConv):
-                    xavier(m[1].make_s, dynamic=True)
+                if isinstance(m, ModulatedConv):
+                    xavier(m.make_s, dynamic=True)
 
-        self.inside = ModuleGraph(inside, outputs='out')
+        self.inside = inside
         self.to_rgb = xavier(ModulatedConv(out_ch,
                                            noise_size,
                                            3,
@@ -695,5 +708,5 @@ class StyleGAN2Block(nn.Module):
             in_0=maps,
             w=w,
             **({f'noise_{i}': None
-                for i in range(len(self.inside) // 3)}))['out']
+                for i in range(len(self.inside) // 3)}))
         return rgb + self.to_rgb(maps, w), maps

@@ -8,6 +8,7 @@ from typing import Optional, Iterable, Generator, TypeVar, Union, Any, overload
 from typing import Callable
 
 T = TypeVar('T')
+T_Module = TypeVar('T_Module', bound=nn.Module)
 Numeric = TypeVar('Numeric', torch.Tensor, float)
 
 
@@ -57,11 +58,11 @@ def entropy(out: torch.Tensor,
     assert False, reduce + ' is not a valid reduction method'
 
 
-def kaiming(m: nn.Module,
+def kaiming(m: T_Module,
             a: float = 0,
             nonlinearity: str = 'relu',
             mode: str = 'fan_out',
-            dynamic: bool = False) -> nn.Module:
+            dynamic: bool = False) -> T_Module:
     """
     Initialize a module with kaiming normal init
 
@@ -100,11 +101,11 @@ def kaiming(m: nn.Module,
     return m
 
 
-def xavier(m: nn.Module,
+def xavier(m: T_Module,
            a: float = 0,
            nonlinearity: str = 'relu',
            mode: str = 'fan_out',
-           dynamic: bool = False) -> nn.Module:
+           dynamic: bool = False) -> T_Module:
     """
     Initialize a module with xavier normal init
 
@@ -576,7 +577,7 @@ def indent(text: str, amount: int = 4) -> str:
     return '\n'.join((' ' * amount + l) for l in text.splitlines())
 
 
-def edit_model(m: nn.Module, f: Callable[[nn.Module], nn.Module]) -> nn.Module:
+def edit_model(m: T_Module, f: Callable[[nn.Module], nn.Module]) -> T_Module:
     """
     Allow to edit any part of a model by recursively edit its modules.
 
