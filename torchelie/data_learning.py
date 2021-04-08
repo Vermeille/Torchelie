@@ -1,13 +1,13 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from typing import List
+from typing import List, Tuple
 from typing_extensions import Literal
 
 
 def _rfft2d_freqs(h, w):
-    fy = np.fft.fftfreq(h)[:, None]
-    fx = np.fft.fftfreq(w)[:w // 2 + (1 if w % 2 == 0 else 2)]
+    fy = torch.fft.fftfreq(h)[:, None]
+    fx = torch.fft.fftfreq(w)[:w // 2 + (1 if w % 2 == 0 else 1)]
     return np.sqrt(fx * fx + fy * fy)
 
 
@@ -16,7 +16,7 @@ class LearnableImage(nn.Module):
         raise NotImplementedError
 
 
-class ColorTransform:
+class ColorTransform(nn.Module):
     def __call__(self, img: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
 
@@ -35,11 +35,11 @@ class PixelImage(LearnableImage):
         init_img (tensor, optional): an image tensor to initialize the pixel
             values
     """
-    shape: List[int]
+    shape: Tuple[int, ...]
     pixels: torch.Tensor
 
     def __init__(self,
-                 shape: List[int],
+                 shape: Tuple[int, ...],
                  sd: float = 0.01,
                  init_img: torch.Tensor = None) -> None:
         super(PixelImage, self).__init__()
@@ -76,13 +76,13 @@ class SpectralImage(LearnableImage):
             mean 0.5 and standard deviation `sd`
         init_img (tensor, optional): an image tensor to initialize the image
     """
-    shape: List[int]
+    shape: Tuple[int, ...]
     decay_power: float
     spectrum_var: torch.Tensor
     spertum_scale: torch.Tensor
 
     def __init__(self,
-                 shape: List[int],
+                 shape: Tuple[int, ...],
                  sd: float = 0.01,
                  decay_power: int = 1,
                  init_img: torch.Tensor = None) -> None:
@@ -93,38 +93,36 @@ class SpectralImage(LearnableImage):
         fh, fw = freqs.shape
         self.decay_power = decay_power
 
-        init_val = sd * torch.randn(n, ch, fh, fw, 2)
+        init_val = sd * torch.randn(n, ch, fh, fw, dtype=torch.complex64)
         spectrum_var = torch.nn.Parameter(init_val)
         self.spectrum_var = spectrum_var
 
         spertum_scale = 1.0 / np.maximum(freqs,
                                          1.0 / max(h, w))**self.decay_power
         spertum_scale *= np.sqrt(w * h)
-        spertum_scale = torch.tensor(spertum_scale).unsqueeze(-1)
-        self.register_buffer('spertum_scale', spertum_scale.float())
+        self.register_buffer('spertum_scale', spertum_scale)
 
         if init_img is not None:
             self.init_img(init_img)
 
     def init_img(self, init_img: torch.Tensor) -> None:
-        if init_img.shape[2] % 2 == 1:
-            init_img = nn.functional.pad(init_img, [1, 0, 0, 0])
-        fft = torch.fft.rfft(init_img * 4, 2, onesided=True, normalized=False)
-        self.spectrum_var.data.copy_(fft / self.spertum_scale)
+        assert init_img.dim() == 4 and init_img.shape == self.shape
+
+        fft = torch.fft.rfft2(init_img[0] * 4, s=(self.shape[2],
+            self.shape[3]))
+        with torch.no_grad():
+            self.spectrum_var.copy_(fft / self.spertum_scale)
 
     def forward(self) -> torch.Tensor:
         """
         Return the image
         """
+        #return self.bite[0].to(self.spectrum_var.device)
         n, ch, h, w = self.shape
 
         scaled_spectrum = self.spectrum_var * self.spertum_scale
-        img = torch.fft.irfft(scaled_spectrum,
-                              2,
-                              onesided=True,
-                              normalized=False)
+        img = torch.fft.irfft2(scaled_spectrum, s=(h, w))
 
-        img = img[:, :ch, :h, :w]
         return img / 4.
 
 
@@ -145,7 +143,7 @@ class CorrelateColors(ColorTransform):
             np.max(np.linalg.norm(color_correlation_svd_sqrt, axis=0)))
 
         cc = color_correlation_svd_sqrt / max_norm_svd_sqrt
-        self.color_correlation = cc
+        self.register_buffer('color_correlation', cc)
 
     def __call__(self, img: torch.Tensor) -> torch.Tensor:
         """
@@ -209,9 +207,9 @@ class ParameterizedImg(nn.Module):
 
         assert space in ['spectral', 'pixel']
         if space == 'spectral':
-            self.img = SpectralImage(list(shape), sd=init_sd)
+            self.img = SpectralImage(tuple(shape), sd=init_sd)
         else:
-            self.img = PixelImage(list(shape), sd=init_sd)
+            self.img = PixelImage(tuple(shape), sd=init_sd)
 
         if init_img is not None:
             self.init_img(init_img)

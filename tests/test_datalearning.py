@@ -37,6 +37,16 @@ def test_parameterized_img():
                      colors='uncorr',
                      init_img=start)()
 
+    ParameterizedImg(1, 3, 128, 128, space='spectral', colors='uncorr')()
+
+    start = torch.clamp(torch.randn(1 ,3, 128, 129) + 0.5, min=0, max=1)
+    ParameterizedImg(1, 3,
+                     128,
+                     129,
+                     space='spectral',
+                     colors='uncorr',
+                     init_img=start)()
+    start = torch.clamp(torch.randn(1 ,3, 128, 128) + 0.5, min=0, max=1)
     ParameterizedImg(1, 3, 128, 128, space='pixel', colors='uncorr')()
     ParameterizedImg(1, 3,
                      128,
