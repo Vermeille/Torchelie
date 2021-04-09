@@ -61,84 +61,88 @@ class ResNetInput(nn.Module):
 class ResNet(nn.Module):
     def __init__(self, arch: List[str], num_classes: int) -> None:
         super().__init__()
-        self.restype = 'basic'
 
         def parse(l: str) -> List[int]:
             return [int(x) for x in l.split(':')]
 
-        in_ch = parse(arch[0])[0]
-        self.in_channels = in_ch
+        self.arch = list(map(parse, arch))
 
-        feats = tnn.CondSeq()
-        feats.add_module('input', ResNetInput(3, in_ch))
+        self.features = tnn.CondSeq()
+        self.features.add_module('input', ResNetInput(3, self.arch[0][0]))
 
-        for i, layer in enumerate(arch):
-            ch, s = parse(layer)
-            feats.add_module(f'block_{i}', tnn.ResBlock(in_ch, ch, stride=s))
-            in_ch = ch
+        self._change_block_type('basic')
+        self.classifier = Classifier1(None, self.arch[-1][0], num_classes,
+                                      0).head
 
-        self.features = feats
-        self.out_channels = ch
-
-        self.classifier = Classifier1(None, ch, num_classes, 0).head
+    def _make_block(self, block_type: str, in_ch: int, out_ch: int,
+                    stride: int) -> nn.Module:
+        if block_type == 'basic':
+            return tnn.ResBlock(in_ch, out_ch, stride)
+        if block_type == 'bottleneck':
+            return tnn.ResBlockBottleneck(in_ch, out_ch, stride)
+        if block_type == 'preact_basic':
+            return tnn.PreactResBlock(in_ch, out_ch, stride)
+        if block_type == 'preact_bottleneck':
+            return tnn.PreactResBlockBottleneck(in_ch, out_ch, stride)
+        if block_type == 'resnext':
+            return tnn.ResBlockBottleneck(in_ch, out_ch, stride).resnext()
+        if block_type == 'preact_resnext':
+            return tnn.PreactResBlockBottleneck(in_ch, out_ch,
+                                                stride).resnext()
+        if block_type == 'wide':
+            return tnn.ResBlockBottleneck(in_ch, out_ch, stride).wide()
+        if block_type == 'preact_wide':
+            return tnn.PreactResBlockBottleneck(in_ch, out_ch, stride).wide()
+        assert False
 
     def _change_block_type(self, ty: str) -> None:
-        Type = ({
-            'basic': tnn.ResBlock,
-            'bottleneck': tnn.ResBlockBottleneck,
-            'preact_basic': tnn.PreactResBlock,
-            'preact_bottleneck': tnn.PreactResBlockBottleneck,
-            'resnext': tnn.ResBlockBottleneck,
-            'preact_resnext': tnn.PreactResBlockBottleneck,
-        })[ty]
+        arch = self.arch
 
-        for nm, m in self.features.named_children():
-            if not isinstance(m, BLOCKS):
-                continue
-            new_block = Type(m.in_channels, m.out_channels, m.stride)
-            if 'resnext' in ty:
-                assert isinstance(new_block, BOTTLENECKS_BLOCKS)
-                new_block.resnext()
-            setattr(self.features, nm, new_block)
+        feats = tnn.CondSeq()
+        assert isinstance(self.features.input, ResNetInput)
+        feats.add_module('input', self.features.input)
+        in_ch = arch[0][0]
+        self.in_channels = in_ch
+
+        for i, (ch, s) in enumerate(arch):
+            feats.add_module(f'block_{i}',
+                             self._make_block(ty, in_ch, ch, stride=s))
+            in_ch = ch
+        self.out_channels = ch
+
+        if 'preact' in ty:
+            assert isinstance(feats.block_0, PREACT_BLOCKS)
+            feats.block_0.no_preact()
+            feats.add_module('final_bn', nn.BatchNorm2d(self.out_channels))
+            feats.add_module('final_relu', nn.ReLU(True))
+        self.features = feats
 
     def bottleneck(self) -> 'ResNet':
-        if 'bottleneck' in self.restype:
-            return self
+        self._change_block_type('bottleneck')
+        return self
 
-        if 'preact' in self.restype:
-            self.restype = 'preact_bottleneck'
-        else:
-            self.restype = 'bottleneck'
-
-        self._change_block_type(self.restype)
-        if 'preact' in self.restype:
-            assert isinstance(self.features.block_0, PREACT_BLOCKS)
-            self.features.block_0.no_preact()
+    def preact_bottleneck(self) -> 'ResNet':
+        self._change_block_type('preact_bottleneck')
         return self
 
     def preact(self) -> 'ResNet':
-        if 'preact' in self.restype:
-            return self
-
-        self.restype = 'preact_' + self.restype
-        self._change_block_type(self.restype)
-        assert isinstance(self.features.block_0,
-                          (tnn.PreactResBlock, tnn.PreactResBlockBottleneck))
-        self.features.block_0.no_preact()
-        self.features.add_module('final_bn', nn.BatchNorm2d(self.out_channels))
-        self.features.add_module('final_relu', nn.ReLU(True))
+        self._change_block_type('preact_basic')
         return self
 
     def resnext(self) -> 'ResNet':
-        if 'resnext' in self.restype:
-            return self
+        self._change_block_type('resnext')
+        return self
 
-        if 'preact' in self.restype:
-            self.restype = 'preact_resnext'
-        else:
-            self.restype = 'resnext'
+    def preact_resnext(self) -> 'ResNet':
+        self._change_block_type('preact_resnext')
+        return self
 
-        self._change_block_type(self.restype)
+    def wide(self) -> 'ResNet':
+        self._change_block_type('wide')
+        return self
+
+    def preact_wide(self) -> 'ResNet':
+        self._change_block_type('preact_wide')
         return self
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -219,15 +223,15 @@ def preact_resnet34(num_classes: int) -> ResNet:
 
 
 def preact_resnet50(num_classes: int) -> ResNet:
-    return resnet50(num_classes).preact()
+    return resnet50(num_classes).preact_bottleneck()
 
 
 def preact_resnet101(num_classes: int) -> ResNet:
-    return resnet101(num_classes).preact()
+    return resnet101(num_classes).preact_bottleneck()
 
 
 def preact_resnet152(num_classes: int) -> ResNet:
-    return resnet152(num_classes).preact()
+    return resnet152(num_classes).preact_bottleneck()
 
 
 ###
@@ -253,12 +257,35 @@ def resnext152_32x4d(num_classes: int) -> ResNet:
 
 
 def preact_resnext50_32x4d(num_classes: int) -> ResNet:
-    return preact_resnet50(num_classes).resnext()
+    return resnet50(num_classes).preact_resnext()
 
 
 def preact_resnext101_32x4d(num_classes: int) -> ResNet:
-    return preact_resnet101(num_classes).resnext()
+    return resnet101(num_classes).preact_resnext()
 
 
 def preact_resnext152_32x4d(num_classes: int) -> ResNet:
-    return preact_resnet152(num_classes).resnext()
+    return resnet152(num_classes).preact_resnext()
+
+
+###
+### Wide
+###
+
+def preact_wide_resnet50(num_classes: int) -> ResNet:
+    return resnet50(num_classes).preact_wide()
+
+
+def preact_wide_resnet101(num_classes: int) -> ResNet:
+    return resnet101(num_classes).preact_wide()
+
+###
+### Wide
+###
+
+def wide_resnet50(num_classes: int) -> ResNet:
+    return resnet50(num_classes).wide()
+
+
+def wide_resnet101(num_classes: int) -> ResNet:
+    return resnet101(num_classes).wide()
