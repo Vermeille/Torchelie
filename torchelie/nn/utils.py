@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import Module
-
+from collections import OrderedDict
 from torch.nn.parameter import Parameter
 from typing import Any, TypeVar, Callable
 from torch.nn.utils.weight_norm import WeightNorm
@@ -56,11 +56,12 @@ class WeightLambda:
         setattr(module, self.name, self.fun(getattr(module, self.name + '_g')))
 
 
-def weight_lambda(module: Module,
-                  hook_name: str,
-                  function,
-                  name: str = 'weight',
-                  ) -> Module:
+def weight_lambda(
+    module: Module,
+    hook_name: str,
+    function,
+    name: str = 'weight',
+) -> Module:
     """
     Apply :code:`function()` to :code:`getattr(module, name)` on each forward
     pass.
@@ -109,6 +110,7 @@ def remove_weight_lambda(module: Module,
     raise ValueError("weight_lambda of '{}' not found in {}".format(
         hook_name, module))
 
+
 def weight_scale(module: Module,
                  name: str = 'weight',
                  scale: float = 0) -> Module:
@@ -116,7 +118,7 @@ def weight_scale(module: Module,
     Multiply :code:`getattr(module, name)` by :code:`scale` on forward pass
     as a hook. Used to implement equalized LR for StyleGAN
     """
-    return weight_lambda(module, 'scale',  lambda w: w * scale, name)
+    return weight_lambda(module, 'scale', lambda w: w * scale, name)
 
 
 def remove_weight_scale(module: Module, name: str = 'weight') -> Module:
@@ -154,6 +156,8 @@ def remove_bn(m: nn.Sequential) -> None:
 
 
 T_Module = TypeVar('T_Module', bound=nn.Module)
+
+
 def edit_model(m: T_Module, f: Callable[[nn.Module], nn.Module]) -> nn.Module:
     """
     Allow to edit any part of a model by recursively edit its modules.
@@ -183,3 +187,30 @@ def edit_model(m: T_Module, f: Callable[[nn.Module], nn.Module]) -> nn.Module:
         m._modules[name] = edit_model(mod, f)
         m._modules[name] = f(mod)
     return f(m)
+
+
+def insert_after(base: nn.Sequential, key: str, new: nn.Module,
+                 name: str) -> nn.Sequential:
+    modules_list = list(base._modules.items())
+    found = -1
+    for i, (nm, m) in enumerate(modules_list):
+        if nm == key:
+            found = i
+            break
+    assert found != -1
+    modules_list.insert(found + 1, (name, new))
+    base._modules = OrderedDict(modules_list)
+    return base
+
+def insert_before(base: nn.Sequential, key: str, new: nn.Module,
+                 name: str) -> nn.Sequential:
+    modules_list = list(base._modules.items())
+    found = -1
+    for i, (nm, m) in enumerate(modules_list):
+        if nm == key:
+            found = i
+            break
+    assert found != -1
+    modules_list.insert(found, (name, new))
+    base._modules = OrderedDict(modules_list)
+    return base

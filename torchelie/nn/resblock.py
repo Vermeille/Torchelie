@@ -3,9 +3,10 @@ import torch.nn as nn
 from .layers import Conv2d, Conv3x3, Conv1x1
 from torchelie.utils import kaiming, xavier, normal_init, constant_init
 from .condseq import CondSeq
+from .interpolate import InterpolateBilinear2d
 import collections
 from typing import List, Tuple, Optional, cast
-from .utils import remove_bn
+from .utils import remove_bn, insert_after, insert_before
 
 
 class SEBlock(nn.Module):
@@ -56,10 +57,6 @@ class ResBlockBottleneck(nn.Module):
         in_ch (int): input channels
         out_ch (int): output channels
         stride (int): stride
-        use_se (bool): whether to use Squeeze-And-Excite after the convolutions
-            for a SE-ResBlock
-        bottleneck (bool): whether to use the standard block with two 3x3 convs
-            or the bottleneck block with 1x1 -> 3x3 -> 1x1 convs.
     """
     def __init__(self,
                  in_channels: int,
@@ -141,6 +138,21 @@ class ResBlockBottleneck(nn.Module):
                 ('conv3', kaiming(Conv1x1(mid, out_ch, bias=False))),
                 ('bn3', constant_init(nn.BatchNorm2d(out_ch), 0)),
             ]))
+        return self
+
+    def upsample_instead(self) -> 'ResBlockBottleneck':
+        if self.stride == 1:
+            return self
+
+        assert isinstance(self.branch.conv2, nn.Conv2d)
+        self.branch.conv2.stride = (1, 1)
+        insert_before(self.branch, 'conv2',
+                     InterpolateBilinear2d(scale_factor=self.stride),
+                     'upsample')
+
+        if hasattr(self.shortcut, 'pool'):
+            self.shortcut.pool = InterpolateBilinear2d(
+                scale_factor=self.stride)
         return self
 
 

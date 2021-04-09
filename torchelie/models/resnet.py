@@ -148,6 +148,12 @@ class ResNet(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.classifier(self.features(x))
 
+    def se(self) -> 'ResNet':
+        for m in self.features:
+            if isinstance(m, BLOCKS):
+                m.use_se()
+        return self
+
     def input_specs(self,
                     input_size: int = 224,
                     in_channels: int = 3) -> 'ResNet':
