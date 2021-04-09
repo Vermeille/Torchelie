@@ -1,8 +1,9 @@
 import torch
+import torch.nn as nn
 from torch.nn import Module
 
 from torch.nn.parameter import Parameter
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Callable
 from torch.nn.utils.weight_norm import WeightNorm
 
 
@@ -126,3 +127,59 @@ def remove_weight_scale(module: Module, name: str = 'weight') -> Module:
     return remove_weight_lambda(module, 'scale', name)
 
 
+def remove_bn(m: nn.Sequential) -> None:
+    """
+    Remove BatchNorm in Sequentials / CondSeqs in a smart way, restoring biases
+    in the preceding layer.
+    """
+    ms = list(m._modules.items())
+
+    # transfer biases from BN to previous conv / Linear / Whatever
+    for (name1, mod1), (name2, mod2) in zip(ms[:-1], ms[1:]):
+        if isinstance(mod2, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+            if mod1.bias is not None:
+                continue
+
+            if mod2.bias is not None:
+                with torch.no_grad():
+                    mod1.bias = mod2.bias
+            else:
+                out_ch = len(mod2.running_mean)
+                with torch.no_grad():
+                    mod1.bias = nn.Parameter(torch.zeros(out_ch))
+    # remove bn
+    for name, mod in ms:
+        if isinstance(mod, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+            delattr(m, name)
+
+
+T_Module = TypeVar('T_Module', bound=nn.Module)
+def edit_model(m: T_Module, f: Callable[[nn.Module], nn.Module]) -> nn.Module:
+    """
+    Allow to edit any part of a model by recursively edit its modules.
+
+    For instance, in order to delete all dropout layers and change relus into
+    leakyrelus:
+
+    :code:```
+    def make_leaky_no_dropout(m):
+        if isinstance(m, nn.ReLU):
+            return nn.LeakyReLU(inplace=True)
+        if isinstance(m, nn.Dropout2d):
+            return nn.Identity()
+        return m
+    model = edit_model(model, make_leaky_no_dropout)
+    ```
+
+    Args:
+        m (nn.Module): the model to edit
+        f (Callabble: nn.Module -> nn.Module): a mapping function applied to
+            all modules and submodules
+
+    Returns:
+        The edited model.
+    """
+    for name, mod in m._modules.items():
+        m._modules[name] = edit_model(mod, f)
+        m._modules[name] = f(mod)
+    return f(m)

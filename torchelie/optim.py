@@ -96,12 +96,12 @@ class AddSign(Optimizer):
 
                 state['step'] += 1
                 mom = state['mom']
-                mom.mul_(beta).add_(1 - beta, grad)
+                mom.mul_(beta).add_(grad, alpha=1 - beta)
 
                 s = torch.sign(grad).mul_(torch.sign(mom)).add_(1)
 
                 p.data.addcmul_(-lr * s, grad)
-                p.data.add_(-lr * weight_decay, p.data)
+                p.data.add_(p.data, alpha=-lr * weight_decay)
 
         return loss
 
@@ -293,7 +293,7 @@ class Lookahead(Optimizer):
                     self.state[p].requires_grad = False
 
                 q = self.state[p]
-                q.data.add_(self.alpha, p.data - q.data)
+                q.data.add_(p.data - q.data, alpha=self.alpha)
                 p.data.copy_(q.data)
         return loss
 

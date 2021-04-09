@@ -7,7 +7,7 @@ from .classifier import Classifier1
 from typing import Optional
 from collections import OrderedDict
 
-Block = functools.partial(tnn.PreactResBlock, bottleneck=True)
+Block = tnn.PreactResBlockBottleneck
 
 
 class UBlock(nn.Module):

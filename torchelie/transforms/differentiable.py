@@ -89,7 +89,7 @@ def _gblur_kernel():
     return np.stack(
         [_gblur_kernel_2d(0),
          _gblur_kernel_2d(1),
-         _gblur_kernel_2d(2)]).astype(float)
+         _gblur_kernel_2d(2)]).astype(np.float32)
 
 
 def gblur(input):
@@ -102,8 +102,9 @@ def gblur(input):
     Returns:
         the blurred tensor
     """
+    print('gblur', input.dtype, torch.from_numpy(_gblur_kernel()).dtype)
     return F.conv2d(input,
-                    torch.tensor(_gblur_kernel()).to(input.device),
+                    torch.from_numpy(_gblur_kernel()).to(input.device),
                     padding=1)
 
 
@@ -118,7 +119,7 @@ def _mblur_kernel():
     return np.stack(
         [_mblur_kernel_2d(0),
          _mblur_kernel_2d(1),
-         _mblur_kernel_2d(2)]).astype(float)
+         _mblur_kernel_2d(2)]).astype(np.float32)
 
 
 def mblur(input):
@@ -132,7 +133,7 @@ def mblur(input):
         the blurred tensor
     """
     return F.conv2d(input,
-                    torch.tensor(_mblur_kernel()).to(input.device),
+                    torch.from_numpy(_mblur_kernel()).to(input.device),
                     padding=1)
 
 

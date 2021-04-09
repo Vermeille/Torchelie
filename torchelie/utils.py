@@ -17,7 +17,7 @@ def fast_zero_grad(net: nn.Module) -> None:
         p.grad = None
 
 
-def freeze(net: nn.Module) -> nn.Module:
+def freeze(net: T_Module) -> T_Module:
     """
     Freeze all parameters of `net`
     """
@@ -26,7 +26,7 @@ def freeze(net: nn.Module) -> nn.Module:
     return net
 
 
-def unfreeze(net: nn.Module) -> nn.Module:
+def unfreeze(net: T_Module) -> T_Module:
     """
     Unfreeze all parameters of `net`
     """
@@ -577,32 +577,3 @@ def indent(text: str, amount: int = 4) -> str:
     return '\n'.join((' ' * amount + l) for l in text.splitlines())
 
 
-def edit_model(m: T_Module, f: Callable[[nn.Module], nn.Module]) -> T_Module:
-    """
-    Allow to edit any part of a model by recursively edit its modules.
-
-    For instance, in order to delete all dropout layers and change relus into
-    leakyrelus:
-
-    :code:```
-    def make_leaky_no_dropout(m):
-        if isinstance(m, nn.ReLU):
-            return nn.LeakyReLU(inplace=True)
-        if isinstance(m, nn.Dropout2d):
-            return nn.Identity()
-        return m
-    model = edit_model(model, make_leaky_no_dropout)
-    ```
-
-    Args:
-        m (nn.Module): the model to edit
-        f (Callabble: nn.Module -> nn.Module): a mapping function applied to
-            all modules and submodules
-
-    Returns:
-        The edited model.
-    """
-    for name, mod in m._modules.items():
-        m._modules[name] = edit_model(mod, f)
-        m._modules[name] = f(mod)
-    return f(m)

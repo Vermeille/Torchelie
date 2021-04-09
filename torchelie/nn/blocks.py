@@ -9,18 +9,21 @@ from .debug import Dummy
 from .batchnorm import ConditionalBN2d, Spade2d
 from .condseq import CondSeq
 from .maskedconv import MaskedConv2d
+import torchelie.utils as tu
 from torchelie.utils import kaiming, xavier, normal_init, constant_init
 from .layers import ModulatedConv
 from .noise import Noise
+from .resblock import ResBlock, ResBlockBottleneck
+from .resblock import PreactResBlock, PreactResBlockBottleneck
 from torchelie.nn.graph import ModuleGraph
 from typing import List, Tuple, Optional, cast
+from .utils import remove_bn, edit_model
 
 
 class Conv2dBNReLU(CondSeq):
     conv: nn.Conv2d
     norm: Optional[nn.Module]
     relu: Optional[nn.Module]
-    dropout: Optional[nn.Module]
 
     out_channels: int
     in_channels: int
@@ -68,14 +71,7 @@ class Conv2dBNReLU(CondSeq):
         Returns:
             self
         """
-        if self.norm is not None and self.norm.bias is not None:
-            with torch.no_grad():
-                self.conv.bias = cast(torch.Tensor, self.norm.bias)
-        else:
-            with torch.no_grad():
-                self.conv.bias = nn.Parameter(torch.zeros(self.out_channels))
-        del self._modules['norm']
-
+        remove_bn(self)
         return self
 
     def no_bias(self) -> 'Conv2dBNReLU':
@@ -102,7 +98,7 @@ class Conv2dBNReLU(CondSeq):
         new_gain = nn.init.calculate_gain('leaky_relu', param=leak)
         if isinstance(self.relu, nn.LeakyReLU):
             old_gain = nn.init.calculate_gain('leaky_relu',
-                    param=self.relu.negative_slope)
+                                              param=self.relu.negative_slope)
         else:
             old_gain = nn.init.calculate_gain('relu')
 
@@ -183,149 +179,6 @@ def MConvBNrelu(in_ch: int, out_ch: int, ks: int, center=True) -> CondSeq:
     return MConvNormReLU(in_ch, out_ch, ks, nn.BatchNorm2d, center=center)
 
 
-class Conv2dCondBNReLU(nn.Module):
-    def __init__(self,
-                 in_ch: int,
-                 out_ch: int,
-                 cond_ch: int,
-                 ks: int,
-                 leak: float = 0) -> None:
-        super(Conv2dCondBNReLU, self).__init__()
-        self.conv = kaiming(Conv2d(in_ch, out_ch, ks, bias=False), a=leak)
-        self.cbn = ConditionalBN2d(out_ch, cond_ch)
-        self.leak = leak
-
-    def condition(self, z: torch.Tensor) -> None:
-        self.cbn.condition(z)
-
-    def forward(self,
-                x: torch.Tensor,
-                z: Optional[torch.Tensor] = None) -> torch.Tensor:
-        x = self.conv(x)
-        x = self.cbn(x, z)
-        if self.leak == 0:
-            x = F.relu(x)
-        else:
-            x = F.leaky_relu(x, self.leak)
-        return x
-
-
-def make_resnet_shortcut(in_ch: int,
-                         out_ch: int,
-                         stride: int,
-                         norm=nn.BatchNorm2d) -> CondSeq:
-    if in_ch == out_ch and stride == 1:
-        return CondSeq()
-
-    sc: List[Tuple[str, nn.Module]] = []
-    if stride != 1:
-        sc.append(('pool', nn.AvgPool2d(3, stride, 1)))
-
-    sc += [('conv', kaiming(Conv1x1(in_ch, out_ch, bias=norm is None)))]
-
-    if norm:
-        sc += [('norm', norm(out_ch))]
-
-    return CondSeq(collections.OrderedDict(sc))
-
-
-def make_preact_resnet_shortcut(in_ch: int, out_ch: int,
-                                stride: int) -> CondSeq:
-    if in_ch == out_ch and stride == 1:
-        return CondSeq()
-
-    sc: List[Tuple[str, nn.Module]] = []
-    if stride != 1:
-        sc.append(('pool', nn.AvgPool2d(3, stride, 1)))
-    sc.append(('conv', kaiming(Conv1x1(in_ch, out_ch))))
-
-    return CondSeq(collections.OrderedDict(sc))
-
-
-class ResBlock(nn.Module):
-    """
-    A Residual Block. Skip connection will be added if the number of input and
-    output channels don't match or stride > 1 is used.
-
-    Args:
-        in_ch (int): input channels
-        out_ch (int): output channels
-        stride (int): stride
-        norm (callable or None): a norm layer constructor in the form
-            :code:`(num channels) -> norm layer` or None.
-        use_se (bool): whether to use Squeeze-And-Excite after the convolutions
-            for a SE-ResBlock
-        bottleneck (bool): whether to use the standard block with two 3x3 convs
-            or the bottleneck block with 1x1 -> 3x3 -> 1x1 convs.
-    """
-    def __init__(self,
-                 in_ch: int,
-                 out_ch: int,
-                 stride: int = 1,
-                 norm=nn.BatchNorm2d,
-                 use_se: bool = False,
-                 bottleneck: bool = False):
-        super(ResBlock, self).__init__()
-        self.in_ch = in_ch
-        self.out_ch = out_ch
-        self.stride = stride
-        self.use_se = use_se
-        self.bottleneck = bottleneck
-        bias = norm is None
-
-        if bottleneck:
-            mid = out_ch // 4
-            self.branch = CondSeq(
-                collections.OrderedDict([
-                    ('conv1', kaiming(Conv1x1(in_ch, mid, bias=bias))),
-                    ('bn1', constant_init(norm(mid), 1) if norm else Dummy()),
-                    ('relu', nn.ReLU(True)),
-                    ('conv2',
-                     kaiming(Conv3x3(mid, mid, stride=stride, bias=bias))),
-                    ('bn2', constant_init(norm(mid), 1) if norm else Dummy()),
-                    ('relu2', nn.ReLU(True)),
-                    ('conv3', constant_init(Conv1x1(mid, out_ch), 0)),
-                ]))
-        else:
-            self.branch = CondSeq(
-                collections.OrderedDict([
-                    ('conv1',
-                     kaiming(Conv3x3(in_ch, out_ch, stride=stride,
-                                     bias=bias))),
-                    ('bn1',
-                     constant_init(norm(out_ch), 1) if norm else Dummy()),
-                    ('relu', nn.ReLU(True)),
-                    ('conv2', kaiming(Conv3x3(out_ch, out_ch, bias=bias))),
-                    ('bn2',
-                     constant_init(norm(out_ch), 0) if norm else Dummy())
-                ]))
-
-        if use_se:
-            self.branch.add_module('se', SEBlock(out_ch))
-
-        self.relu = nn.ReLU(True)
-
-        self.shortcut = make_resnet_shortcut(in_ch, out_ch, stride, norm=None)
-
-    def __repr__(self) -> str:
-        return "{}({}, {}, stride={}, norm={})".format(
-            ("SE-" if self.use_se else "") +
-            ("Bottleneck" if self.bottleneck else "ResBlock"), self.in_ch,
-            self.out_ch, self.stride, self.branch.bn1.__class__.__name__)
-
-    def condition(self, z: torch.Tensor) -> None:
-        self.branch.condition(z)
-        self.shortcut.condition(z)
-
-    def forward(self,
-                x: torch.Tensor,
-                z: Optional[torch.Tensor] = None) -> torch.Tensor:
-        if z is not None:
-            self.condition(z)
-
-        return self.relu(self.branch(x).add_(self.shortcut(x)))
-
-
 class HardSigmoid(nn.Module):
     """
     Hard Sigmoid
@@ -342,101 +195,6 @@ class HardSwish(nn.Module):
         return x.add(0.5).clamp_(min=0, max=1).mul_(x)
 
 
-class PreactResBlock(nn.Module):
-    """
-    A Preactivated Residual Block. Skip connection will be added if the number
-    of input and output channels don't match or stride > 1 is used.
-
-    Args:
-        in_ch (int): input channels
-        out_ch (int): output channels
-        stride (int): stride
-        norm (callable or None): a norm layer constructor in the form
-            :code:`(num channels) -> norm layer` or None.
-        use_se (bool): whether to use Squeeze-And-Excite after the convolutions
-            for a SE-ResBlock
-        bottleneck (bool): whether to use the standard block with two 3x3 convs
-            or the bottleneck block with 1x1 -> 3x3 -> 1x1 convs.
-    """
-    branch: CondSeq
-    shortcut: CondSeq
-
-    def __init__(self,
-                 in_ch: int,
-                 out_ch: int,
-                 stride: int = 1,
-                 norm=nn.BatchNorm2d,
-                 dropout: float = 0.,
-                 use_se: bool = False,
-                 bottleneck: bool = False,
-                 first_layer: bool = False) -> None:
-        super(PreactResBlock, self).__init__()
-        self.in_ch = in_ch
-        self.out_ch = out_ch
-        self.stride = stride
-        self.use_se = use_se
-        self.bottleneck = bottleneck
-        self.first_layer = first_layer
-        bias = norm is None
-
-        if bottleneck:
-            mid = out_ch // 4
-            self.branch = CondSeq(
-                collections.OrderedDict([
-                    ('bn1',
-                     constant_init(norm(in_ch), 1) if norm else Dummy()),
-                    ('relu', nn.ReLU(not first_layer and norm is not None)),
-                    ('conv1', kaiming(Conv1x1(in_ch, mid, bias=bias))),
-                    ('bn2', constant_init(norm(mid), 1) if norm else Dummy()),
-                    ('relu2', nn.ReLU(True)),
-                    ('conv2',
-                     kaiming(Conv3x3(mid, mid, stride=stride, bias=bias))),
-                    ('bn3', constant_init(norm(mid), 1) if norm else Dummy()),
-                    ('relu3', nn.ReLU(True)),
-                    ('conv3', constant_init(Conv1x1(mid, out_ch), 0))
-                ]))
-        else:
-            self.branch = CondSeq(
-                collections.OrderedDict([
-                    ('bn1',
-                     constant_init(norm(in_ch), 1) if norm else Dummy()),
-                    ('relu', nn.ReLU(not first_layer and norm is not None)),
-                    ('conv1',
-                     kaiming(Conv3x3(in_ch, out_ch, stride=stride,
-                                     bias=bias))),
-                    ('dropout1', nn.Dropout2d(dropout, inplace=True)),
-                    ('bn2',
-                     constant_init(norm(out_ch), 1) if norm else Dummy()),
-                    ('relu2', nn.ReLU(True)),
-                    ('conv2', constant_init(Conv3x3(out_ch, out_ch), 0)),
-                    ('dropout2', nn.Dropout2d(dropout, inplace=True)),
-                ]))
-
-        if use_se:
-            self.branch.add_module('se', SEBlock(out_ch))
-
-        self.shortcut = make_preact_resnet_shortcut(in_ch, out_ch, stride)
-
-    def condition(self, z: torch.Tensor) -> None:
-        self.branch.condition(z)
-        self.shortcut.condition(z)
-
-    def forward(self,
-                x: torch.Tensor,
-                z: Optional[torch.Tensor] = None) -> torch.Tensor:
-        if z is not None:
-            self.condition(z)
-
-        if len(self.shortcut) > 0:
-            out = self.branch.relu(self.branch.bn1(x))
-            return self.shortcut(out).add_(self.branch[2:](out))
-        elif self.first_layer:
-            out = self.branch.relu(self.branch.bn1(x))
-            return self.shortcut(out) + self.branch[2:](out)
-        else:
-            return x + self.branch(x)
-
-
 class SpadeResBlock(PreactResBlock):
     """
     A Spade ResBlock from `Semantic Image Synthesis with Spatially-Adaptive
@@ -444,14 +202,22 @@ class SpadeResBlock(PreactResBlock):
 
     https://arxiv.org/abs/1903.07291
     """
-    def __init__(self, in_ch, out_ch, cond_channels, hidden, stride=1):
-        norm = functools.partial(Spade2d,
-                                 cond_channels=cond_channels,
-                                 hidden=hidden)
-        super(SpadeResBlock, self).__init__(in_ch=in_ch,
-                                            out_ch=out_ch,
-                                            stride=stride,
-                                            norm=norm)
+    def __init__(self,
+                 in_channels: int,
+                 out_channels: int,
+                 cond_channels: int,
+                 hidden: int,
+                 stride: int = 1) -> None:
+        super(SpadeResBlock, self).__init__(in_channels=in_channels,
+                                            out_channels=out_channels,
+                                            stride=stride)
+
+        def to_spade(m: nn.Module) -> nn.Module:
+            if isinstance(m, nn.BatchNorm2d):
+                return Spade2d(m.num_features, cond_channels, hidden)
+            return m
+
+        edit_model(self, to_spade)
 
 
 class AutoGANGenBlock(nn.Module):
@@ -467,7 +233,12 @@ class AutoGANGenBlock(nn.Module):
         ks (int): kernel size of the convolutions
         mode (str): usampling mode, 'nearest' or 'bilinear'
     """
-    def __init__(self, in_ch, out_ch, skips_ch, ks=3, mode='nearest'):
+    def __init__(self,
+                 in_ch: int,
+                 out_ch: int,
+                 skips_ch: List[int],
+                 ks: int = 3,
+                 mode: str = 'nearest') -> None:
         super(AutoGANGenBlock, self).__init__()
         assert mode in ['nearest', 'bilinear']
         self.mode = mode
@@ -482,7 +253,11 @@ class AutoGANGenBlock(nn.Module):
         self.skip_convs = nn.ModuleList(
             [kaiming(Conv1x1(ch, out_ch)) for ch in skips_ch])
 
-    def forward(self, x, skips=[]):
+    def forward(
+            self,
+            x: torch.Tensor,
+            skips: List[torch.Tensor] = []
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass
 
@@ -601,7 +376,7 @@ class SNResidualDiscrBlock(ResidualDiscrBlock):
                  in_ch: int,
                  out_ch: int,
                  downsample: bool = False,
-                 equal_lr: bool = False):
+                 equal_lr: bool = False) -> None:
         super().__init__(in_ch, out_ch, downsample, equal_lr=False)
         xavier(self.branch[-1], nonlinearity='linear')
         for m in self.modules():
@@ -645,25 +420,21 @@ class StyleGAN2Block(nn.Module):
                                  padding=1,
                                  bias=True)
             kaiming(conv, dynamic=dyn, a=0.2)
-            inside.add_operation(
-                    inputs=[f'in_{i}', 'w'],
-                    outputs=[f'conv_{i}'],
-                    name=f'conv_{i}',
-                    operation=conv)
+            inside.add_operation(inputs=[f'in_{i}', 'w'],
+                                 outputs=[f'conv_{i}'],
+                                 name=f'conv_{i}',
+                                 operation=conv)
 
             noise = Noise(out_ch, inplace=True, bias=False)
-            inside.add_operation(
-                    inputs=[f'conv_{i}', f'noise_{i}'],
-                    operation=noise,
-                    name=f'plus_noise_{i}',
-                    outputs=[f'plus_noise_{i}'])
+            inside.add_operation(inputs=[f'conv_{i}', f'noise_{i}'],
+                                 operation=noise,
+                                 name=f'plus_noise_{i}',
+                                 outputs=[f'plus_noise_{i}'])
 
-
-            inside.add_operation(
-                    inputs=[f'plus_noise_{i}'],
-                    operation=nn.LeakyReLU(0.2, True),
-                    outputs=[f'in_{i+1}'],
-                    name=f'in_{i+1}')
+            inside.add_operation(inputs=[f'plus_noise_{i}'],
+                                 operation=nn.LeakyReLU(0.2, True),
+                                 outputs=[f'in_{i+1}'],
+                                 name=f'in_{i+1}')
 
             in_ch = out_ch
 

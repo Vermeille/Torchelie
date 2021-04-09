@@ -30,29 +30,16 @@ def test_pixelcnn():
 
 
 def test_resnet():
-    m = ResNetDebug(3)
-    m(torch.randn(1, 3, 32, 32))
-
-    m = PreactResNetDebug(3)
-    m(torch.randn(1, 3, 32, 32))
-
-    m = ClassCondResNetDebug(3, 2)
-    m(torch.randn(1, 3, 32, 32), torch.LongTensor([1]))
-
-    m = VectorCondResNetDebug(12)
-    m(torch.randn(1, 3, 32, 32), torch.randn(1, 12))
-
     m = snres_discr_ctor([2, 'D', 3], in_ch=3)
     m(torch.randn(1, 3, 8, 8))
 
     m = snres_projdiscr([2, 'D', 3], in_ch=3, num_classes=4)
     m(torch.randn(1, 3, 8, 8), torch.LongTensor([1]))
 
-    resnet18(1)(torch.randn(1, 3, 32, 32))
-    preact_resnet18(1)(torch.randn(1, 3, 64, 64))
-    preact_resnet34(1)(torch.randn(1, 3, 64, 64))
-    preact_resnet20_cifar(1)(torch.randn(1, 3, 64, 64))
-    resnet20_cifar(1)(torch.randn(1, 3, 32, 32))
+    for M in [resnet18, preact_resnet18, resnet50, preact_resnet50]:
+        m = M(4)
+        out = m(torch.randn(2, 3, 32, 32))
+        out.mean().backward()
 
 
 def test_unet():
