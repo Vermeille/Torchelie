@@ -72,22 +72,17 @@ class ResBlockBottleneck(nn.Module):
 
         self.pre = CondSeq()
 
+        mid = out_channels // 4
         self.branch = CondSeq(
             collections.OrderedDict([
-                ('conv1', kaiming(Conv1x1(in_channels, in_channels,
-                                          bias=False))),
-                ('bn1', constant_init(nn.BatchNorm2d(in_channels), 1)),
+                ('conv1', kaiming(Conv1x1(in_channels, mid, bias=False))),
+                ('bn1', constant_init(nn.BatchNorm2d(mid), 1)),
                 ('relu', nn.ReLU(True)),
-                ('conv2',
-                 kaiming(
-                     Conv3x3(in_channels,
-                             in_channels,
-                             stride=stride,
-                             bias=False))),
-                ('bn2', constant_init(nn.BatchNorm2d(in_channels), 1)),
+                ('conv2', kaiming(Conv3x3(mid, mid, stride=stride,
+                                          bias=False))),
+                ('bn2', constant_init(nn.BatchNorm2d(mid), 1)),
                 ('relu2', nn.ReLU(True)),
-                ('conv3',
-                 kaiming(Conv1x1(in_channels, out_channels, bias=False))),
+                ('conv3', kaiming(Conv1x1(mid, out_channels, bias=False))),
                 ('bn3', constant_init(nn.BatchNorm2d(out_channels), 0)),
             ]))
 
@@ -125,40 +120,39 @@ class ResBlockBottleneck(nn.Module):
         self.post.add_module('se', SEBlock(self.in_channels))
         return self
 
-    def to_resnext(self) -> 'ResBlockBottleneck':
+    def resnext(self) -> 'ResBlockBottleneck':
+        in_ch = self.in_channels
+        out_ch = self.out_channels
+        mid = out_ch // 2
         c = self.branch.conv1
         assert isinstance(c, nn.Conv2d)
 
         self.branch.conv1 = kaiming(
-            nn.Conv2d(c.in_channels,
-                      c.out_channels * 2,
-                      1,
-                      bias=c.bias is not None))
+            nn.Conv2d(in_ch, mid, 1, bias=c.bias is not None))
 
         if hasattr(self.branch, 'bn1'):
-            self.branch.bn1 = nn.BatchNorm2d(c.out_channels * 2)
+            self.branch.bn1 = nn.BatchNorm2d(mid)
 
         c = self.branch.conv2
         assert isinstance(c, nn.Conv2d)
         self.branch.conv2 = kaiming(
-            nn.Conv2d(c.in_channels * 2,
-                      c.out_channels * 2,
+            nn.Conv2d(mid,
+                      mid,
                       kernel_size=3,
                       padding=1,
                       stride=self.stride,
-                      bias=c.bias is not None, groups=32))
+                      bias=c.bias is not None,
+                      groups=32))
 
         if hasattr(self.branch, 'bn2'):
-            self.branch.bn2 = nn.BatchNorm2d(c.out_channels * 2)
+            self.branch.bn2 = nn.BatchNorm2d(mid)
 
         c = self.branch.conv3
         assert isinstance(c, nn.Conv2d)
         self.branch.conv3 = kaiming(
-            nn.Conv2d(c.in_channels * 2,
-                      c.out_channels,
-                      1,
-                      bias=c.bias is not None))
+            nn.Conv2d(mid, out_ch, 1, bias=c.bias is not None))
         return self
+
 
 class ResBlock(nn.Module):
     """
@@ -315,6 +309,11 @@ class PreactResBlock(nn.Module):
 
         return self
 
+    def no_preact(self) -> 'PreactResBlock':
+        self.preact_skip()
+        self.preact = CondSeq()
+        return self
+
     def forward(self,
                 x: torch.Tensor,
                 z: Optional[torch.Tensor] = None) -> torch.Tensor:
@@ -355,23 +354,19 @@ class PreactResBlockBottleneck(nn.Module):
         self.pre = CondSeq()
         self.preact = CondSeq()
 
+        mid = out_channels // 4
         self.branch = CondSeq(
             collections.OrderedDict([
                 ('bn1', constant_init(nn.BatchNorm2d(in_channels), 1)),
                 ('relu', nn.ReLU(True)),
-                ('conv1', kaiming(Conv1x1(in_channels, in_channels,
-                                          bias=False))),
-                ('bn2', constant_init(nn.BatchNorm2d(in_channels), 1)),
+                ('conv1', kaiming(Conv1x1(in_channels, mid, bias=False))),
+                ('bn2', constant_init(nn.BatchNorm2d(mid), 1)),
                 ('relu2', nn.ReLU(True)),
-                ('conv2',
-                 kaiming(
-                     Conv3x3(in_channels,
-                             in_channels,
-                             stride=stride,
-                             bias=False))),
-                ('bn3', constant_init(nn.BatchNorm2d(in_channels), 1)),
+                ('conv2', kaiming(Conv3x3(mid, mid, stride=stride,
+                                          bias=False))),
+                ('bn3', constant_init(nn.BatchNorm2d(mid), 1)),
                 ('relu3', nn.ReLU(True)),
-                ('conv3', constant_init(Conv1x1(in_channels, out_channels), 0))
+                ('conv3', constant_init(Conv1x1(mid, out_channels), 0))
             ]))
 
         self.shortcut = make_preact_resnet_shortcut(in_channels, out_channels,
@@ -419,37 +414,40 @@ class PreactResBlockBottleneck(nn.Module):
         self.post.add_module('se', SEBlock(self.in_channels))
         return self
 
-    def to_resnext(self) -> 'PreactResBlockBottleneck':
+    def no_preact(self) -> 'PreactResBlock':
+        self.preact_skip()
+        self.preact = CondSeq()
+        return self
+
+    def resnext(self) -> 'PreactResBlockBottleneck':
+        in_ch = self.in_channels
+        out_ch = self.out_channels
+        mid = out_ch // 2
         c = self.branch.conv1
         assert isinstance(c, nn.Conv2d)
 
         self.branch.conv1 = kaiming(
-            nn.Conv2d(c.in_channels,
-                      c.out_channels * 2,
-                      1,
-                      bias=c.bias is not None))
+            nn.Conv2d(in_ch, mid, 1, bias=c.bias is not None))
 
         if hasattr(self.branch, 'bn2'):
-            self.branch.bn2 = nn.BatchNorm2d(c.out_channels * 2)
+            self.branch.bn2 = nn.BatchNorm2d(mid)
 
         c = self.branch.conv2
         assert isinstance(c, nn.Conv2d)
         self.branch.conv2 = kaiming(
-            nn.Conv2d(c.in_channels * 2,
-                      c.out_channels * 2,
+            nn.Conv2d(mid,
+                      mid,
                       kernel_size=3,
                       padding=1,
                       stride=self.stride,
-                      bias=c.bias is not None, groups=32))
+                      bias=c.bias is not None,
+                      groups=32))
 
         if hasattr(self.branch, 'bn3'):
-            self.branch.bn3 = nn.BatchNorm2d(c.out_channels * 2)
+            self.branch.bn3 = nn.BatchNorm2d(mid)
 
         c = self.branch.conv3
         assert isinstance(c, nn.Conv2d)
         self.branch.conv3 = kaiming(
-            nn.Conv2d(c.in_channels * 2,
-                      c.out_channels,
-                      1,
-                      bias=c.bias is not None))
+            nn.Conv2d(mid, out_ch, 1, bias=c.bias is not None))
         return self

@@ -36,11 +36,17 @@ def test_resnet():
     m = snres_projdiscr([2, 'D', 3], in_ch=3, num_classes=4)
     m(torch.randn(1, 3, 8, 8), torch.LongTensor([1]))
 
-    for M in [resnet18, preact_resnet18, resnet50, preact_resnet50, resnext50,
-            preact_resnext50]:
+    def run(M):
         m = M(4)
         out = m(torch.randn(2, 3, 32, 32))
         out.mean().backward()
+
+    run(resnet18)
+    run(preact_resnet18)
+    run(resnet50)
+    run(preact_resnet50)
+    run(resnext50_32x4d)
+    run(preact_resnext50_32x4d)
 
 
 def test_unet():
