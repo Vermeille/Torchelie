@@ -13,7 +13,7 @@ import torchelie.utils as tu
 from torchelie.utils import kaiming, xavier, normal_init, constant_init
 from .layers import ModulatedConv
 from .noise import Noise
-from .resblock import ResBlock, ResBlockBottleneck
+from .resblock import ResBlock, ResBlockBottleneck, SEBlock
 from .resblock import PreactResBlock, PreactResBlockBottleneck
 from torchelie.nn.graph import ModuleGraph
 from typing import List, Tuple, Optional, cast
@@ -106,30 +106,6 @@ class Conv2dBNReLU(CondSeq):
         self.conv.weight.data *= new_gain / old_gain
         return self
 
-
-class SEBlock(nn.Module):
-    """
-    A Squeeze-And-Excite block
-
-    Args:
-        in_ch (int): input channels
-        reduction (int): channels reduction factor for the hidden number of
-            channels
-    """
-    def __init__(self, in_ch: int, reduction: int = 16) -> None:
-        super(SEBlock, self).__init__()
-        reduc = in_ch // reduction
-        self.proj = nn.Sequential(
-            collections.OrderedDict([
-                ('pool', nn.AdaptiveAvgPool2d(1)),
-                ('squeeze', kaiming(nn.Conv2d(in_ch, reduc, 1))),
-                ('relu', nn.ReLU(True)),
-                ('excite', constant_init(nn.Conv2d(reduc, in_ch, 1), 0)),
-                ('attn', nn.Sigmoid())
-            ]))
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x * self.proj(x)
 
 
 def MConvNormReLU(in_ch: int,

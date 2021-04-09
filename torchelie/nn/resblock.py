@@ -8,6 +8,31 @@ from typing import List, Tuple, Optional, cast
 from .utils import remove_bn
 
 
+class SEBlock(nn.Module):
+    """
+    A Squeeze-And-Excite block
+
+    Args:
+        in_ch (int): input channels
+        reduction (int): channels reduction factor for the hidden number of
+            channels
+    """
+    def __init__(self, in_ch: int, reduction: int = 16) -> None:
+        super(SEBlock, self).__init__()
+        reduc = in_ch // reduction
+        self.proj = nn.Sequential(
+            collections.OrderedDict([('pool', nn.AdaptiveAvgPool2d(1)),
+                                     ('squeeze', kaiming(Conv1x1(in_ch,
+                                                                 reduc))),
+                                     ('relu', nn.ReLU(True)),
+                                     ('excite', kaiming(Conv1x1(reduc,
+                                                                in_ch))),
+                                     ('attn', nn.Sigmoid())]))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x * self.proj(x)
+
+
 def make_resnet_shortcut(in_channels: int, out_channels: int,
                          stride: int) -> CondSeq:
     shortcut = CondSeq()
@@ -96,6 +121,10 @@ class ResBlockBottleneck(nn.Module):
 
         return self
 
+    def use_se(self) -> 'ResBlockBottleneck':
+        self.post.add_module('se', SEBlock(self.in_channels))
+        return self
+
 
 class ResBlock(nn.Module):
     """
@@ -162,6 +191,9 @@ class ResBlock(nn.Module):
         constant_init(self.branch.conv2, 0)
         return self
 
+    def use_se(self) -> 'ResBlock':
+        self.post.add_module('se', SEBlock(self.in_channels))
+        return self
 
 def make_preact_resnet_shortcut(in_ch: int, out_ch: int,
                                 stride: int) -> CondSeq:
@@ -258,6 +290,9 @@ class PreactResBlock(nn.Module):
         x = self.shortcut(x) + self.branch(x)
         return self.post(x)
 
+    def use_se(self) -> 'PreactResBlock':
+        self.post.add_module('se', SEBlock(self.in_channels))
+        return self
 
 class PreactResBlockBottleneck(nn.Module):
     """
@@ -343,3 +378,7 @@ class PreactResBlockBottleneck(nn.Module):
         x = self.preact(x)
         x = self.shortcut(x) + self.branch(x)
         return self.post(x)
+
+    def use_se(self) -> 'PreactResBlockBottleneck':
+        self.post.add_module('se', SEBlock(self.in_channels))
+        return self
