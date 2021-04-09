@@ -4,7 +4,9 @@ setup(
         name='Torchelie',
         version='0.1dev',
         packages=find_packages(),
-        license='Creative Commons Attribution-Noncommercial-Share Alike license',
+        classifiers=[
+            "License :: OSI Approved :: MIT License",
+        ],
         install_requires=[
             'visdom>=0.1.8',
             'crayons>=0.2',
