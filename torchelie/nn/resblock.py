@@ -125,6 +125,40 @@ class ResBlockBottleneck(nn.Module):
         self.post.add_module('se', SEBlock(self.in_channels))
         return self
 
+    def to_resnext(self) -> 'ResBlockBottleneck':
+        c = self.branch.conv1
+        assert isinstance(c, nn.Conv2d)
+
+        self.branch.conv1 = kaiming(
+            nn.Conv2d(c.in_channels,
+                      c.out_channels * 2,
+                      1,
+                      bias=c.bias is not None))
+
+        if hasattr(self.branch, 'bn1'):
+            self.branch.bn1 = nn.BatchNorm2d(c.out_channels * 2)
+
+        c = self.branch.conv2
+        assert isinstance(c, nn.Conv2d)
+        self.branch.conv2 = kaiming(
+            nn.Conv2d(c.in_channels * 2,
+                      c.out_channels * 2,
+                      kernel_size=3,
+                      padding=1,
+                      stride=self.stride,
+                      bias=c.bias is not None, groups=32))
+
+        if hasattr(self.branch, 'bn2'):
+            self.branch.bn2 = nn.BatchNorm2d(c.out_channels * 2)
+
+        c = self.branch.conv3
+        assert isinstance(c, nn.Conv2d)
+        self.branch.conv3 = kaiming(
+            nn.Conv2d(c.in_channels * 2,
+                      c.out_channels,
+                      1,
+                      bias=c.bias is not None))
+        return self
 
 class ResBlock(nn.Module):
     """
@@ -194,6 +228,7 @@ class ResBlock(nn.Module):
     def use_se(self) -> 'ResBlock':
         self.post.add_module('se', SEBlock(self.in_channels))
         return self
+
 
 def make_preact_resnet_shortcut(in_ch: int, out_ch: int,
                                 stride: int) -> CondSeq:
@@ -294,6 +329,7 @@ class PreactResBlock(nn.Module):
         self.post.add_module('se', SEBlock(self.in_channels))
         return self
 
+
 class PreactResBlockBottleneck(nn.Module):
     """
     A Preactivated Residual Block. Skip connection will be added if the number
@@ -381,4 +417,39 @@ class PreactResBlockBottleneck(nn.Module):
 
     def use_se(self) -> 'PreactResBlockBottleneck':
         self.post.add_module('se', SEBlock(self.in_channels))
+        return self
+
+    def to_resnext(self) -> 'PreactResBlockBottleneck':
+        c = self.branch.conv1
+        assert isinstance(c, nn.Conv2d)
+
+        self.branch.conv1 = kaiming(
+            nn.Conv2d(c.in_channels,
+                      c.out_channels * 2,
+                      1,
+                      bias=c.bias is not None))
+
+        if hasattr(self.branch, 'bn2'):
+            self.branch.bn2 = nn.BatchNorm2d(c.out_channels * 2)
+
+        c = self.branch.conv2
+        assert isinstance(c, nn.Conv2d)
+        self.branch.conv2 = kaiming(
+            nn.Conv2d(c.in_channels * 2,
+                      c.out_channels * 2,
+                      kernel_size=3,
+                      padding=1,
+                      stride=self.stride,
+                      bias=c.bias is not None, groups=32))
+
+        if hasattr(self.branch, 'bn3'):
+            self.branch.bn3 = nn.BatchNorm2d(c.out_channels * 2)
+
+        c = self.branch.conv3
+        assert isinstance(c, nn.Conv2d)
+        self.branch.conv3 = kaiming(
+            nn.Conv2d(c.in_channels * 2,
+                      c.out_channels,
+                      1,
+                      bias=c.bias is not None))
         return self

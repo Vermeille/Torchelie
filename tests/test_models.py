@@ -36,7 +36,8 @@ def test_resnet():
     m = snres_projdiscr([2, 'D', 3], in_ch=3, num_classes=4)
     m(torch.randn(1, 3, 8, 8), torch.LongTensor([1]))
 
-    for M in [resnet18, preact_resnet18, resnet50, preact_resnet50]:
+    for M in [resnet18, preact_resnet18, resnet50, preact_resnet50, resnext50,
+            preact_resnext50]:
         m = M(4)
         out = m(torch.randn(2, 3, 32, 32))
         out.mean().backward()

@@ -134,6 +134,24 @@ def resnet50(num_classes: int,
                   in_channels=in_channels,
                   num_classes=num_classes)
 
+def resnext50(num_classes:int,
+        in_channels: int=3,
+        input_size:int=224)->nn.Module:
+    m = resnet50(num_classes, in_channels, input_size)
+    for block in m.modules():
+        if isinstance(block, tnn.ResBlockBottleneck):
+            block.to_resnext()
+    return m
+
+def preact_resnext50(num_classes:int,
+        in_channels: int=3,
+        input_size:int=224)->nn.Module:
+    m = preact_resnet50(num_classes, in_channels, input_size)
+    for block in m.modules():
+        if isinstance(block, tnn.PreactResBlockBottleneck):
+            block.to_resnext()
+    return m
+
 
 def preact_resnet50(num_classes: int,
                     in_channels: int = 3,
