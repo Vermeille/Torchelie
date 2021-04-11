@@ -102,7 +102,7 @@ Misc modules:
 
 Container modules:
 
-* `ConditionalSequential` is an extension of `nn.Sequential` that also applies a
+* `CondSeq` is an extension of `nn.Sequential` that also applies a
   second input on the layers having `condition()`
 
 Model manipulation modules:
@@ -122,17 +122,12 @@ Net Blocks:
 * `ResNetBlock`, `PreactResNetBlock`
 * `ResBlock` is a classical residual block with batchnorm
 * `ClassConditionalResBlock`
-* `ConditionalResBlock` instead uses `ConditionalBN2d`
 * `SpadeResBlock` instead uses `Spade2d`
 * `AutoGANGenBlock` is a block for AutoGAN
 * `SNResidualDiscrBlock` is a residual block with spectral normalization
 
 ## `torchelie.models`
 
-* `VggBNBone` is a parameterizable stack of convs vgg style. Look at `VggDebug`
-  for its usage.
-* `ResNetBone` for resnet style bone.
-* `Classifier` adds two linear layers to a bone for classification.
 * `Patch16`, `Patch32`, `Patch70`, `Patch286` are Pix2Pix's PatchGAN's
   discriminators
 * `UNet` for image segmentation

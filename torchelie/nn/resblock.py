@@ -103,7 +103,7 @@ class ResBlockBottleneck(nn.Module):
         return self
 
     def use_se(self) -> 'ResBlockBottleneck':
-        self.post.add_module('se', SEBlock(self.in_channels))
+        self.branch.add_module('se', SEBlock(self.out_channels))
         return self
 
     def resnext(self) -> 'ResBlockBottleneck':
@@ -222,7 +222,7 @@ class ResBlock(nn.Module):
         return self
 
     def use_se(self) -> 'ResBlock':
-        self.post.add_module('se', SEBlock(self.in_channels))
+        self.branch.add_module('se', SEBlock(self.out_channels))
         return self
 
 
@@ -327,7 +327,7 @@ class PreactResBlock(nn.Module):
         return self.post(x)
 
     def use_se(self) -> 'PreactResBlock':
-        self.post.add_module('se', SEBlock(self.in_channels))
+        self.branch.add_module('se', SEBlock(self.out_channels))
         return self
 
 
@@ -401,7 +401,7 @@ class PreactResBlockBottleneck(nn.Module):
         return self.post(x)
 
     def use_se(self) -> 'PreactResBlockBottleneck':
-        self.post.add_module('se', SEBlock(self.in_channels))
+        self.branch.add_module('se', SEBlock(self.out_channels))
         return self
 
     def no_preact(self) -> 'PreactResBlockBottleneck':

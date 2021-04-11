@@ -106,6 +106,14 @@ class Conv2dBNReLU(CondSeq):
         self.conv.weight.data *= new_gain / old_gain
         return self
 
+    def no_relu(self)-> 'Conv2dBNReLU':
+        """
+        Remove the ReLU
+        """
+        del self.relu
+        self.relu = None
+        return self
+
 
 
 def MConvNormReLU(in_ch: int,
