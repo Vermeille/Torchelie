@@ -1,80 +1,91 @@
-from functools import partial
+import torch
 import torch.nn as nn
 import torchelie.nn as tnn
 from torchelie.utils import kaiming, xavier
 from typing import List, Union, cast
-
-from .classifier import Classifier2, ConcatPoolClassifier1
-
-
-def VggBNBone(arch, in_ch: int = 3, debug: bool = False) -> tnn.CondSeq:
-    """
-    Construct a VGG net
-
-    How to specify a VGG architecture:
-
-    It's a list of blocks specifications. Blocks are either:
-
-    - 'M' for maxpool of kernel size 2 and stride 2
-    - 'A' for average pool of kernel size 2 and stride 2
-    - 'U' for bilinear upsampling (scale factor 2)
-    - an integer `ch` for a block with `ch` output channels
-
-    Args:
-        arch (list): architecture specification
-        in_ch (int): number of input channels
-
-    Returns:
-        A VGG instance
-    """
-    layers: List[nn.Module] = []
-
-    if debug:
-        layers.append(tnn.Debug('Input'))
-
-    for i, layer in enumerate(arch):
-        if layer == 'M':
-            layers.append(nn.MaxPool2d(2, 2))
-        elif layer == 'A':
-            layers.append(nn.AvgPool2d(2, 2))
-        elif layer == 'U':
-            layers.append(tnn.InterpolateBilinear2d(scale_factor=2))
-        else:
-            layers.append(tnn.Conv2dBNReLU(in_ch, layer, kernel_size=3))
-            in_ch = layer
-        if debug:
-            layer_name = 'layer_{}_{}'.format(layers[-1].__class__.__name__, i)
-            layers.append(tnn.Debug(layer_name))
-    return tnn.CondSeq(*layers)
+from .classifier import ClassificationHead
 
 
-def VggDebugFullyConv(num_classes: int,
-                      in_ch: int = 3,
-                      input_size: int = 32) -> nn.Module:
-    layers: List[Union[str, int]] = [32, 'A', 64, 'A', 128, 'A', 256]
+class VGG(nn.Module):
+    def __init__(self, arch: list, num_classes: int) -> None:
+        super().__init__()
+        self.arch = arch
+        in_ch = 3
+        self.in_channels = in_ch
 
-    input_size = input_size // 32
+        feats = tnn.CondSeq()
+        block_num = 1
+        conv_num = 1
+        for l in arch:
+            if l == 'M':
+                feats.add_module(f'pool_{block_num}', nn.MaxPool2d(2, 2))
+                block_num += 1
+                conv_num = 1
+            else:
+                ch = cast(int, l)
+                feats.add_module(f'conv_{block_num}_{conv_num}',
+                                 tnn.Conv2dBNReLU(in_ch, ch, 3).remove_bn())
+                in_ch = ch
+                conv_num += 1
+        self.out_channels = ch
 
-    while input_size != 1:
-        layers += ['A', min(1024, layers[-1] * 2)]
-        input_size = input_size // 2
+        self.features = feats
+        self.classifier = ClassificationHead(self.out_channels, num_classes)
+        self.classifier.to_vgg_style(4096)
 
-    return ConcatPoolClassifier1(VggBNBone(layers, in_ch=in_ch),
-                                 cast(int, layers[-1]), num_classes)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.classifier(self.features(x))
+
+    def add_bn(self) -> 'VGG':
+        for m in self.features:
+            if isinstance(m, tnn.Conv2dBNReLU):
+                m.restore_bn()
+        return self
+
+    def set_input_specs(self, in_channels: int) -> 'VGG':
+        c1 = self.features.conv_1_1
+        assert isinstance(c1, tnn.Conv2dBNReLU)
+        c1.conv = kaiming(tnn.Conv3x3(in_channels, c1.conv.out_channels, 3))
+        return self
 
 
-def VggDebug(num_classes: int, in_ch=1, debug: bool = False) -> nn.Module:
-    """
-    A not so small Vgg net classifier for testing purposes
+def vgg11(num_classes: int) -> 'VGG':
+    return VGG(
+        [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+        num_classes)
 
-    Args:
-        num_classes (int): number of output classes
-        in_ch (int): number of input channels, 3 for RGB images
-        debug (bool): whether to add debug layers
 
-    Returns:
-        a VGG instance
-    """
-    layers = [64, 'M', 128, 'M', 128, 'M', 256]
-    return Classifier2(VggBNBone(layers, in_ch=in_ch, debug=debug),
-                       cast(int, layers[-1]), num_classes)
+def vgg13(num_classes: int) -> 'VGG':
+    return VGG([
+        64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'
+    ], num_classes)
+
+
+def vgg16(num_classes: int) -> 'VGG':
+    return VGG([
+        64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M',
+        512, 512, 512, 'M'
+    ], num_classes)
+
+
+def vgg19(num_classes: int) -> 'VGG':
+    return VGG([
+        64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512,
+        512, 'M', 512, 512, 512, 512, 'M'
+    ], num_classes)
+
+
+def vgg11_bn(num_classes: int) -> 'VGG':
+    return vgg11(num_classes).add_bn()
+
+
+def vgg13_bn(num_classes: int) -> 'VGG':
+    return vgg13(num_classes).add_bn()
+
+
+def vgg16_bn(num_classes: int) -> 'VGG':
+    return vgg16(num_classes).add_bn()
+
+
+def vgg19_bn(num_classes: int) -> 'VGG':
+    return vgg19(num_classes).add_bn()

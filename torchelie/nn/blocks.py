@@ -17,7 +17,8 @@ from .resblock import ResBlock, ResBlockBottleneck, SEBlock
 from .resblock import PreactResBlock, PreactResBlockBottleneck
 from torchelie.nn.graph import ModuleGraph
 from typing import List, Tuple, Optional, cast
-from .utils import remove_bn, edit_model
+from .utils import remove_bn, edit_model, insert_after, make_leaky
+from .interpolate import InterpolateBilinear2d
 
 
 class Conv2dBNReLU(CondSeq):
@@ -47,22 +48,24 @@ class Conv2dBNReLU(CondSeq):
         Returns:
             A packed block with Conv-Norm-ReLU as a CondSeq
         """
+        super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.kernel_size = (kernel_size, kernel_size)
         self.stride = (stride, stride)
+        self.reset()
 
-        layer = [('conv',
-                  kaiming(
-                      Conv2d(in_channels,
-                             out_channels,
-                             kernel_size,
-                             stride=stride,
-                             bias=False)))]
-        layer.append(('norm', nn.BatchNorm2d(out_channels)))
-        layer.append(('relu', nn.ReLU(inplace=True)))
-
-        super().__init__(collections.OrderedDict(layer))
+    def reset(self) -> None:
+        self.add_module(
+            'conv',
+            kaiming(
+                Conv2d(self.in_channels,
+                       self.out_channels,
+                       self.kernel_size[0],
+                       stride=self.stride,
+                       bias=False)))
+        self.add_module('norm', nn.BatchNorm2d(self.out_channels))
+        self.add_module('relu', nn.ReLU(inplace=True))
 
     def remove_bn(self) -> 'Conv2dBNReLU':
         """
@@ -72,6 +75,13 @@ class Conv2dBNReLU(CondSeq):
             self
         """
         remove_bn(self)
+        self.norm = None
+        return self
+
+    def restore_bn(self) -> 'Conv2dBNReLU':
+        if self.norm is not None:
+            return self
+        insert_after(self, 'conv', nn.BatchNorm2d(self.out_channels), 'norm')
         return self
 
     def no_bias(self) -> 'Conv2dBNReLU':
@@ -81,10 +91,9 @@ class Conv2dBNReLU(CondSeq):
         Returns:
             self
         """
-        if self.norm:
-            self.norm = None
-        else:
-            self.conv.bias = None
+        if hasattr(self.norm, 'bias'):
+            self.norm.bias = None
+        self.conv.bias = None
         return self
 
     def leaky(self, leak: float = 0.2) -> 'Conv2dBNReLU':
@@ -106,7 +115,7 @@ class Conv2dBNReLU(CondSeq):
         self.conv.weight.data *= new_gain / old_gain
         return self
 
-    def no_relu(self)-> 'Conv2dBNReLU':
+    def no_relu(self) -> 'Conv2dBNReLU':
         """
         Remove the ReLU
         """
@@ -114,6 +123,12 @@ class Conv2dBNReLU(CondSeq):
         self.relu = None
         return self
 
+    def to_preact(self) -> 'Conv2dBNReLU':
+        self.reset()
+        c = self.conv
+        del self.conv
+        self.add_module('conv', c)
+        return self
 
 
 def MConvNormReLU(in_ch: int,
@@ -227,12 +242,19 @@ class AutoGANGenBlock(nn.Module):
         assert mode in ['nearest', 'bilinear']
         self.mode = mode
 
-        self.conv1 = kaiming(nn.Conv2d(in_ch, out_ch, ks, padding=ks // 2))
-        self.conv2 = kaiming(nn.Conv2d(out_ch, out_ch, ks, padding=ks // 2))
+        self.preact = CondSeq()
+
+        self.conv1 = Conv2dBNReLU(in_ch, out_ch, ks).to_preact().remove_bn()
+        self.conv1.leaky()
+
+        self.conv2 = Conv2dBNReLU(out_ch, out_ch, ks).to_preact().remove_bn()
+        self.conv2.leaky()
 
         self.shortcut = None
         if in_ch != out_ch:
             self.shortcut = kaiming(Conv1x1(in_ch, out_ch, 1))
+            self.preact.add_module('relu', self.conv1.relu)
+            del self.conv1.relu
 
         self.skip_convs = nn.ModuleList(
             [kaiming(Conv1x1(ch, out_ch)) for ch in skips_ch])
@@ -254,97 +276,46 @@ class AutoGANGenBlock(nn.Module):
                 connections
         """
         x = F.interpolate(x, scale_factor=2., mode=self.mode)
+        x = self.preact(x)
+        x_skip = x
+
         if self.shortcut is not None:
-            x = F.leaky_relu(x, 0.2)
-            x_skip = x
             x_skip = self.shortcut(x_skip)
-        else:
-            x_skip = x
-            x = F.leaky_relu(x, 0.2)
 
         x_mid = self.conv1(x)
 
-        x_w_skips = x_mid
+        x_w_skips = x_mid.clone()
         for conv, skip in zip(self.skip_convs, skips):
-            x_w_skips += conv(
-                F.interpolate(skip, size=x_mid.shape[-2:], mode=self.mode))
+            x_w_skips.add_(
+                conv(F.interpolate(skip, size=x_mid.shape[-2:],
+                                   mode=self.mode)))
 
-        x = self.conv2(F.leaky_relu(x_w_skips, 0.2))
-        return x + x_skip, F.leaky_relu(x_mid, 0.2)
+        x = self.conv2(x_w_skips)
+        return x + x_skip, x_mid
 
 
-class ResidualDiscrBlock(torch.nn.Module):
-    """
-    A residual block with downsampling
-
-    Args:
-        in_ch (int): number of input channels
-        out_ch (int): number of output channels
-        downsample (bool): whether to downsample
-        equal_lr (bool): whether to use dynamic weight scaling for equal lr
-            such as in StyleGAN2
-    """
+class ResidualDiscrBlock(PreactResBlock):
     def __init__(self,
-                 in_ch: int,
-                 out_ch: int,
-                 downsample: bool = False,
-                 equal_lr: bool = False,
-                 force_shortcut: bool = False):
-        super(ResidualDiscrBlock, self).__init__()
-        self.equal_lr = equal_lr
-        self.branch = nn.Sequential(*[
-            nn.LeakyReLU(0.2),
-            kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1),
-                    dynamic=equal_lr,
-                    mode='fan_in'),
-            nn.LeakyReLU(0.2, True),
-            nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
-            xavier(nn.Conv2d(out_ch, out_ch, 3, padding=1),
-                   dynamic=equal_lr,
-                   nonlinearity='linear',
-                   mode='fan_in')
-        ])
+                 in_channels: int,
+                 out_channels: int,
+                 downsample: bool = False) -> None:
+        super().__init__(in_channels, out_channels)
+        self.post.add_module('downsample', nn.AvgPool2d(2))
+        self.remove_bn()
+        make_leaky(self)
+
+    def equal_lr(self) -> 'ResidualDiscrBlock':
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                kaiming(m,
+                        dynamic=True,
+                        mode='fan_in',
+                        nonlinearity='leaky_relu',
+                        a=0.2)
 
         with torch.no_grad():
-            if equal_lr:
-                self.branch[-1].weight_g.data.zero_()
-            else:
-                self.branch[-1].weight.data.zero_()
-
-        self.downsample = downsample
-        self.sc = None
-        if in_ch != out_ch or force_shortcut:
-            self.sc = nn.Sequential(
-                kaiming(nn.Conv2d(in_ch, out_ch, 3, padding=1),
-                        dynamic=equal_lr,
-                        nonlinearity='linear',
-                        mode='fan_in'),
-                nn.AvgPool2d(3, 2, 1) if downsample else Dummy(),
-            )
-
-    def extra_repr(self):
-        return f"equal_lr={self.equal_lr} downsample={self.downsample}"
-
-    def forward(self, x):
-        """
-        Forward pass
-
-        Args:
-            x (tensor): input tensor
-
-        Returns:
-            output tensor
-        """
-        if self.sc is not None:
-            # FIXME: we can share the relu and have it inplace
-            x = self.branch[0](x)
-            res = self.branch[1:](x)
-            x = self.sc(x)
-        else:
-            res = self.branch(x)
-            if self.downsample:
-                x = nn.functional.avg_pool2d(x, 3, 2, 1)
-        return x + res
+            self.branch.conv2.weight_g.zero_()
+        return self
 
 
 class SNResidualDiscrBlock(ResidualDiscrBlock):
@@ -359,13 +330,15 @@ class SNResidualDiscrBlock(ResidualDiscrBlock):
     def __init__(self,
                  in_ch: int,
                  out_ch: int,
-                 downsample: bool = False,
-                 equal_lr: bool = False) -> None:
-        super().__init__(in_ch, out_ch, downsample, equal_lr=False)
-        xavier(self.branch[-1], nonlinearity='linear')
+                 downsample: bool = False) -> None:
+        super().__init__(in_ch, out_ch, downsample)
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.utils.spectral_norm(m)
+        xavier(self.branch.conv2,
+               nonlinearity='leaky_relu',
+               a=0.2,
+               mode='fan_in')
 
 
 class StyleGAN2Block(nn.Module):
@@ -418,7 +391,7 @@ class StyleGAN2Block(nn.Module):
             inside.add_operation(inputs=[f'plus_noise_{i}'],
                                  operation=nn.LeakyReLU(0.2, True),
                                  outputs=[f'in_{i+1}'],
-                                 name=f'in_{i+1}')
+                                 name=f'relu_{i+1}')
 
             in_ch = out_ch
 

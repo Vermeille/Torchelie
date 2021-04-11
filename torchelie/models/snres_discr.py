@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 import torchelie.nn as tnn
-from .classifier import Classifier2, ProjectionDiscr, ConcatPoolClassifier1
 from typing import List, Union, Tuple, cast
+from collections import OrderedDict
+from .classifier import ClassificationHead, ProjectionDiscr
 
 
 def _parse_snres(arch: List[Union[str, int]],
@@ -21,6 +22,7 @@ def _parse_snres(arch: List[Union[str, int]],
         assert isinstance(x, int)
         blocks.append(tnn.SNResidualDiscrBlock(in_ch, x, downsample))
         in_ch = x
+    blocks[1].preact_skip()
     return tnn.CondSeq(*blocks), in_ch
 
 
@@ -61,13 +63,13 @@ def snres_discr_ctor(arch: List[Union[int, str]],
     """
     bone, in_ch = _parse_snres(arch, in_ch)
     bone.add_module('final_relu', nn.LeakyReLU(0.2, True))
-    clf = ConcatPoolClassifier1(bone, in_ch, out_ch, dropout=0.)
+    clf = ClassificationHead(in_ch, out_ch)
 
-    for m in clf.head.modules():
+    for m in clf.modules():
         if isinstance(m, nn.Linear):
             nn.utils.spectral_norm(m)
 
-    return clf
+    return tnn.CondSeq(OrderedDict([('bone', bone), ('head', clf)]))
 
 
 def snres_projdiscr(arch: List[Union[int, str]],

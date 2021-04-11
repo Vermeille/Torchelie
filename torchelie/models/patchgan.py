@@ -2,7 +2,6 @@ import torch.nn as nn
 import torchelie.nn as tnn
 import torchelie.utils as tu
 from torchelie.utils import kaiming, xavier
-from .classifier import Classifier2, ProjectionDiscr
 from typing import Callable, Optional, List
 
 

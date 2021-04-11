@@ -3,7 +3,6 @@ import torch
 import torchelie.utils as tu
 import torch.nn as nn
 import torchelie.nn as tnn
-from .classifier import Classifier1
 from typing import Optional
 from collections import OrderedDict
 

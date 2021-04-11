@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import torch
 import torch.nn as nn
 
@@ -5,115 +6,70 @@ import torchelie.nn as tnn
 from torchelie.utils import kaiming, xavier
 
 
-class Classifier2(nn.Module):
-    """
-    A classification head added on top of a feature extraction model.
-
-    Args:
-        feat_extractor (nn.Module): a feature extraction model
-        feature_size (int): the number of features in the last layer of the
-            feature extractor
-        num_classes (int): the number of output classes
-    """
-    def __init__(self, feat_extractor: nn.Module, feature_size: int,
-                 num_classes: int) -> None:
-        super(Classifier2, self).__init__()
-        self.bone = feat_extractor
-
-        self.head = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            tnn.Reshape(feature_size),
-            kaiming(nn.Linear(feature_size, feature_size)),
-            nn.Dropout(0.5),
-            nn.ReLU(inplace=True),
-            xavier(nn.Linear(feature_size, num_classes)),
-        )
-
-    def forward(self, *xs) -> torch.Tensor:
-        """
-        Forward pass
-
-        Args:
-            *xs: arguments for `feat_extractor`
-        """
-        out = self.head(self.bone(*xs))
-        return out
-
-
-class Classifier1(nn.Module):
+class ClassificationHead(tnn.CondSeq):
     """
     A one layer classification head added on top of a feature extraction model.
 
     Args:
-        feat_extractor (nn.Module): a feature extraction model
-        feature_size (int): the number of features in the last layer of the
+        in_channels (int): the number of features in the last layer of the
             feature extractor
         num_classes (int): the number of output classes
     """
-    def __init__(self,
-                 feat_extractor: nn.Module,
-                 feature_size: int,
-                 num_classes: int,
-                 dropout: float = 0.5) -> None:
-        super(Classifier1, self).__init__()
-        self.bone = feat_extractor
+    linear1: nn.Linear
 
-        self.head = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            tnn.Reshape(feature_size),
-            nn.Dropout(dropout),
-            kaiming(nn.Linear(feature_size, num_classes)),
-        )
+    def __init__(self, in_channels: int, num_classes: int) -> None:
+        super(ClassificationHead, self).__init__()
+        self.in_channels = in_channels
+        self.num_classes = num_classes
 
-    def forward(self, *xs) -> torch.Tensor:
-        """
-        Forward pass
+        self.to_resnet_style()
 
-        Args:
-            *xs: arguments for `feat_extractor`
-        """
-        out = self.head(self.bone(*xs))
-        return out
+    def to_resnet_style(self) -> 'ClassificationHead':
+        self._modules = OrderedDict([
+            ('pool', nn.AdaptiveAvgPool2d(1)),
+            ('reshape', tnn.Reshape(self.in_channels)),
+            ('linear1', kaiming(nn.Linear(self.in_channels,
+                                          self.num_classes))),
+        ])
 
+        return self
 
-class ConcatPoolClassifier1(nn.Module):
-    """
-    A one layer classification head added on top of a feature extraction model.
-    it includes ConcatPool.
+    def to_vgg_style(self, hidden_channels: int) -> 'ClassificationHead':
+        self._modules = OrderedDict([
+            ('pool', nn.AdaptiveAvgPool2d(7)),
+            ('reshape', tnn.Reshape(7 * 7 * self.in_channels)),
+            ('linear1',
+             kaiming(nn.Linear(7 * 7 * self.in_channels, hidden_channels))),
+            ('relu1', nn.ReLU(True)),
+            ('dropout1', nn.Dropout(0.5)),
+            ('linear2', kaiming(nn.Linear(hidden_channels, hidden_channels))),
+            ('relu2', nn.ReLU(True)),
+            ('dropout2', nn.Dropout(0.5)),
+            ('linear3', kaiming(nn.Linear(hidden_channels, self.num_classes))),
+        ])
 
-    Args:
-        feat_extractor (nn.Module): a feature extraction model
-        feature_size (int): the number of features in the last layer of the
-            feature extractor
-        num_classes (int): the number of output classes
-    """
-    bone: nn.Module
-    head: nn.Sequential
+        return self
 
-    def __init__(self,
-                 feat_extractor: nn.Module,
-                 feature_size: int,
-                 num_classes: int,
-                 dropout: float = 0.5) -> None:
-        super(ConcatPoolClassifier1, self).__init__()
-        self.bone = feat_extractor
+    def set_num_classes(self, classes: int) -> 'ClassificationHead':
+        self.num_classes = classes
+        old = self[-1]
+        self[-1] = kaiming(nn.Linear(old.in_features, self.num_classes))
+        return self
 
-        self.head = nn.Sequential(
-            tnn.AdaptiveConcatPool2d(1),
-            tnn.Reshape(feature_size * 2),
-            nn.Dropout(dropout),
-            kaiming(nn.Linear(feature_size * 2, num_classes)),
-        )
+    def set_pool_size(self, size: int) -> 'ClassificationHead':
+        self.pool = nn.AdaptiveAvgPool2d(size)
+        self.reshape = tnn.Reshape(size * size * self.in_channels)
+        self.linear1 = kaiming(
+            nn.Linear(size * size * self.in_channels,
+                      self.linear1.out_features))
+        return self
 
-    def forward(self, *xs) -> torch.Tensor:
-        """
-        Forward pass
-
-        Args:
-            *xs: arguments for `feat_extractor`
-        """
-        out = self.head(self.bone(*xs))
-        return out
+    def rm_dropout(self) -> 'ClassificationHead':
+        if hasattr(self, 'dropout1'):
+            del self.dropout1
+        if hasattr(self, 'dropout2'):
+            del self.dropout2
+        return self
 
 
 class ProjectionDiscr(nn.Module):

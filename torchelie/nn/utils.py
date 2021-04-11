@@ -214,3 +214,10 @@ def insert_before(base: nn.Sequential, key: str, new: nn.Module,
     modules_list.insert(found, (name, new))
     base._modules = OrderedDict(modules_list)
     return base
+
+def make_leaky(net: nn.Module)->nn.Module:
+    def do_it(m: nn.Module)->nn.Module:
+        if isinstance(m, nn.ReLU):
+            return nn.LeakyReLU(0.2, m.inplace)
+        return m
+    return edit_model(net, do_it)

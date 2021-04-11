@@ -6,8 +6,7 @@ import torchelie.utils as tu
 
 from typing import List, Callable, Optional
 from typing_extensions import Literal
-
-from .classifier import Classifier2, Classifier1
+from .classifier import ClassificationHead
 
 PREACT_BLOCKS = (tnn.PreactResBlock, tnn.PreactResBlockBottleneck)
 STD_BLOCKS = (tnn.ResBlock, tnn.ResBlockBottleneck)
@@ -37,7 +36,7 @@ class ResNetInput(nn.Module):
             x = self.pool(x)
         return x
 
-    def input_specs(self, input_size: int, in_channels=3) -> 'ResNetInput':
+    def set_input_specs(self, input_size: int, in_channels=3) -> 'ResNetInput':
         self.in_channels = in_channels
         in_ch = self.in_channels
         out_ch = self.out_channels
@@ -71,8 +70,7 @@ class ResNet(nn.Module):
         self.features.add_module('input', ResNetInput(3, self.arch[0][0]))
 
         self._change_block_type('basic')
-        self.classifier = Classifier1(None, self.arch[-1][0], num_classes,
-                                      0).head
+        self.classifier = ClassificationHead(self.arch[-1][0], num_classes)
 
     def _make_block(self, block_type: str, in_ch: int, out_ch: int,
                     stride: int) -> nn.Module:
@@ -117,50 +115,51 @@ class ResNet(nn.Module):
             feats.add_module('final_relu', nn.ReLU(True))
         self.features = feats
 
-    def bottleneck(self) -> 'ResNet':
+    def to_bottleneck(self) -> 'ResNet':
         self._change_block_type('bottleneck')
         return self
 
-    def preact_bottleneck(self) -> 'ResNet':
+    def to_preact_bottleneck(self) -> 'ResNet':
         self._change_block_type('preact_bottleneck')
         return self
 
-    def preact(self) -> 'ResNet':
+    def to_preact(self) -> 'ResNet':
         self._change_block_type('preact_basic')
         return self
 
-    def resnext(self) -> 'ResNet':
+    def to_resnext(self) -> 'ResNet':
         self._change_block_type('resnext')
         return self
 
-    def preact_resnext(self) -> 'ResNet':
+    def to_preact_resnext(self) -> 'ResNet':
         self._change_block_type('preact_resnext')
         return self
 
-    def wide(self) -> 'ResNet':
+    def to_wide(self) -> 'ResNet':
         self._change_block_type('wide')
         return self
 
-    def preact_wide(self) -> 'ResNet':
+    def to_preact_wide(self) -> 'ResNet':
         self._change_block_type('preact_wide')
         return self
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.classifier(self.features(x))
 
-    def se(self) -> 'ResNet':
+    def add_se(self) -> 'ResNet':
         for m in self.features:
             if isinstance(m, BLOCKS):
                 m.use_se()
         return self
 
-    def input_specs(self,
+    def set_input_specs(self,
                     input_size: int = 224,
                     in_channels: int = 3) -> 'ResNet':
         assert isinstance(self.features.input, ResNetInput)
-        self.features.input.input_specs(input_size=input_size,
+        self.features.input.set_input_specs(input_size=input_size,
                                         in_channels=in_channels)
         return self
+
 
 
 ###
@@ -171,11 +170,11 @@ class ResNet(nn.Module):
 def resnet20_cifar() -> ResNet:
     return ResNet([
         '16:1', '16:1', '16:1', '32:2', '32:1', '32:1', '64:2', '64:1', '64:1'
-    ], 10).input_specs(input_size=32)
+    ], 10).set_input_specs(input_size=32)
 
 
 def preact_resnet20_cifar() -> ResNet:
-    return resnet20_cifar().preact()
+    return resnet20_cifar().to_preact()
 
 
 ###
@@ -197,21 +196,21 @@ def resnet34(num_classes: int) -> ResNet:
 def resnet50(num_classes: int) -> ResNet:
     net = ResNet(['256:1'] * 3 + ['512:2'] + ['512:1'] * 3 + ['1024:2'] +
                  ['1024:1'] * 5 + ['2048:2', '2048:1', '2048:1'], num_classes)
-    net.bottleneck()
+    net.to_bottleneck()
     return net
 
 
 def resnet101(num_classes: int) -> ResNet:
     net = ResNet(['256:1'] * 3 + ['512:2'] + ['512:1'] * 3 + ['1024:2'] +
                  ['1024:1'] * 22 + ['2048:2', '2048:1', '2048:1'], num_classes)
-    net.bottleneck()
+    net.to_bottleneck()
     return net
 
 
 def resnet152(num_classes: int) -> ResNet:
     net = ResNet(['256:1'] * 3 + ['512:2'] + ['512:1'] * 7 + ['1024:2'] +
                  ['1024:1'] * 35 + ['2048:2', '2048:1', '2048:1'], num_classes)
-    net.bottleneck()
+    net.to_bottleneck()
     return net
 
 
@@ -221,23 +220,23 @@ def resnet152(num_classes: int) -> ResNet:
 
 
 def preact_resnet18(num_classes: int) -> ResNet:
-    return resnet18(num_classes).preact()
+    return resnet18(num_classes).to_preact()
 
 
 def preact_resnet34(num_classes: int) -> ResNet:
-    return resnet34(num_classes).preact()
+    return resnet34(num_classes).to_preact()
 
 
 def preact_resnet50(num_classes: int) -> ResNet:
-    return resnet50(num_classes).preact_bottleneck()
+    return resnet50(num_classes).to_preact_bottleneck()
 
 
 def preact_resnet101(num_classes: int) -> ResNet:
-    return resnet101(num_classes).preact_bottleneck()
+    return resnet101(num_classes).to_preact_bottleneck()
 
 
 def preact_resnet152(num_classes: int) -> ResNet:
-    return resnet152(num_classes).preact_bottleneck()
+    return resnet152(num_classes).to_preact_bottleneck()
 
 
 ###
@@ -246,15 +245,15 @@ def preact_resnet152(num_classes: int) -> ResNet:
 
 
 def resnext50_32x4d(num_classes: int) -> ResNet:
-    return resnet50(num_classes).resnext()
+    return resnet50(num_classes).to_resnext()
 
 
 def resnext101_32x4d(num_classes: int) -> ResNet:
-    return resnet101(num_classes).resnext()
+    return resnet101(num_classes).to_resnext()
 
 
 def resnext152_32x4d(num_classes: int) -> ResNet:
-    return resnet152(num_classes).resnext()
+    return resnet152(num_classes).to_resnext()
 
 
 ###
@@ -263,15 +262,15 @@ def resnext152_32x4d(num_classes: int) -> ResNet:
 
 
 def preact_resnext50_32x4d(num_classes: int) -> ResNet:
-    return resnet50(num_classes).preact_resnext()
+    return resnet50(num_classes).to_preact_resnext()
 
 
 def preact_resnext101_32x4d(num_classes: int) -> ResNet:
-    return resnet101(num_classes).preact_resnext()
+    return resnet101(num_classes).to_preact_resnext()
 
 
 def preact_resnext152_32x4d(num_classes: int) -> ResNet:
-    return resnet152(num_classes).preact_resnext()
+    return resnet152(num_classes).to_preact_resnext()
 
 
 ###
@@ -279,19 +278,19 @@ def preact_resnext152_32x4d(num_classes: int) -> ResNet:
 ###
 
 def preact_wide_resnet50(num_classes: int) -> ResNet:
-    return resnet50(num_classes).preact_wide()
+    return resnet50(num_classes).to_preact_wide()
 
 
 def preact_wide_resnet101(num_classes: int) -> ResNet:
-    return resnet101(num_classes).preact_wide()
+    return resnet101(num_classes).to_preact_wide()
 
 ###
 ### Wide
 ###
 
 def wide_resnet50(num_classes: int) -> ResNet:
-    return resnet50(num_classes).wide()
+    return resnet50(num_classes).to_wide()
 
 
 def wide_resnet101(num_classes: int) -> ResNet:
-    return resnet101(num_classes).wide()
+    return resnet101(num_classes).to_wide()

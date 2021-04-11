@@ -5,8 +5,8 @@ import torch
 import torch.nn as nn
 import torchelie.utils as tu
 import torchelie.nn as tnn
-from .classifier import ConcatPoolClassifier1
 from typing import List, Tuple
+from .classifier import ClassificationHead
 
 
 class StyleGAN2Generator(nn.Module):
@@ -196,6 +196,6 @@ def StyleGAN2Discriminator(input_sz,
                         mode='fan_in')))
         layers.append(('relu2', nn.LeakyReLU(0.2, True)))
     model: nn.Module = nn.Sequential(OrderedDict(layers))
-    model = ConcatPoolClassifier1(model, min(max_ch, ch), 1, 0.)
-    tu.xavier(model.head[-1], dynamic=dyn, mode='fan_in')
-    return model
+    clf = ClassificationHead(min(max_ch, ch), 1)
+    tu.xavier(clf.linear1, dynamic=dyn, mode='fan_in')
+    return nn.Sequential(OrderedDict([('bone', model), ('head', clf)]))
