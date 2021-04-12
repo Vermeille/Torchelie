@@ -18,6 +18,7 @@ from .resblock import PreactResBlock, PreactResBlockBottleneck
 from torchelie.nn.graph import ModuleGraph
 from typing import List, Tuple, Optional, cast
 from .utils import remove_bn, edit_model, insert_after, make_leaky
+from .utils import remove_weight_scale
 from .interpolate import InterpolateBilinear2d
 
 
@@ -300,13 +301,18 @@ class ResidualDiscrBlock(PreactResBlock):
                  out_channels: int,
                  downsample: bool = False) -> None:
         super().__init__(in_channels, out_channels)
-        self.post.add_module('downsample', nn.AvgPool2d(2))
+        if downsample:
+            self.post.add_module('downsample', nn.AvgPool2d(2))
         self.remove_bn()
         make_leaky(self)
 
-    def equal_lr(self) -> 'ResidualDiscrBlock':
+    def to_equal_lr(self) -> 'ResidualDiscrBlock':
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
+                try:
+                    nn.utils.remove_spectral_norm(m)
+                except ValueError:
+                    pass
                 kaiming(m,
                         dynamic=True,
                         mode='fan_in',
@@ -315,30 +321,24 @@ class ResidualDiscrBlock(PreactResBlock):
 
         with torch.no_grad():
             self.branch.conv2.weight_g.zero_()
+
         return self
 
-
-class SNResidualDiscrBlock(ResidualDiscrBlock):
-    """
-    A residual block with downsampling and spectral normalization.
-
-    Args:
-        in_ch (int): number of input channels
-        out_ch (int): number of output channels
-        downsample (bool): whether to downsample
-    """
-    def __init__(self,
-                 in_ch: int,
-                 out_ch: int,
-                 downsample: bool = False) -> None:
-        super().__init__(in_ch, out_ch, downsample)
+    def to_spectral_norm(self)->'ResidualDiscrBlock':
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
+                try:
+                    remove_weight_scale(m)
+                except ValueError:
+                    pass
                 nn.utils.spectral_norm(m)
+
+        assert isinstance(self.branch.conv2, nn.Conv2d)
         xavier(self.branch.conv2,
                nonlinearity='leaky_relu',
                a=0.2,
                mode='fan_in')
+        return self
 
 
 class StyleGAN2Block(nn.Module):

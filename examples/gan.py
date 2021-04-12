@@ -33,7 +33,9 @@ dl = torch.utils.data.DataLoader(ds,
 def train_net(Gen, Discr):
     G = Gen(in_noise=128, out_ch=3)
     G_polyak = copy.deepcopy(G).eval()
-    D = Discr(in_ch=3, out_ch=1)
+    D = Discr()
+    print(G)
+    print(D)
 
     def G_fun(batch):
         z = torch.randn(BS, 128, device=device)

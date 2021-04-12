@@ -323,8 +323,7 @@ def train(rank, world_size):
                            equal_lr=True)
     D = StyleGAN2Discriminator(input_sz=opts.img_size,
                                ch_mul=opts.ch_mul,
-                               max_ch=opts.max_ch,
-                               equal_lr=True)
+                               max_ch=opts.max_ch)
 
     tfm = TF.Compose([
         tch.transforms.ResizeNoCrop(opts.img_size),

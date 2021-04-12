@@ -7,6 +7,7 @@ import torchelie.utils as tu
 import torchelie.nn as tnn
 from typing import List, Tuple
 from .classifier import ClassificationHead
+from .snres_discr import ResidualDiscriminator
 
 
 class StyleGAN2Generator(nn.Module):
@@ -86,7 +87,6 @@ class StyleGAN2Generator(nn.Module):
                 outputs=[f'rgb_{res}x{res}', f'fmap_{res}x{res}'])
             res *= 2
 
-        print(render)
         self.render = render
 
     def discretize_some(self, z):
@@ -132,7 +132,7 @@ class StyleGAN2Generator(nn.Module):
     def ppl(self, z):
         w = self.encode(self.discretize_some(z))
         gen = torch.sigmoid(
-            self.render(rgb_constxconst=None, **self.w_to_dict(w))['out'])
+            self.render(rgb_constxconst=None, **self.w_to_dict(w)))
         B, C, H, W = gen.shape
         noise = torch.randn_like(gen) / math.sqrt(H * W)
         JwTy = torch.autograd.grad(outputs=torch.sum(gen * noise),
@@ -152,10 +152,7 @@ class StyleGAN2Generator(nn.Module):
 
 def StyleGAN2Discriminator(input_sz,
                            max_ch: int = 512,
-                           ch_mul: int = 1,
-                           equal_lr: bool = True,
-                           input_ch: int = 3,
-                           with_minibatch_std: bool = True):
+                           ch_mul: int = 1) -> ResidualDiscriminator:
     """
         Build the discriminator for StyleGAN2
 
@@ -166,36 +163,20 @@ def StyleGAN2Discriminator(input_sz,
                 value (default, 1.)
             equal_lr (bool): equalize the learning rates with dynamic weight
                 scaling
-        """
-    dyn = equal_lr
+    """
+    import math
     res = input_sz
     ch = int(512 / (2**(math.log2(res) - 6)) * ch_mul)
-    layers: List[Tuple[str, nn.Module]] = [
-        (f'rgbto{res}x{res}',
-         tu.xavier(tnn.Conv3x3(input_ch, min(max_ch, ch)),
-                   dynamic=dyn,
-                   mode='fan_in'))
-    ]
+    layers: List[Union[str, int]] = [min(max_ch, ch)]
 
     while res > 4:
         res = res // 2
-        layers.append((f'conv{res}x{res}',
-                       tnn.ResidualDiscrBlock(min(max_ch, ch),
-                                              min(max_ch, ch * 2),
-                                              downsample=True,
-                                              equal_lr=dyn)))
+        layers.append(min(max_ch, ch * 2))
+        layers.append('D')
         ch *= 2
-    layers.append(('relu1', nn.LeakyReLU(0.2, True)))
-    if with_minibatch_std:
-        layers.append(('mbstd', tnn.MinibatchStddev()))
-        layers.append(
-            (f'mbconv4x4',
-             tu.kaiming(tnn.Conv3x3(min(max_ch, ch) + 1, min(max_ch, ch * 2)),
-                        a=0.2,
-                        dynamic=dyn,
-                        mode='fan_in')))
-        layers.append(('relu2', nn.LeakyReLU(0.2, True)))
-    model: nn.Module = nn.Sequential(OrderedDict(layers))
-    clf = ClassificationHead(min(max_ch, ch), 1)
-    tu.xavier(clf.linear1, dynamic=dyn, mode='fan_in')
-    return nn.Sequential(OrderedDict([('bone', model), ('head', clf)]))
+
+    net = ResidualDiscriminator(layers)
+    net.add_minibatch_stddev()
+    net.classifier.set_pool_size(4)
+    net.to_equal_lr()
+    return net

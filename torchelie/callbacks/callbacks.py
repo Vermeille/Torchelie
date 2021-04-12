@@ -594,7 +594,7 @@ class Polyak:
     def on_batch_end(self, state):
         d = self.copy.state_dict()
         for name, value in self.original.state_dict().items():
-            d[name].mul_(self.beta).add_(1 - self.beta, value)
+            d[name].mul_(self.beta).add_(value, alpha=1 - self.beta)
 
 
 class Counter(tu.AutoStateDict):

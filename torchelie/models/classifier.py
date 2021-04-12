@@ -34,6 +34,17 @@ class ClassificationHead(tnn.CondSeq):
 
         return self
 
+    def to_two_layers(self, hidden_channels:int)->'ClassificationHead':
+        self._modules = OrderedDict([
+            ('pool', nn.AdaptiveAvgPool2d(1)),
+            ('reshape', tnn.Reshape(self.in_channels)),
+            ('linear1',
+             kaiming(nn.Linear(self.in_channels, hidden_channels))),
+            ('relu1', nn.ReLU(True)),
+            ('linear2', kaiming(nn.Linear(hidden_channels, hidden_channels))),
+        ])
+        return self
+
     def to_vgg_style(self, hidden_channels: int) -> 'ClassificationHead':
         self._modules = OrderedDict([
             ('pool', nn.AdaptiveAvgPool2d(7)),
@@ -48,6 +59,10 @@ class ClassificationHead(tnn.CondSeq):
             ('linear3', kaiming(nn.Linear(hidden_channels, self.num_classes))),
         ])
 
+        return self
+
+    def leaky(self)->'ClassificationHead':
+        tnn.utils.make_leaky(self)
         return self
 
     def set_num_classes(self, classes: int) -> 'ClassificationHead':
@@ -83,16 +98,14 @@ class ProjectionDiscr(nn.Module):
             feature extractor
         num_classes (int): the number of output classes
     """
-    def __init__(self, feat_extractor: nn.Module, feature_size: int,
-                 num_classes: int) -> None:
+    def __init__(self, in_channels: int, num_classes: int) -> None:
         super(ProjectionDiscr, self).__init__()
-        self.bone = feat_extractor
         self.head = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
-            tnn.Reshape(feature_size),
+            tnn.Reshape(in_channels),
         )
-        self.emb = nn.Embedding(num_classes, feature_size)
-        self.discr = nn.Linear(feature_size, 1)
+        self.emb = nn.Embedding(num_classes, in_channels)
+        self.discr = nn.Linear(in_channels, 1)
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
@@ -105,3 +118,13 @@ class ProjectionDiscr(nn.Module):
         feats = self.head(self.bone(x, y))
         y_emb = self.emb(y)
         return self.discr(feats) + torch.mm(y_emb, feats.t())
+
+    def to_spectral_norm(self) -> 'ProjectionDiscr':
+        nn.utils.spectral_norm(self.emb)
+        nn.utils.spectral_norm(self.discr)
+        return self
+
+    def to_equal_lr(self)->'ProjectionDiscr':
+        xavier(self.emb, dynamic=True)
+        xavier(self.discr, dynamic=True)
+        return self
