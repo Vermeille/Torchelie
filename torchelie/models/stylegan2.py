@@ -5,9 +5,74 @@ import torch
 import torch.nn as nn
 import torchelie.utils as tu
 import torchelie.nn as tnn
-from typing import List, Tuple
+from typing import List, Tuple, Union, overload
+from typing_extensions import Literal
 from .classifier import ClassificationHead
 from .snres_discr import ResidualDiscriminator
+from torchelie.transforms.differentiable import BinomialFilter2d
+
+
+class LinearReLU(tnn.CondSeq):
+    relu: nn.Module
+
+    def __init__(self, in_features: int, out_features) -> None:
+        super().__init__()
+        self.linear = tu.kaiming(nn.Linear(in_features, out_features))
+        self.relu = nn.ReLU(True)
+
+    def leaky(self) -> 'LinearReLU':
+        if isinstance(self.relu, (nn.ReLU, nn.LeakyReLU)):
+            self.relu = nn.LeakyReLU(0.2, self.relu.inplace)
+        else:
+            self.relu = nn.LeakyReLU(0.2, True)
+        return self
+
+    def to_equal_lr(self) -> 'LinearReLU':
+        if isinstance(self.relu, nn.LeakyReLU):
+            tu.kaiming(self.linear,
+                       dynamic=True,
+                       nonlinearity='leaky_relu',
+                       mode='fan_in',
+                       a=self.relu.negative_slope)
+        else:
+            tu.kaiming(self.linear, dynamic=True, mode='fan_in')
+        return self
+
+    def to_differential_lr(self, lr: float):
+        tnn.utils.weight_scale(self.linear, name='bias', scale=lr)
+        if isinstance(self.relu, nn.LeakyReLU):
+            g = tu.kaiming_gain(self.linear,
+                                nonlinearity='leaky_relu',
+                                mode='fan_in',
+                                a=self.relu.negative_slope)
+        else:
+            g = tu.kaiming_gain(self.linear, mode='fan_in')
+        tnn.utils.weight_scale(self.linear, scale=lr * g)
+        self.linear.weight_g.data.normal_(0, 1. / lr)
+        return self
+
+
+class MappingNetwork(tnn.CondSeq):
+    def __init__(self, num_features: int, num_layers: int = 3) -> None:
+        super().__init__()
+        for i in range(num_layers):
+            self.add_module(f'linear_{i}',
+                            LinearReLU(num_features, num_features))
+
+    def leaky(self) -> 'MappingNetwork':
+        for m in self:
+            m.leaky()
+        return self
+
+    def to_equal_lr(self) -> 'MappingNetwork':
+        for m in self:
+            m.to_equal_lr()
+        return self
+
+    def to_differential_lr(self, lr: float) -> 'MappingNetwork':
+        for m in self:
+            m.to_differential_lr(lr)
+        return self
 
 
 class StyleGAN2Generator(nn.Module):
@@ -20,7 +85,6 @@ class StyleGAN2Generator(nn.Module):
             layer (default: 1.)
         img_size (int): spatial size of the image to generate (default: 128)
         max_ch (int): maximum number of channels (default: 512)
-        equal_lr (bool): whether to use equalized lr or not (default: True)
     """
     w_avg: torch.Tensor
 
@@ -28,41 +92,19 @@ class StyleGAN2Generator(nn.Module):
                  noise_size: int,
                  ch_mul: float = 1,
                  img_size: int = 128,
-                 max_ch: int = 512,
-                 equal_lr: bool = True):
+                 max_ch: int = 512):
         super().__init__()
-        dyn = equal_lr
         self.register_buffer('w_avg', torch.zeros(noise_size))
 
-        def eq_lr_linear():
-            if not equal_lr:
-                return tu.kaiming(nn.Linear(noise_size, noise_size),
-                                  a=0.2,
-                                  dynamic=True)
-            lr_mul = 0.01
-            m = nn.Linear(noise_size, noise_size)
-            m.weight.data.normal_(0, 1 / lr_mul)
-            tnn.utils.weight_scale(m, scale=lr_mul / math.sqrt(noise_size))
-
-            m.bias.data.normal_(0, 1 / lr_mul)
-            tnn.utils.weight_scale(m, name='bias', scale=lr_mul)
-            return m
-
-        self.encode = nn.Sequential(
-            eq_lr_linear(),
-            nn.LeakyReLU(0.2, True),
-            eq_lr_linear(),
-            nn.LeakyReLU(0.2, True),
-            eq_lr_linear(),
-            nn.LeakyReLU(0.2, True),
-        )
+        self.encode = MappingNetwork(noise_size, 3).to_differential_lr(0.01)
+        self.encode.leaky()
         res = 4
-        render = tnn.ModuleGraph(f'rgb_{img_size}x{img_size}')
+        render = tnn.ModuleGraph('out')
 
         while res <= img_size:
             ch = int(512 / (2**(math.log2(res) - 7)) * ch_mul)
             if res == 4:
-                render.add_operation(inputs=['w'],
+                render.add_operation(inputs=['N'],
                                      outputs=[f'fmap_constxconst'],
                                      name='const',
                                      operation=tnn.Const(
@@ -75,8 +117,7 @@ class StyleGAN2Generator(nn.Module):
                                        min(max_ch, ch // 2),
                                        noise_size,
                                        upsample=res != 4,
-                                       n_layers=1 if res == 4 else 2,
-                                       equal_lr=equal_lr)
+                                       n_layers=1 if res == 4 else 2)
             render.add_operation(
                 inputs=[
                     f'fmap_{prev_res}x{prev_res}', f'w_{res}x{res}',
@@ -87,67 +128,60 @@ class StyleGAN2Generator(nn.Module):
                 outputs=[f'rgb_{res}x{res}', f'fmap_{res}x{res}'])
             res *= 2
 
+        render.add_operation(inputs=[f'rgb_{img_size}x{img_size}'],
+                             operation=nn.Sigmoid(),
+                             name='sigmoid',
+                             outputs=['out'])
+
         self.render = render
 
-    def discretize_some(self, z):
-        # This is just experimental
-        discrete = min(z.shape[1] // 4, 32)
-        z = torch.cat([
-            z[:, :discrete].ge(0).float() + z[:, :discrete] -
-            z[:, :discrete].detach(),
-            z[:, discrete:].pow(2).mean(1, keepdim=True).rsqrt() *
-            z[:, discrete:]
-        ],
-                      dim=1)
-        return z
+    @overload
+    def forward(self,
+                z,
+                mixing: bool = True,
+                get_w: Literal[False] = False) -> torch.Tensor:
+        ...
 
-    def forward(self, z, mixing: bool = True) -> torch.Tensor:
-        w = self.encode(self.discretize_some(z))
+    @overload
+    def forward(
+            self,
+            z,
+            mixing: bool = True,
+            get_w: Literal[True] = False) -> Tuple[torch.Tensor, torch.Tensor]:
+        ...
+
+    def forward(self, z, mixing=True, get_w=False):
+        w = self.encode(z)
 
         if self.training:
-            self.w_avg = 0.995 * self.w_avg + (1 - 0.995) * w.detach().mean(0)
+            self.w_avg.copy_(tu.lerp(w.detach().mean(0), self.w_avg, 0.995))
 
-        L = random.randint(0, len(self.render) - 2)  # ignore the nn.Identity
+        L = random.randint(0, len(self.render) - 1)
         mix_res = 2**(L + 2)
-        ws = {'w': w}
-        for i_res in range(len(self.render) - 1):  # ignore the nn.Idendity
+        ws = {'N': w.shape[0]}
+        for i_res in range(len(self.render)):
             res = 2**(i_res + 2)
             if mixing and res == mix_res and random.uniform(0, 1) < 0.9:
-                w = self.encode(self.discretize_some(torch.randn_like(z)))
+                w = self.encode(torch.randn_like(z))
+
             if res <= 32 and not self.training:
                 ws[f'w_{res}x{res}'] = 0.3 * self.w_avg + 0.7 * w
             else:
                 ws[f'w_{res}x{res}'] = w
-        return torch.sigmoid(self.render(rgb_constxconst=None, **ws))
+
+        if not get_w:
+            return self.render(rgb_constxconst=None, **ws)
+        else:
+            return self.render(rgb_constxconst=None, **ws), w
 
     def w_to_dict(self, w):
         return {
-            'w': w,
+            'N': w.shape[0],
             **{
                 f'w_{2**(i+2)}x{2**(i+2)}': w
                 for i in range(len(self.render) - 1)
             }
         }
-
-    def ppl(self, z):
-        w = self.encode(self.discretize_some(z))
-        gen = torch.sigmoid(
-            self.render(rgb_constxconst=None, **self.w_to_dict(w)))
-        B, C, H, W = gen.shape
-        noise = torch.randn_like(gen) / math.sqrt(H * W)
-        JwTy = torch.autograd.grad(outputs=torch.sum(gen * noise),
-                                   inputs=w,
-                                   create_graph=True,
-                                   only_inputs=True)[0]
-        JwTy_norm = JwTy.pow(2).sum(1).mul(1 / (2 * len(self.render))).sqrt()
-
-        E_JwTy_norm = JwTy_norm.detach().mean().item()
-        if hasattr(self, 'ppl_goal'):
-            self.ppl_goal = 0.99 * self.ppl_goal + 0.01 * E_JwTy_norm
-        else:
-            self.ppl_goal = 0
-
-        return (JwTy_norm - self.ppl_goal).pow(2).mean() * 2
 
 
 def StyleGAN2Discriminator(input_sz,
@@ -161,8 +195,6 @@ def StyleGAN2Discriminator(input_sz,
             max_ch (int): maximum number of channels (default: 512)
             ch_mul (float): multiply the number of channels on each layer by this
                 value (default, 1.)
-            equal_lr (bool): equalize the learning rates with dynamic weight
-                scaling
     """
     import math
     res = input_sz
@@ -171,12 +203,21 @@ def StyleGAN2Discriminator(input_sz,
 
     while res > 4:
         res = res // 2
-        layers.append(min(max_ch, ch * 2))
         layers.append('D')
+        layers.append(min(max_ch, ch * 2))
         ch *= 2
 
     net = ResidualDiscriminator(layers)
+
+    def make_binomial(m):
+        if isinstance(m, nn.AvgPool2d):
+            return BinomialFilter2d(2)
+        return m
+
+    tnn.utils.edit_model(net, make_binomial)
     net.add_minibatch_stddev()
+    net.classifier.to_two_layers(min(ch, max_ch))
     net.classifier.set_pool_size(4)
+    net.classifier.leaky()
     net.to_equal_lr()
     return net

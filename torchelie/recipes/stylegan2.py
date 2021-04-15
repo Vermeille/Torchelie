@@ -18,6 +18,7 @@ from torchelie.callbacks.avg import ExponentialAvg
 
 class ADATF:
     p: float
+
     def __init__(self, target_loss: float, growth: float = 0.01):
         self.p = 0
         self.target_loss = target_loss
@@ -57,25 +58,55 @@ class ADATF:
 
 
 class PPL:
-    def __init__(self, model, noise_size, batch_size, device, every=4):
-        self.model = model
-        self.batch_size = batch_size
+    def __init__(self, every=4):
         self.every = every
-        self.noise_size = noise_size
-        self.device = device
+        self.ppl_goal = None
+        self.iters = 0
 
-    def on_batch_start(self, state):
-        if state['iters'] % self.every != 0:
-            return
-        with self.model.no_sync():
-            tu.unfreeze(self.model)
-            with torch.enable_grad():
-                ppl = self.model.module.ppl(
-                    torch.randn(self.batch_size,
-                                self.noise_size,
-                                device=self.device))
-                (self.every * ppl).backward()
-                state['ppl'] = ppl.item()
+    def compute_ppl(self, model, z):
+        gen, w = model(z, get_w=True, mixing=False)
+        B, C, H, W = gen.shape
+        noise = torch.randn_like(gen) / math.sqrt(H * W)
+        JwTy = torch.autograd.grad(outputs=torch.sum(gen * noise),
+                                   inputs=w,
+                                   create_graph=True,
+                                   only_inputs=True)[0]
+        JwTy_norm = JwTy.pow(2).sum(1).mul(
+            1 / (2 * len(model.module.render))).sqrt()
+
+        E_JwTy_norm = JwTy_norm.detach().mean().item()
+        if self.ppl_goal is None:
+            self.ppl_goal = E_JwTy_norm
+        self.ppl_goal = 0.99 * self.ppl_goal + 0.01 * E_JwTy_norm
+
+        return (JwTy_norm - self.ppl_goal).pow(2).mean() * 2
+
+    def __call__(self, model, z):
+        ppl = self.ppl_goal
+        if self.iters % self.every == 0:
+            ppl = self.compute_ppl(model, z)
+            (self.every * ppl).backward()
+
+        self.iters += 1
+        return self.ppl_goal
+
+
+class GradientPenalty:
+    def __init__(self, gamma):
+        self.gamma = gamma
+        self.iters = 0
+        self.last_norm = float('nan')
+
+    def __call__(self, model, real, fake):
+        if self.iters % 4 == 3:
+            real = real.detach()
+            fake = fake.detach()
+            gp, g_norm = zero_gp(model, real, fake)
+            # Sync the gradient on the next backward
+            (4 * self.gamma * gp).backward()
+            self.last_norm = g_norm
+        self.iters += 1
+        return self.last_norm
 
 
 def StyleGAN2Recipe(G: nn.Module,
@@ -85,11 +116,9 @@ def StyleGAN2Recipe(G: nn.Module,
                     gpu_id: int,
                     total_num_gpus: int,
                     *,
-                    gp_thresh: float = 0.3,
                     G_lr: float = 2e-3,
-                    D_lr: float = 4e-3,
+                    D_lr: float = 2e-3,
                     tag: str = 'model',
-                    lookahead_steps: int = 10,
                     ada: bool = True):
     """
     StyleGAN2 Recipe distributed with DistributedDataParallel
@@ -101,13 +130,9 @@ def StyleGAN2Recipe(G: nn.Module,
         noise_size (int): the size of the input noise vector.
         gpu_id (int): the GPU index on which to run.
         total_num_gpus (int): how many GPUs are they
-        gp_thresh (float): how much to set the maximum lipschitzness for the
-            0-GP regularizer.
         G_lr (float): RAdamW lr for G
         D_lr (float): RAdamW lr for D
         tag (str): tag for Visdom and checkpoints
-        lookahead_steps (int): how often to merge with Lookahead (-1 to
-            disable)
         ada (bool): whether to enable Adaptive Data Augmentation
 
     Returns:
@@ -120,19 +145,24 @@ def StyleGAN2Recipe(G: nn.Module,
     print(G)
     print(D)
 
-    optG: torch.optim.Optimizer = RAdamW(G.parameters(), G_lr, betas=(0., 0.99), weight_decay=0)
-    optD: torch.optim.Optimizer = RAdamW(D.parameters(), D_lr, betas=(0., 0.99), weight_decay=0)
-    if lookahead_steps != -1:
-        optG = Lookahead(optG, k=lookahead_steps)
-        optD = Lookahead(optD, k=lookahead_steps)
+    optG: torch.optim.Optimizer = RAdamW(G.parameters(),
+                                         G_lr,
+                                         betas=(0., 0.99),
+                                         weight_decay=0)
+    optD: torch.optim.Optimizer = RAdamW(D.parameters(),
+                                         D_lr,
+                                         betas=(0., 0.99),
+                                         weight_decay=0)
 
     batch_size = len(next(iter(dataloader))[0])
     diffTF = ADATF(-2 if not ada else -0.9,
-                   50000 / batch_size * total_num_gpus)
+                   50000 / (batch_size * total_num_gpus))
 
-    gam = 0.1
+    ppl = PPL(4)
 
     def G_train(batch):
+        with G.no_sync():
+            pl = ppl(G, torch.randn(batch_size, noise_size, device=gpu_id))
         ##############
         ### G pass ###
         ##############
@@ -141,17 +171,11 @@ def StyleGAN2Recipe(G: nn.Module,
         score = gan_loss.generated(pred)
         score.backward()
 
-        return {'G_loss': score.item()}
+        return {'G_loss': score.item(), 'ppl': pl}
 
-    ii = 0
-
-    g_norm = 0
+    gradient_penalty = GradientPenalty(0.1)
 
     def D_train(batch):
-        nonlocal ii
-        nonlocal gam
-        nonlocal g_norm
-
         ###################
         #### Fake pass ####
         ###################
@@ -165,7 +189,6 @@ def StyleGAN2Recipe(G: nn.Module,
             fake_tf = diffTF(fake) * 2 - 1
             fakeness = D(fake_tf).squeeze(1)
             fake_loss = gan_loss.fake(fakeness)
-            fakeness_sort = fakeness.argsort(0)
             fake_loss.backward()
 
             correct = (fakeness < 0).int().eq(1).float().sum()
@@ -174,16 +197,9 @@ def StyleGAN2Recipe(G: nn.Module,
 
         tfmed = diffTF(batch[0]) * 2 - 1
 
-        ##############
-        #### 0-GP ####
-        ##############
-        if ii % 16 == 0:
-            with D.no_sync():
-                gp, g_norm = zero_gp(D, tfmed.detach_(), fake_tf.detach_())
-                # Sync the gradient on the next backward
-                (16 * gam * gp).backward()
-                gam = max(1e-6, gam / 1.1) if g_norm < gp_thresh else gam * 1.1
-        ii += 1
+        with D.no_sync():
+            grad_norm = gradient_penalty(D, batch[0] * 2 - 1,
+                                         fake.detach() * 2 - 1)
 
         ###################
         #### Real pass ####
@@ -195,15 +211,14 @@ def StyleGAN2Recipe(G: nn.Module,
         pos_ratio = real_out.gt(0).float().mean().cpu().item()
         diffTF.log_loss(-pos_ratio)
         return {
-            'imgs': fake.detach()[fakeness_sort],
-            'i_grad': fake_grad[fakeness_sort],
+            'imgs': fake.detach(),
+            'i_grad': fake_grad,
             'loss': real_loss.item() + fake_loss.item(),
             'fake_loss': fake_loss.item(),
             'real_loss': real_loss.item(),
-            'grad_norm': g_norm,
             'ADA-p': diffTF.p,
-            'gamma': gam,
             'D-correct': correct / (2 * batch_size),
+            'grad_norm': grad_norm
         }
 
     tu.freeze(G_polyak)
@@ -273,14 +288,13 @@ def StyleGAN2Recipe(G: nn.Module,
         tcb.WindowedMetricAvg('real_loss'),
         tcb.WindowedMetricAvg('grad_norm'),
         tcb.WindowedMetricAvg('ADA-p'),
-        tcb.WindowedMetricAvg('gamma'),
         tcb.WindowedMetricAvg('D-correct'),
         tcb.Log('i_grad', 'img_grad'),
+        #GP,
         tch.callbacks.Optimizer(optD),
     ])
     recipe.G_loop.callbacks.add_callbacks([
         tch.callbacks.Optimizer(optG),
-        PPL(G, noise_size, batch_size // 2, gpu_id, every=4),
         tcb.Polyak(G.module, G_polyak,
                    0.5**((batch_size * total_num_gpus) / 20000)),
         tcb.WindowedMetricAvg('ppl'),
@@ -319,8 +333,7 @@ def train(rank, world_size):
     G = StyleGAN2Generator(opts.noise_size,
                            img_size=opts.img_size,
                            ch_mul=opts.ch_mul,
-                           max_ch=opts.max_ch,
-                           equal_lr=True)
+                           max_ch=opts.max_ch)
     D = StyleGAN2Discriminator(input_sz=opts.img_size,
                                ch_mul=opts.ch_mul,
                                max_ch=opts.max_ch)
@@ -347,11 +360,11 @@ def train(rank, world_size):
                                 rank,
                                 world_size,
                                 tag=tag,
-                                gp_thresh=opts.gp_thresh,
                                 ada=not opts.no_ada)
     if opts.from_ckpt is not None:
         ckpt = torch.load(opts.from_ckpt, map_location='cpu')
         recipe.load_state_dict(ckpt)
+
     recipe.run(5000)
 
 

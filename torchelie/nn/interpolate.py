@@ -6,21 +6,28 @@ from typing import List, Optional, Tuple, Union
 class Interpolate2d(nn.Module):
     def __init__(self,
                  mode: str,
-                 size: Optional[List[str]] = None,
+                 size: Optional[List[int]] = None,
                  scale_factor: Optional[float] = None) -> None:
         super().__init__()
         self.size = size
         self.scale_factor = scale_factor
         self.mode = mode
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, size:Optional[List[int]]=None) -> torch.Tensor:
         rsf = True if self.scale_factor is not None else None
-        return F.interpolate(x,
-                             mode=self.mode,
-                             size=self.size,
-                             scale_factor=self.scale_factor,
-                             recompute_scale_factor=rsf,
-                             align_corners=False)
+        if not size:
+            return F.interpolate(x,
+                                 mode=self.mode,
+                                 size=self.size,
+                                 scale_factor=self.scale_factor,
+                                 recompute_scale_factor=rsf,
+                                 align_corners=False)
+        else:
+            return F.interpolate(x,
+                                 mode=self.mode,
+                                 size=size,
+                                 recompute_scale_factor=rsf,
+                                 align_corners=False)
 
 
     def extra_repr(self)->str:
@@ -29,7 +36,7 @@ class Interpolate2d(nn.Module):
 class InterpolateBilinear2d(Interpolate2d):
     def __init__(
         self,
-        size: Optional[List[str]] = None,
+        size: Optional[List[int]] = None,
         scale_factor: Optional[float] = None,
     ) -> None:
         super().__init__(size=size, scale_factor=scale_factor, mode='bilinear')

@@ -122,6 +122,23 @@ def _mblur_kernel():
          _mblur_kernel_2d(2)]).astype(np.float32)
 
 
+class BinomialFilter2d(torch.nn.Module):
+    def __init__(self, stride: int):
+        super().__init__()
+        self.stride = stride
+        self.register_buffer(
+            'weight',
+            torch.tensor([[[1.0, 2, 1], [2, 4, 2], [1, 2, 1]]]) / 16)
+
+    def forward(self, x):
+        return torch.nn.functional.conv2d(x,
+                                    self.weight.expand(x.shape[1], 1, -1, -1),
+                                    groups=x.shape[1],
+                                    stride=self.stride,
+                                    padding=1)
+
+
+
 def mblur(input):
     """
     Mean (or average) blur with kernel size 3

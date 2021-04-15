@@ -236,20 +236,17 @@ class Const(nn.Module):
     def __init__(self, *size: int) -> None:
         super().__init__()
         self.size = size
-        self.const = nn.Parameter(torch.randn(1, *size))
+        self.weight = nn.Parameter(torch.randn(1, *size))
 
     def extra_repr(self):
         return repr(self.size)
 
-    def forward(self, n: Union[int, torch.Tensor]) -> torch.Tensor:
+    def forward(self, n: int) -> torch.Tensor:
         """
         Args:
-            n (int or torch.Tensor): batch size to use, n if n is int or
-                n.shape[0]
+            n (int): batch size to use
         """
-        if isinstance(n, torch.Tensor):
-            n = n.shape[0]
-        return self.const.expand(n, *self.const.shape[1:]).contiguous()
+        return self.weight.expand(n, *self.weight.shape[1:]).contiguous()
 
 
 class MinibatchStddev(nn.Module):

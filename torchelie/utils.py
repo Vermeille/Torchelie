@@ -58,6 +58,15 @@ def entropy(out: torch.Tensor,
     assert False, reduce + ' is not a valid reduction method'
 
 
+def kaiming_gain(m: T_Module,
+                 a: float = 0,
+                 nonlinearity='relu',
+                 mode='fan_out') -> float:
+    fan = nn.init._calculate_correct_fan(m.weight, mode)
+    gain = nn.init.calculate_gain(nonlinearity, param=a)
+    return gain / math.sqrt(fan)
+
+
 def kaiming(m: T_Module,
             a: float = 0,
             nonlinearity: str = 'relu',
@@ -91,9 +100,11 @@ def kaiming(m: T_Module,
     else:
         from .nn.utils import weight_scale
         nn.init.normal_(m.weight, 0, 1)
-        fan = nn.init._calculate_correct_fan(m.weight, mode)
-        gain = nn.init.calculate_gain(nonlinearity, param=a)
-        weight_scale(m, scale=gain / math.sqrt(fan))
+        weight_scale(m,
+                     scale=kaiming_gain(m,
+                                        a=a,
+                                        nonlinearity=nonlinearity,
+                                        mode=mode))
 
     if hasattr(m, 'biais') and m.bias is not None:
         assert isinstance(m.bias, torch.Tensor)
@@ -398,9 +409,11 @@ def lerp(a: float, b: float, t: torch.Tensor) -> torch.Tensor:
 def lerp(a: torch.Tensor, b: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
     ...
 
+
 @overload
 def lerp(a: torch.Tensor, b: torch.Tensor, t: float) -> torch.Tensor:
     ...
+
 
 def lerp(a, b, t):
     r"""
@@ -575,5 +588,3 @@ def indent(text: str, amount: int = 4) -> str:
         indented text
     """
     return '\n'.join((' ' * amount + l) for l in text.splitlines())
-
-

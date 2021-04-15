@@ -428,10 +428,14 @@ class StyleGAN2Block(nn.Module):
         if self.upsample:
             rgb = nn.functional.interpolate(rgb,
                                             scale_factor=2,
-                                            mode=self.upsample_mode)
+                                            mode=self.upsample_mode,
+                                            align_corners=False,
+                                            recompute_scale_factor=True)
             maps = nn.functional.interpolate(maps,
                                              scale_factor=2,
-                                             mode=self.upsample_mode)
+                                             mode=self.upsample_mode,
+                                             align_corners=False,
+                                             recompute_scale_factor=True)
         maps = self.inside(
             in_0=maps,
             w=w,
