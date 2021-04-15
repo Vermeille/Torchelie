@@ -41,7 +41,7 @@ class ClassificationHead(tnn.CondSeq):
             ('linear1',
              kaiming(nn.Linear(self.in_channels, hidden_channels))),
             ('relu1', nn.ReLU(True)),
-            ('linear2', kaiming(nn.Linear(hidden_channels, hidden_channels))),
+            ('linear2', kaiming(nn.Linear(hidden_channels, self.num_classes))),
         ])
         return self
 
@@ -69,6 +69,11 @@ class ClassificationHead(tnn.CondSeq):
         self.num_classes = classes
         old = self[-1]
         self[-1] = kaiming(nn.Linear(old.in_features, self.num_classes))
+        return self
+
+    def remove_pool(self, spatial_size: int)->'ClassificationHead':
+        self.set_pool_size(spatial_size)
+        del self.pool
         return self
 
     def set_pool_size(self, size: int) -> 'ClassificationHead':
