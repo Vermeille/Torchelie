@@ -5,6 +5,7 @@ import torchelie.utils as tu
 from torchelie.datasets.debug import *
 from .concat import HorizontalConcatDataset, MergedDataset
 from .ms1m import MS1M
+from .pix2pix import Pix2PixDataset
 
 import torch
 
