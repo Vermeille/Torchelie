@@ -20,116 +20,9 @@ from typing import List, Tuple, Optional, cast
 from .utils import remove_bn, edit_model, insert_after, make_leaky
 from .utils import remove_weight_scale
 from .interpolate import InterpolateBilinear2d
+from .encdec import ConvDeconvBlock
+from .conv import Conv2dBNReLU
 
-
-class Conv2dBNReLU(CondSeq):
-    conv: nn.Conv2d
-    norm: Optional[nn.Module]
-    relu: Optional[nn.Module]
-
-    out_channels: int
-    in_channels: int
-    kernel_size: Tuple[int, int]
-    stride: Tuple[int, int]
-
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 kernel_size: int,
-                 stride: int = 1) -> None:
-        """
-        A packed block with Conv-Norm-ReLU
-
-        Args:
-            in_channels (int): input channels
-            out_channels (int): output channels
-            kernel_size (int): kernel size
-            stride (int): stride of the conv
-
-        Returns:
-            A packed block with Conv-Norm-ReLU as a CondSeq
-        """
-        super().__init__()
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.kernel_size = (kernel_size, kernel_size)
-        self.stride = (stride, stride)
-        self.reset()
-
-    def reset(self) -> None:
-        self.add_module(
-            'conv',
-            kaiming(
-                Conv2d(self.in_channels,
-                       self.out_channels,
-                       self.kernel_size[0],
-                       stride=self.stride,
-                       bias=False)))
-        self.add_module('norm', nn.BatchNorm2d(self.out_channels))
-        self.add_module('relu', nn.ReLU(inplace=True))
-
-    def remove_bn(self) -> 'Conv2dBNReLU':
-        """
-        Remove the BatchNorm, restores the bias term in conv.
-
-        Returns:
-            self
-        """
-        remove_bn(self)
-        self.norm = None
-        return self
-
-    def restore_bn(self) -> 'Conv2dBNReLU':
-        if self.norm is not None:
-            return self
-        insert_after(self, 'conv', nn.BatchNorm2d(self.out_channels), 'norm')
-        return self
-
-    def no_bias(self) -> 'Conv2dBNReLU':
-        """
-        Remove the bias term.
-
-        Returns:
-            self
-        """
-        if hasattr(self.norm, 'bias'):
-            self.norm.bias = None
-        self.conv.bias = None
-        return self
-
-    def leaky(self, leak: float = 0.2) -> 'Conv2dBNReLU':
-        """
-        Change the ReLU to a LeakyReLU, also rescaling the weights in the conv
-        to preserve the variance.
-
-        Returns:
-            self
-        """
-        new_gain = nn.init.calculate_gain('leaky_relu', param=leak)
-        if isinstance(self.relu, nn.LeakyReLU):
-            old_gain = nn.init.calculate_gain('leaky_relu',
-                                              param=self.relu.negative_slope)
-        else:
-            old_gain = nn.init.calculate_gain('relu')
-
-        self.relu = nn.LeakyReLU(leak, inplace=True)
-        self.conv.weight.data *= new_gain / old_gain
-        return self
-
-    def no_relu(self) -> 'Conv2dBNReLU':
-        """
-        Remove the ReLU
-        """
-        del self.relu
-        self.relu = None
-        return self
-
-    def to_preact(self) -> 'Conv2dBNReLU':
-        self.reset()
-        c = self.conv
-        del self.conv
-        self.add_module('conv', c)
-        return self
 
 
 def MConvNormReLU(in_ch: int,
@@ -313,18 +206,14 @@ class ResidualDiscrBlock(PreactResBlock):
                     nn.utils.remove_spectral_norm(m)
                 except ValueError:
                     pass
-                kaiming(m,
-                        dynamic=True,
-                        mode='fan_in',
-                        nonlinearity='leaky_relu',
-                        a=0.2)
+                kaiming(m, dynamic=True, a=0.2)
 
         with torch.no_grad():
             self.branch.conv2.weight_g.zero_()
 
         return self
 
-    def to_spectral_norm(self)->'ResidualDiscrBlock':
+    def to_spectral_norm(self) -> 'ResidualDiscrBlock':
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 try:
@@ -334,10 +223,7 @@ class ResidualDiscrBlock(PreactResBlock):
                 nn.utils.spectral_norm(m)
 
         assert isinstance(self.branch.conv2, nn.Conv2d)
-        xavier(self.branch.conv2,
-               nonlinearity='leaky_relu',
-               a=0.2,
-               mode='fan_in')
+        xavier(self.branch.conv2, a=0.2)
         return self
 
 

@@ -15,7 +15,7 @@ def Conv2d(in_ch, out_ch, ks, stride=1, bias=True):
     return nn.Conv2d(in_ch,
                      out_ch,
                      ks,
-                     padding=ks // 2,
+                     padding=(ks-1) // 2,
                      stride=stride,
                      bias=bias)
 

@@ -12,4 +12,5 @@ from .blocks import *
 from .layers import *
 from .condseq import CondSeq
 from .graph import ModuleGraph
+from .encdec import *
 import torchelie.nn.utils

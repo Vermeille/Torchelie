@@ -60,7 +60,7 @@ class ADATF:
 class PPL:
     def __init__(self, every=4):
         self.every = every
-        self.ppl_goal = None
+        self.ppl_goal = 0.
         self.iters = 0
 
     def compute_ppl(self, model, z):
@@ -103,7 +103,8 @@ class GradientPenalty:
             fake = fake.detach()
             gp, g_norm = zero_gp(model, real, fake)
             # Sync the gradient on the next backward
-            (4 * self.gamma * gp).backward()
+            if not torch.any(torch.isnan(gp)):
+                (4 * self.gamma * gp).backward()
             self.last_norm = g_norm
         self.iters += 1
         return self.last_norm
@@ -217,7 +218,7 @@ def StyleGAN2Recipe(G: nn.Module,
             'fake_loss': fake_loss.item(),
             'real_loss': real_loss.item(),
             'ADA-p': diffTF.p,
-            'D-correct': correct / (2 * batch_size),
+            'D-correct': correct / (2 * real_out.numel()),
             'grad_norm': grad_norm
         }
 
@@ -290,7 +291,6 @@ def StyleGAN2Recipe(G: nn.Module,
         tcb.WindowedMetricAvg('ADA-p'),
         tcb.WindowedMetricAvg('D-correct'),
         tcb.Log('i_grad', 'img_grad'),
-        #GP,
         tch.callbacks.Optimizer(optD),
     ])
     recipe.G_loop.callbacks.add_callbacks([

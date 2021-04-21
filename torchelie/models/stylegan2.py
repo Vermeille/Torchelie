@@ -14,6 +14,7 @@ from torchelie.transforms.differentiable import BinomialFilter2d
 
 class LinearReLU(tnn.CondSeq):
     relu: nn.Module
+    linear: nn.Module
 
     def __init__(self, in_features: int, out_features) -> None:
         super().__init__()
@@ -29,25 +30,19 @@ class LinearReLU(tnn.CondSeq):
 
     def to_equal_lr(self) -> 'LinearReLU':
         if isinstance(self.relu, nn.LeakyReLU):
-            tu.kaiming(self.linear,
-                       dynamic=True,
-                       nonlinearity='leaky_relu',
-                       mode='fan_in',
-                       a=self.relu.negative_slope)
+            tu.kaiming(self.linear, dynamic=True, a=self.relu.negative_slope)
         else:
-            tu.kaiming(self.linear, dynamic=True, mode='fan_in')
+            tu.kaiming(self.linear, dynamic=True)
         return self
 
     def to_differential_lr(self, lr: float):
         tnn.utils.weight_scale(self.linear, name='bias', scale=lr)
         if isinstance(self.relu, nn.LeakyReLU):
-            g = tu.kaiming_gain(self.linear,
-                                nonlinearity='leaky_relu',
-                                mode='fan_in',
-                                a=self.relu.negative_slope)
+            g = tu.kaiming_gain(self.linear, a=self.relu.negative_slope)
         else:
-            g = tu.kaiming_gain(self.linear, mode='fan_in')
+            g = tu.kaiming_gain(self.linear)
         tnn.utils.weight_scale(self.linear, scale=lr * g)
+        assert isinstance(self.linear.weight_g, torch.Tensor)
         self.linear.weight_g.data.normal_(0, 1. / lr)
         return self
 
@@ -138,19 +133,19 @@ class StyleGAN2Generator(nn.Module):
     @overload
     def forward(self,
                 z,
-                mixing: bool = True,
-                get_w: Literal[False] = False) -> torch.Tensor:
+                mixing: bool,
+                get_w: Literal[False]) -> torch.Tensor:
         ...
 
     @overload
     def forward(
             self,
             z,
-            mixing: bool = True,
-            get_w: Literal[True] = False) -> Tuple[torch.Tensor, torch.Tensor]:
+            mixing: bool,
+            get_w: Literal[True]) -> Tuple[torch.Tensor, torch.Tensor]:
         ...
 
-    def forward(self, z, mixing=True, get_w=False):
+    def forward(self, z, mixing:bool=True, get_w:bool=False):
         w = self.encode(z)
 
         if self.training:
@@ -216,6 +211,7 @@ def StyleGAN2Discriminator(input_sz,
 
     tnn.utils.edit_model(net, make_binomial)
     net.add_minibatch_stddev()
+    assert isinstance(net.classifier, ClassificationHead)
     net.classifier.to_two_layers(min(ch, max_ch))
     net.classifier.set_pool_size(4)
     net.classifier.leaky()

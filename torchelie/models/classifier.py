@@ -34,12 +34,11 @@ class ClassificationHead(tnn.CondSeq):
 
         return self
 
-    def to_two_layers(self, hidden_channels:int)->'ClassificationHead':
+    def to_two_layers(self, hidden_channels: int) -> 'ClassificationHead':
         self._modules = OrderedDict([
             ('pool', nn.AdaptiveAvgPool2d(1)),
             ('reshape', tnn.Reshape(self.in_channels)),
-            ('linear1',
-             kaiming(nn.Linear(self.in_channels, hidden_channels))),
+            ('linear1', kaiming(nn.Linear(self.in_channels, hidden_channels))),
             ('relu1', nn.ReLU(True)),
             ('linear2', kaiming(nn.Linear(hidden_channels, self.num_classes))),
         ])
@@ -61,7 +60,18 @@ class ClassificationHead(tnn.CondSeq):
 
         return self
 
-    def leaky(self)->'ClassificationHead':
+    def to_convolutional(self) -> 'ClassificationHead':
+        del self.reshape
+        del self.pool
+
+        def _do(m):
+            if isinstance(m, nn.Linear):
+                return tnn.Conv1x1(m.in_features, m.out_features)
+            return m
+        tnn.utils.edit_model(self, _do)
+        return self
+
+    def leaky(self) -> 'ClassificationHead':
         tnn.utils.make_leaky(self)
         return self
 
@@ -71,7 +81,7 @@ class ClassificationHead(tnn.CondSeq):
         self[-1] = kaiming(nn.Linear(old.in_features, self.num_classes))
         return self
 
-    def remove_pool(self, spatial_size: int)->'ClassificationHead':
+    def remove_pool(self, spatial_size: int) -> 'ClassificationHead':
         self.set_pool_size(spatial_size)
         del self.pool
         return self
@@ -129,7 +139,7 @@ class ProjectionDiscr(nn.Module):
         nn.utils.spectral_norm(self.discr)
         return self
 
-    def to_equal_lr(self)->'ProjectionDiscr':
+    def to_equal_lr(self) -> 'ProjectionDiscr':
         xavier(self.emb, dynamic=True)
         xavier(self.discr, dynamic=True)
         return self

@@ -1,0 +1,159 @@
+import torch
+import torch.nn as nn
+from typing import Tuple, Optional, Union, cast
+from .utils import remove_bn, insert_after
+from .condseq import CondSeq
+from torchelie.utils import kaiming
+from .layers import Conv2d
+
+
+class Conv2dBNReLU(CondSeq):
+    """
+    A packed block with Conv-BatchNorm-ReLU
+
+    Args:
+        in_channels (int): input channels
+        out_channels (int): output channels
+        kernel_size (int): kernel size
+        stride (int): stride of the conv
+
+    Returns:
+        A packed block with Conv-Norm-ReLU as a CondSeq
+    """
+    conv: Union[nn.Conv2d, nn.ConvTranspose2d]
+    norm: Optional[nn.Module]
+    relu: Optional[nn.Module]
+
+    out_channels: int
+    in_channels: int
+    kernel_size: Tuple[int, int]
+    stride: Tuple[int, int]
+
+    def __init__(self,
+                 in_channels: int,
+                 out_channels: int,
+                 kernel_size: int,
+                 stride: int = 1) -> None:
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = (kernel_size, kernel_size)
+        self.stride = (stride, stride)
+        self.reset()
+
+    def reset(self) -> None:
+        """
+        Recreate the block as a simple conv-BatchNorm-ReLU
+        """
+        self.add_module(
+            'conv',
+            kaiming(
+                Conv2d(self.in_channels,
+                       self.out_channels,
+                       self.kernel_size[0],
+                       stride=self.stride,
+                       bias=False)))
+        self.add_module('norm', nn.BatchNorm2d(self.out_channels))
+        self.add_module('relu', nn.ReLU(inplace=True))
+
+    def to_input_specs(self, in_channels: int) -> 'Conv2dBNReLU':
+        """
+        Recreate a convolution with :code:`in_channels` input channels
+        """
+        self.in_channels = in_channels
+
+        c = self.conv
+        self.conv = kaiming(
+            Conv2d(in_channels,
+                   c.out_channels,
+                   c.kernel_size[0],
+                   stride=c.stride,
+                   bias=c.bias))
+        return self
+
+    def to_transposed_conv(self) -> 'Conv2dBNReLU':
+        """
+        Transform the convolution into a hopefully equivalent transposed
+        convolution
+        """
+        c = self.conv
+        self.conv = kaiming(
+            nn.ConvTranspose2d(c.in_channels,
+                               c.out_channels,
+                               cast(Tuple[int, int], c.kernel_size),
+                               stride=cast(Tuple[int, int], c.stride),
+                               padding=cast(Tuple[int, int], c.padding),
+                               bias=c.bias is not None,
+                               padding_mode=c.padding_mode))
+        return self
+
+    def remove_bn(self) -> 'Conv2dBNReLU':
+        """
+        Remove the BatchNorm, restores the bias term in conv.
+
+        Returns:
+            self
+        """
+        remove_bn(self)
+        if hasattr(self, 'norm'):
+            del self.norm
+        self.norm = None
+        return self
+
+    def restore_bn(self) -> 'Conv2dBNReLU':
+        """
+        Restore BatchNorm if deleted
+        """
+        if self.norm is not None:
+            return self
+        insert_after(self, 'conv', nn.BatchNorm2d(self.out_channels), 'norm')
+        return self
+
+    def no_bias(self) -> 'Conv2dBNReLU':
+        """
+        Remove the bias term.
+
+        Returns:
+            self
+        """
+        if hasattr(self.norm, 'bias') and self.norm is not None:
+            self.norm.bias = None  #type: ignore
+        self.conv.bias = None
+        return self
+
+    def leaky(self, leak: float = 0.2) -> 'Conv2dBNReLU':
+        """
+        Change the ReLU to a LeakyReLU, also rescaling the weights in the conv
+        to preserve the variance.
+
+        Returns:
+            self
+        """
+        new_gain = nn.init.calculate_gain('leaky_relu', param=leak)
+        if isinstance(self.relu, nn.LeakyReLU):
+            old_gain = nn.init.calculate_gain('leaky_relu',
+                                              param=self.relu.negative_slope)
+        else:
+            old_gain = nn.init.calculate_gain('relu')
+
+        self.relu = nn.LeakyReLU(leak, inplace=True)
+        self.conv.weight.data *= new_gain / old_gain
+        return self
+
+    def no_relu(self) -> 'Conv2dBNReLU':
+        """
+        Remove the ReLU
+        """
+        del self.relu
+        self.relu = None
+        return self
+
+    def to_preact(self) -> 'Conv2dBNReLU':
+        """
+        Place the normalization and ReLU before the convolution.
+        """
+        self.reset()
+        c = self.conv
+        del self.conv
+        self.add_module('conv', c)
+        return self

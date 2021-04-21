@@ -243,7 +243,7 @@ class Recipe(RecipeBase):
 
                 self.callbacks('on_batch_start')
                 out = self.call_fun(batch)
-                out = tu.send_to_device(out, 'cpu', non_blocking=True)
+                out = tu.send_to_device(out, 'cpu', non_blocking=False)
                 self.callbacks.update_state(out)
                 self.callbacks('on_batch_end')
             self.callbacks('on_epoch_end')

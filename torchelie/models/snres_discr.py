@@ -47,7 +47,7 @@ class ResidualDiscriminator(nn.Module):
             return self.classifier(x)
 
     def set_input_specs(self, in_channels: int) -> 'ResidualDiscriminator':
-        self.input = tnn.Conv3x3(in_channels, self.in_channels)
+        self.features.input = tnn.Conv3x3(in_channels, self.features.input.out_channels)
         return self
 
     def to_spectral_norm(self) -> 'ResidualDiscriminator':
@@ -67,33 +67,11 @@ class ResidualDiscriminator(nn.Module):
             self.classifier.to_spectral_norm()
         return self
 
-    def to_equal_lr(self) -> 'ResidualDiscriminator':
+    def to_equal_lr(self, leak=0.2) -> 'ResidualDiscriminator':
         for m in self.modules():
-            if isinstance(m, tnn.ResidualDiscrBlock):
-                m.to_equal_lr()
-            elif isinstance(m, nn.Linear):
-                tu.kaiming(m,
-                           dynamic=True,
-                           nonlinearity='leaky_relu',
-                           a=0.2,
-                           mode='fan_in')
+            if isinstance(m, (nn.Linear, nn.Conv2d)):
+                tu.kaiming(m, dynamic=True, a=leak)
 
-        assert isinstance(self.features.input, nn.Module)
-        tu.kaiming(self.features.input,
-                   dynamic=True,
-                   nonlinearity='leaky_relu',
-                   a=0.2,
-                   mode='fan_in')
-        if hasattr(self.features, 'mbconv'):
-            assert isinstance(self.features.mbconv, tnn.Conv2dBNReLU)
-            assert isinstance(self.features.mbconv.conv, nn.Module)
-            tu.kaiming(self.features.mbconv.conv,
-                       dynamic=True,
-                       nonlinearity='leaky_relu',
-                       a=0.2,
-                       mode='fan_in')
-        if isinstance(self.classifier, ProjectionDiscr):
-            self.classifier.to_equal_lr()
         return self
 
     def add_minibatch_stddev(self) -> 'ResidualDiscriminator':
@@ -108,6 +86,27 @@ class ResidualDiscriminator(nn.Module):
         self.classifier = ProjectionDiscr(self.out_channels, num_classes)
         return self
 
+
+def residual_patch34():
+    D = ResidualDiscriminator([32, 'D', 64, 'D', 128])
+    D.classifier.to_convolutional().leaky()
+    return D
+
+def residual_patch70():
+    D = ResidualDiscriminator([32, 'D', 64, 'D', 128, 'D', 256])
+    D.classifier.to_convolutional().leaky()
+    return D
+
+def residual_patch142():
+    D = ResidualDiscriminator([32, 'D', 64, 'D', 128, 'D', 256, 'D', 512])
+    D.classifier.to_convolutional().leaky()
+    return D
+
+def residual_patch286():
+    D = ResidualDiscriminator([32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D',
+        512])
+    D.classifier.to_convolutional().leaky()
+    return D
 
 def res_discr_4l() -> ResidualDiscriminator:
     return ResidualDiscriminator([32, 'D', 64, 'D', 128, 'D', 256, 'D'])
@@ -160,33 +159,3 @@ def snres_projdiscr_7l(num_classes: int) -> ResidualDiscriminator:
     return res_discr_7l().to_projection_discr(num_classes).to_spectral_norm()
 
 
-def stylegan2_discr(input_sz,
-                    max_ch: int = 512,
-                    ch_mul: int = 1) -> ResidualDiscriminator:
-    """
-        Build the discriminator for StyleGAN2
-
-        Args:
-            input_sz (int): image size
-            max_ch (int): maximum number of channels (default: 512)
-            ch_mul (float): multiply the number of channels on each layer by this
-                value (default, 1.)
-            equal_lr (bool): equalize the learning rates with dynamic weight
-                scaling
-    """
-    import math
-    res = input_sz
-    ch = int(512 / (2**(math.log2(res) - 6)) * ch_mul)
-    layers: List[Union[str, int]] = [min(max_ch, ch)]
-
-    while res > 4:
-        res = res // 2
-        layers.append(min(max_ch, ch * 2))
-        layers.append('D')
-        ch *= 2
-
-    net = ResidualDiscriminator(layers)
-    net.add_minibatch_stddev()
-    net.classifier.set_pool_size(4)
-    net.to_equal_lr()
-    return net

@@ -131,11 +131,12 @@ class BinomialFilter2d(torch.nn.Module):
             torch.tensor([[[1.0, 2, 1], [2, 4, 2], [1, 2, 1]]]) / 16)
 
     def forward(self, x):
+        x = torch.nn.functional.pad(x, (1, 1, 1, 1), mode='replicate')
         return torch.nn.functional.conv2d(x,
                                     self.weight.expand(x.shape[1], 1, -1, -1),
                                     groups=x.shape[1],
                                     stride=self.stride,
-                                    padding=1)
+                                    padding=0)
 
 
 

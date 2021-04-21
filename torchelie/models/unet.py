@@ -2,135 +2,96 @@ from collections import OrderedDict
 from typing import Optional, List, Tuple, cast
 
 import torchelie as tch
+import torchelie.nn as tnn
 import torchelie.utils as tu
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
-from torchelie.transforms.differentiable import center_crop
 
 
-class UBlock(nn.Module):
-    skip: nn.Module
+class UNet(nn.Module):
+    def __init__(self, arch: List[int]) -> None:
+        super().__init__()
+        self.arch = arch
+        self.in_channels = 3
+        self.out_channels = arch[-1]
 
-    def __init__(self,
-                 in_ch: int,
-                 out_ch: int,
-                 inner: Optional[nn.Module] = None,
-                 skip: bool = True,
-                 up_mode: str = 'bilinear') -> None:
-        super(UBlock, self).__init__()
-        self.up_mode = up_mode
-        self.in_conv = nn.Sequential(
-            OrderedDict([
-                ('pad1', nn.ReflectionPad2d(1)),
-                ('conv1', tu.kaiming(nn.Conv2d(in_ch, out_ch, 3))),
-                ('relu1', nn.ReLU(inplace=True)),
-                ('pad2', nn.ReflectionPad2d(1)),
-                ('conv2', tu.kaiming(nn.Conv2d(out_ch, out_ch, 3))),
-                ('relu2', nn.ReLU(inplace=True)),
-            ]))
+        feats = tnn.CondSeq()
+        feats.input = tnn.Conv2dBNReLU(3, arch[0], 3)
 
-        self.inner = inner
-        if inner is not None:
-            if skip:
-                self.skip = nn.Sequential(
-                    tu.kaiming(nn.Conv2d(out_ch, out_ch, 1)), nn.ReLU(True))
-            else:
-                self.skip = nn.Identity()
+        encdec: nn.Module = tnn.Conv2dBNReLU(arch[-1], arch[-1] * 2, 3)
+        for outer, inner in zip(arch[-2::-1], arch[:0:-1]):
+            encdec = tnn.UBlock(outer, inner, encdec)
+        feats.encoder_decoder = encdec
+        self.features = feats
+        self.classifier = tnn.CondSeq()
+        assert isinstance(encdec.out_channels, int)
+        self.classifier.conv = tnn.Conv2dBNReLU(encdec.out_channels, 3,
+                                                3).remove_bn()
 
-        inner_ch = out_ch * (1 if inner is None else 2)
-        self.out_conv = nn.Sequential(
-            OrderedDict([
-                ('pad1', nn.ReflectionPad2d(1)),
-                ('conv1', tu.kaiming(nn.Conv2d(inner_ch, out_ch, 3))),
-                ('relu1', nn.ReLU(inplace=True)),
-                ('pad2', nn.ReflectionPad2d(1)),
-                ('conv2', tu.kaiming(nn.Conv2d(out_ch, in_ch, 3))),
-                ('relu2', nn.ReLU(inplace=True)),
-            ]))
+    def forward(self, x):
+        return self.classifier(self.features(x))
 
-    def forward(self, x_orig: torch.Tensor) -> torch.Tensor:
-        x = self.in_conv(x_orig)
-        if self.inner is not None:
-            x2 = x
-            x = F.interpolate(self.inner(F.avg_pool2d(x, 3, 2, 1)),
-                              mode=self.up_mode,
-                              size=x.shape[2:])
-            x = torch.cat([x, self.skip(center_crop(x2, x.shape[2:]))], dim=1)
+    def set_input_specs(self, in_channels: int) -> 'UNet':
+        assert isinstance(self.features.input, tnn.Conv2dBNReLU)
+        c = self.features.input.conv
+        self.features.input.conv = tu.kaiming(
+            nn.Conv2d(in_channels,
+                      c.out_channels,
+                      cast(Tuple[int, int], c.kernel_size),
+                      bias=c.bias is not None,
+                      padding=cast(Tuple[int, int], c.padding)))
+        return self
 
-        return self.out_conv(x)
+    def remove_first_batchnorm(self) -> 'UNet':
+        assert isinstance(self.features.input, tnn.Conv2dBNReLU)
+        self.features.input.remove_bn()
+        return self
+
+    def remove_batchnorm(self) -> 'UNet':
+        for m in self.modules():
+            if isinstance(m, tnn.Conv2dBNReLU):
+                m.remove_bn()
+        return self
 
 
-class UNetBone(nn.Module):
-    """
-    Configurable UNet model.
+class Pix2PixGenerator(UNet):
+    def __init__(self, arch: List[int]) -> None:
+        super().__init__(arch)
+        self.remove_first_batchnorm()
 
-    Note: Not all input sizes are valid. Make sure that the model can decode an
-    image of the same size first.
+        encdec = cast(nn.Module, self.features.encoder_decoder)
+        for m in encdec.modules():
+            if isinstance(m, tnn.UBlock):
+                m.to_bilinear_sampling()
+                m.set_encoder_num_layers(1)
 
-    Args:
-        arch (list): an architecture specification made of:
-            - an int, for an kernel with specified output_channels
-            - 'U' for upsampling+conv
-            - 'D' for downsampling (maxpooling)
-        in_ch (int): number of input channels
-        out_ch (int): number of output channels
-    """
-    conv: nn.Module
+        tnn.utils.make_leaky(self)
+        self.classifier.conv.relu = nn.Sigmoid()
 
-    def __init__(self,
-                 arch: List[int],
-                 in_ch: int = 3,
-                 out_ch: int = 1,
-                 *,
-                 skip: bool = True,
-                 up_mode: str = 'bilinear') -> None:
-        super(UNetBone, self).__init__()
-        self.in_conv = nn.Sequential(
-            tu.kaiming(nn.Conv2d(in_ch, arch[0], 5, padding=2)), nn.ReLU(True))
-        self.conv = nn.Sequential(
-            nn.ReflectionPad2d(1),
-            tu.kaiming(nn.Conv2d(arch[-1], arch[-1], 3)),
-            nn.ReLU(True),
-            nn.ReflectionPad2d(1),
-            tu.kaiming(nn.Conv2d(arch[-1], arch[-1], 3)),
-            nn.ReLU(True),
-        )
-        for x1, x2 in zip(reversed(arch[:-1]), reversed(arch[1:])):
-            self.conv = UBlock(x1, x2, self.conv, skip=skip, up_mode=up_mode)
-        self.out_conv = nn.Sequential(
-            tu.kaiming(nn.Conv2d(arch[0], out_ch, 1)), )
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                m.padding_mode = 'reflect'
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass.
-
-        Args:
-            x (tensor): input tensor, batch of images
-        """
-        out = self.out_conv(self.conv(self.in_conv(x)))
-        return out
+        self._add_noise()
 
 
-def UNet(in_ch: int = 3, out_ch: int = 1) -> UNetBone:
-    """
-    Instantiate the UNet network specified in _U-Net: Convolutional Networks
-    for Biomedical Image Segmentation_ (Ronneberger, 2015)
+    def _add_noise(self):
+        layers = [self.features.encoder_decoder]
+        while hasattr(layers[-1].inner, 'inner'):
+            layers.append(layers[-1].inner)
+        tnn.utils.insert_after(layers[-1].inner, 'norm',
+                                   tnn.Noise(1, True),
+                                   'noise')
 
-    Valid input sizes include : 572x572, 132x132
-
-    Args:
-        in_ch (int): number of input channels
-        out_ch (int): number of output channels
-
-    Returns:
-        An instantiated UNet
-    """
-    return UNetBone([32, 64, 128, 256, 512, 512], in_ch=in_ch, out_ch=out_ch)
+        for m in layers:
+            tnn.utils.insert_after(m.out_conv.conv_0, 'norm',
+                                   tnn.Noise(1, True),
+                                   'noise')
 
 
-if __name__ == '__main__':
-    unet = UNet()
-    print(unet)
-    print(unet(torch.randn(1, 3, 132, 132)).shape)
+def pix2pix_generator() -> Pix2PixGenerator:
+    return Pix2PixGenerator([64, 128, 256, 512, 512, 512, 512])
+
+def pix2pix_dev() -> Pix2PixGenerator:
+    return Pix2PixGenerator([32, 64, 128, 128, 256, 256, 512])
+

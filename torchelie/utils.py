@@ -60,8 +60,8 @@ def entropy(out: torch.Tensor,
 
 def kaiming_gain(m: T_Module,
                  a: float = 0,
-                 nonlinearity='relu',
-                 mode='fan_out') -> float:
+                 nonlinearity='leaky_relu',
+                 mode='fan_in') -> float:
     fan = nn.init._calculate_correct_fan(m.weight, mode)
     gain = nn.init.calculate_gain(nonlinearity, param=a)
     return gain / math.sqrt(fan)
@@ -69,8 +69,8 @@ def kaiming_gain(m: T_Module,
 
 def kaiming(m: T_Module,
             a: float = 0,
-            nonlinearity: str = 'relu',
-            mode: str = 'fan_out',
+            nonlinearity: str = 'leaky_relu',
+            mode: str = 'fan_in',
             dynamic: bool = False) -> T_Module:
     """
     Initialize a module with kaiming normal init
@@ -115,7 +115,7 @@ def kaiming(m: T_Module,
 def xavier(m: T_Module,
            a: float = 0,
            nonlinearity: str = 'relu',
-           mode: str = 'fan_out',
+           mode: str = 'fan_in',
            dynamic: bool = False) -> T_Module:
     """
     Initialize a module with xavier normal init
