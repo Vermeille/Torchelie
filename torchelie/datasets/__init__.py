@@ -58,7 +58,9 @@ class PairedDataset(torch.utils.data.Dataset):
         x1 = self.dataset1[idx1]
         x2 = self.dataset2[idx2]
 
-        return list(zip(x1, x2))
+        if isinstance(x1, (tuple, list)):
+            return list(zip(x1, x2))
+        return x1, x2
 
     def __len__(self):
         return len(self.dataset1) * len(self.dataset2)
