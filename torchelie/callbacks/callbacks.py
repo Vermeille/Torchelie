@@ -405,8 +405,11 @@ class VisdomLogger:
                                        title=name,
                                        store_history=name in store_history))
                 elif x.dim() == 4:
-                    x = x - x.min()
-                    x = x / x.max()
+                    m = x.min()
+                    M = x.max()
+                    if m.item() < 0 or M.item() > 1:
+                        x = x - m
+                        x = x / (M + 1e-7)
                     if x.shape[1] == 1:
                         B, _, H, W = x.shape
                         x_flat = x.view(B * H, W)
