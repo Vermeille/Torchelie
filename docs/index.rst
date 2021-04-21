@@ -5,6 +5,9 @@ Welcome to Torchélie's documentation!
    :caption: Pytorch Utils
    :maxdepth: 1
 
+.. autosummary::
+   :toctree: _autosummary
+
    nn
    optimizers
    utils
