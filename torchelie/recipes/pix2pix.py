@@ -7,7 +7,7 @@ import torchvision.transforms as TF
 import torchelie.loss.gan.standard as gan_loss
 from torchelie.loss.gan.penalty import zero_gp
 from torchelie.datasets.pix2pix import UnlabeledImages, Pix2PixDataset
-from torchelie.models import residual_patch70, pix2pix_generator
+from torchelie.models import residual_patch70, pix2pix_generator, pix2pix_res_dev
 import torch.nn as nn
 
 def train(rank, world_size):
@@ -18,7 +18,7 @@ def train(rank, world_size):
     parser.add_argument('--from-ckpt')
     opts = parser.parse_args()
 
-    G = pix2pix_generator()
+    G = pix2pix_res_dev()
     D = residual_patch70()
     D.set_input_specs(6)
     D.add_minibatch_stddev()
@@ -26,8 +26,8 @@ def train(rank, world_size):
 
     for m in G.modules():
         if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
-            tu.kaiming(m, a=0.2, dynamic=True)
-    G.remove_batchnorm()
+            tu.kaiming(m, a=0., dynamic=True, mode='fan_out')
+    #G.remove_batchnorm()
 
     if rank == 0:
         print(G)
@@ -66,8 +66,10 @@ def train(rank, world_size):
                     ])
                 )
 
-    ds = torch.utils.data.DataLoader(ds, 4, num_workers=4, shuffle=True,
-            pin_memory=True)
+    sampler = None#torch.utils.data.WeightedRandomSampler([1] * len(ds), 10000*4, True)
+    ds = torch.utils.data.DataLoader(ds, 2, num_workers=4, sampler=sampler,
+            shuffle=sampler is None,
+            pin_memory=True, drop_last=True)
 
     def G_fun(batch) -> dict:
         x, y = batch
@@ -123,7 +125,7 @@ def train(rank, world_size):
 
 
         return {
-            'out': out,
+            'out': out.detach(),
             'fake_loss': fake_loss.item(),
             'prob_fake': torch.sigmoid(prob_fake).mean().item(),
             'prob_real': torch.sigmoid(prob_real).mean().item(),
