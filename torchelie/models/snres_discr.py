@@ -47,7 +47,8 @@ class ResidualDiscriminator(nn.Module):
             return self.classifier(x)
 
     def set_input_specs(self, in_channels: int) -> 'ResidualDiscriminator':
-        self.features.input = tnn.Conv3x3(in_channels, self.features.input.out_channels)
+        self.features.input = tnn.Conv3x3(in_channels,
+                                          self.features.input.out_channels)
         return self
 
     def to_spectral_norm(self) -> 'ResidualDiscriminator':
@@ -92,21 +93,29 @@ def residual_patch34():
     D.classifier.to_convolutional().leaky()
     return D
 
+
 def residual_patch70():
     D = ResidualDiscriminator([32, 'D', 64, 'D', 128, 'D', 256])
     D.classifier.to_convolutional().leaky()
     return D
+
 
 def residual_patch142():
     D = ResidualDiscriminator([32, 'D', 64, 'D', 128, 'D', 256, 'D', 512])
     D.classifier.to_convolutional().leaky()
     return D
 
+
 def residual_patch286():
-    D = ResidualDiscriminator([32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D',
-        512])
+    D = ResidualDiscriminator(
+        [32, 'D', 64, 'D', 128, 'D', 256, 'D', 512, 'D', 512])
     D.classifier.to_convolutional().leaky()
     return D
+
+
+def res_discr_3l() -> ResidualDiscriminator:
+    return ResidualDiscriminator([32, 'D', 64, 'D', 128, 'D'])
+
 
 def res_discr_4l() -> ResidualDiscriminator:
     return ResidualDiscriminator([32, 'D', 64, 'D', 128, 'D', 256, 'D'])
@@ -157,5 +166,3 @@ def snres_discr_7l() -> ResidualDiscriminator:
 
 def snres_projdiscr_7l(num_classes: int) -> ResidualDiscriminator:
     return res_discr_7l().to_projection_discr(num_classes).to_spectral_norm()
-
-
