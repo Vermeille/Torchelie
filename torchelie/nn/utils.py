@@ -189,8 +189,53 @@ def edit_model(m: T_Module, f: Callable[[nn.Module], nn.Module]) -> nn.Module:
     return f(m)
 
 
+def weight_norm_and_equal_lr(m: T_Module,
+                             leak: float = 0.,
+                             mode: str = 'fan_in',
+                             init_gain: float = 1.,
+                             lr_gain: float = 1.,
+                             name: str = 'weight') -> T_Module:
+    """
+    Set weight norm and equalized learning rate like demodulated convs in
+    StyleGAN2 for module m.
+
+    The weight matrix is initialized for a leaky relu nonlinearity of slope a.
+    An extra gain can be specified, as well as a differential learning rate
+    multiplier.
+
+    See StyleGAN2 paper for more info.
+
+    """
+    kai_gain = tu.kaiming_gain(m, a=leak, mode=mode)
+    gain = kai_gain * init_gain * lr_gain
+
+    def do_it(w):
+        w = w * gain
+        shape = w.shape
+        w_flat = w.view(w.shape[0], -1)
+        w_flat = w_flat / w_flat.norm(dim=1, keepdim=True)
+        return w_flat.view(*shape)
+
+    m.weight.data.normal_(0., 1. / lr_gain)
+    weight_lambda(m, 'norm_equal_lr', do_it, name=name)
+    return m
+
+
+def remove_weight_norm_and_equal_lr(module: Module,
+                                    name: str = 'weight') -> Module:
+    """
+    Remove a weight_norm_and_equal_lr hook previously applied on
+    :code:`getattr(module, name)`.
+    """
+    return remove_weight_lambda(module, 'norm_equal_lr', name)
+
+
 def insert_after(base: nn.Sequential, key: str, new: nn.Module,
                  name: str) -> nn.Sequential:
+    """
+    Insert module :code:`new` with name :code:`name` after element :code:`key`
+    in sequential :code:`base` and return the new sequence.
+    """
     modules_list = list(base._modules.items())
     found = -1
     for i, (nm, m) in enumerate(modules_list):
@@ -202,8 +247,13 @@ def insert_after(base: nn.Sequential, key: str, new: nn.Module,
     base._modules = OrderedDict(modules_list)
     return base
 
+
 def insert_before(base: nn.Sequential, key: str, new: nn.Module,
-                 name: str) -> nn.Sequential:
+                  name: str) -> nn.Sequential:
+    """
+    Insert module :code:`new` with name :code:`name` before element :code:`key`
+    in sequential :code:`base` and return the new sequence.
+    """
     modules_list = list(base._modules.items())
     found = -1
     for i, (nm, m) in enumerate(modules_list):
@@ -215,9 +265,14 @@ def insert_before(base: nn.Sequential, key: str, new: nn.Module,
     base._modules = OrderedDict(modules_list)
     return base
 
-def make_leaky(net: nn.Module)->nn.Module:
-    def do_it(m: nn.Module)->nn.Module:
+
+def make_leaky(net: nn.Module) -> nn.Module:
+    """
+    Change all relus into leaky relus for modules and submodules of net.
+    """
+    def do_it(m: nn.Module) -> nn.Module:
         if isinstance(m, nn.ReLU):
             return nn.LeakyReLU(0.2, m.inplace)
         return m
+
     return edit_model(net, do_it)
