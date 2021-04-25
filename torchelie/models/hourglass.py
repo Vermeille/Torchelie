@@ -9,16 +9,13 @@ class Hourglass(nn.Module):
     """
     Hourglass model from Deep Image Prior.
     """
-
     def __init__(self,
                  noise_dim=32,
                  down_channels=[128, 128, 128, 128, 128],
                  skip_channels=4,
                  down_kernel=[3, 3, 3, 3, 3],
                  up_kernel=[3, 3, 3, 3, 3],
-                 upsampling='bilinear',
-                 pad=nn.ReflectionPad2d,
-                 relu=nn.LeakyReLU(0.2, True))->None:
+                 upsampling='bilinear') -> None:
         super(Hourglass, self).__init__()
 
         assert (len(down_channels) == len(down_kernel)), (len(down_channels),
@@ -27,8 +24,6 @@ class Hourglass(nn.Module):
                                                         len(up_kernel))
 
         self.upsampling = upsampling
-        self.pad = pad
-        self.relu = relu
         self.downs = nn.ModuleList(
             [self.down(noise_dim, down_channels[0], down_kernel[0])] + [
                 self.down(d1, d2, down_kernel[0]) for d1, d2, k in zip(
@@ -48,38 +43,28 @@ class Hourglass(nn.Module):
                 [self.skip(d, skip_channels) for d in down_channels])
 
         self.to_rgb = nn.Sequential(
-            self.pad(up_kernel[-1] // 2),
-            (nn.Conv2d(down_channels[0], 3, up_kernel[-1])), nn.BatchNorm2d(3))
+            nn.Conv2d(down_channels[0], 3, up_kernel[-1]), nn.BatchNorm2d(3))
 
-    def down(self, in_ch, out_ch, ks)->nn.Sequential:
+        tnn.utils.make_leaky(self)
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                m.padding_mode = 'reflect'
+
+    def down(self, in_ch, out_ch, ks) -> nn.Sequential:
         return nn.Sequential(
-            self.pad(ks // 2),
-            (nn.Conv2d(in_ch, out_ch, ks, stride=2)),
-            nn.BatchNorm2d(out_ch),
-            self.relu,
-            self.pad(ks // 2),
-            (nn.Conv2d(out_ch, out_ch, ks)),
-            nn.BatchNorm2d(out_ch),
-            self.relu,
+            tnn.Conv2dBNReLU(in_ch, out_ch, ks, stride=2),
+            tnn.Conv2dBNReLU(out_ch, out_ch, ks, stride=2),
         )
 
-    def up(self, in_ch, out_ch, ks)->nn.Sequential:
-        return nn.Sequential(
-            nn.BatchNorm2d(in_ch),
-            self.pad(ks // 2),
-            (nn.Conv2d(in_ch, out_ch, ks)),
-            nn.BatchNorm2d(out_ch),
-            self.relu,
-        )
+    def up(self, in_ch, out_ch, ks) -> nn.Sequential:
+        conv = tnn.Conv2dBNReLU(in_ch, out_ch, ks)
+        tnn.utils.insert_before(conv, 'conv', nn.BatchNorm2d(in_ch), 'pre_bn')
+        return conv
 
-    def skip(self, in_ch, out_ch)->nn.Sequential:
-        return nn.Sequential(
-            (nn.Conv2d(in_ch, out_ch, 1)),
-            nn.BatchNorm2d(out_ch),
-            self.relu,
-        )
+    def skip(self, in_ch, out_ch) -> nn.Sequential:
+        return tnn.Conv2dBNReLU(in_ch, out_ch, 1)
 
-    def forward(self, x)-> torch.Tensor:
+    def forward(self, x) -> torch.Tensor:
         acts = [x]
         for d in self.downs:
             acts.append(d(acts[-1]))
