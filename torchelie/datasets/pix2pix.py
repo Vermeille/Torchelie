@@ -3,7 +3,7 @@ from torchvision.transforms.functional import to_tensor
 from PIL import Image
 from torchvision.datasets import ImageFolder
 from torchvision.datasets.utils import download_and_extract_archive
-from typing import Optional, Callable, Tuple
+from typing import Optional, Callable, Tuple, List
 import os
 
 
@@ -24,6 +24,30 @@ class UnlabeledImages:
             root + '/' + name for root, _, files in os.walk(root)
             for name in files
             if name.split('.')[-1].lower() in ['bmp', 'jpg', 'jpeg', 'png'])
+        self.transform = transform
+
+    def __len__(self) -> int:
+        return len(self.samples)
+
+    def __getitem__(self, i: int):
+        img = Image.open(self.samples[i])
+        if self.transform is not None:
+            img = self.transform(img)
+        return img
+
+
+class ImagesPaths:
+    """
+    Serve all the images given in :code:`paths`.
+
+    Args:
+        paths (List[str]): paths to images
+        transform (callable): transformations
+    """
+    def __init__(self,
+                 paths: List[str],
+                 transform: Optional[Callable] = None) -> None:
+        self.samples = list(map(os.path.expanduser, paths))
         self.transform = transform
 
     def __len__(self) -> int:

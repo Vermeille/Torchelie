@@ -5,7 +5,7 @@ import torchelie.utils as tu
 from torchelie.datasets.debug import *
 from .concat import HorizontalConcatDataset, MergedDataset
 from .ms1m import MS1M
-from .pix2pix import Pix2PixDataset
+from .pix2pix import Pix2PixDataset, ImagesPaths, UnlabeledImages
 
 import torch
 
@@ -64,6 +64,44 @@ class PairedDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.dataset1) * len(self.dataset2)
+
+    def __repr__(self):
+        return ("PairedDataset:\n" + tu.indent(repr(self.dataset1)) +
+                "\n--\n" + tu.indent(repr(self.dataset2)))
+
+
+class RandomPairsDataset(torch.utils.data.Dataset):
+    """
+    :code:`PairedDataset` deterministically constructs all possible pairs of
+    items from both datasets. This may cause some problems while sampling
+    if permutation or weight array must be constructed as they would be of size
+    :code:`len(dataset1) * len(dataset2)` and may not fit in memory.
+
+    :code:`RandomPairsDataset` presents itself as dataset of 10000 elements,
+    and accessing the ith item returns a random pair, effectively ignoring i.
+
+    Args:
+        dataset1 (Dataset): a dataset
+        dataset2 (Dataset): another dataset
+    """
+    def __init__(self, dataset1, dataset2):
+        super(RandomPairsDataset, self).__init__()
+        self.dataset1 = dataset1
+        self.dataset2 = dataset2
+
+    def __getitem__(self, i):
+        idx1 = random.randrange(0, len(self.dataset1) - 1)
+        idx2 = random.randrange(0, len(self.dataset2) - 1)
+
+        x1 = self.dataset1[idx1]
+        x2 = self.dataset2[idx2]
+
+        if isinstance(x1, (tuple, list)):
+            return list(zip(x1, x2))
+        return x1, x2
+
+    def __len__(self):
+        return 10000
 
     def __repr__(self):
         return ("PairedDataset:\n" + tu.indent(repr(self.dataset1)) +

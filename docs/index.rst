@@ -7,6 +7,7 @@ Welcome to Torchélie's documentation!
 
 .. autosummary::
    :toctree: _autosummary
+   :recursive:
 
    nn
    optimizers
