@@ -1,10 +1,11 @@
 import torch
 import torch.nn as nn
 from typing import Tuple, Optional, Union, cast
-from .utils import remove_bn, insert_after
+from .utils import remove_bn, insert_after, insert_before
 from .condseq import CondSeq
 from torchelie.utils import kaiming
 from .layers import Conv2d
+from .interpolate import InterpolateBilinear2d
 
 
 class Conv2dBNReLU(CondSeq):
@@ -77,14 +78,28 @@ class Conv2dBNReLU(CondSeq):
         convolution
         """
         c = self.conv
-        self.conv = kaiming(
-            nn.ConvTranspose2d(c.in_channels,
-                               c.out_channels,
-                               cast(Tuple[int, int], c.kernel_size),
-                               stride=cast(Tuple[int, int], c.stride),
-                               padding=cast(Tuple[int, int], c.padding),
-                               bias=c.bias is not None,
-                               padding_mode=c.padding_mode))
+        assert c.kernel_size[0] in [3, 4], (f'Conv2dBNReLU.to_transposed_conv()'
+            ' not supported with kernel_size other than 2 or 3 (please add the'
+            ' support!')
+        if c.kernel_size[0] == 4:
+            self.conv = kaiming(
+                nn.ConvTranspose2d(c.in_channels,
+                                   c.out_channels,
+                                   cast(Tuple[int, int], c.kernel_size),
+                                   stride=cast(Tuple[int, int], c.stride),
+                                   padding=cast(Tuple[int, int], c.padding),
+                                   bias=c.bias is not None,
+                                   padding_mode=c.padding_mode))
+        else:
+            self.conv = kaiming(
+                nn.ConvTranspose2d(c.in_channels,
+                                   c.out_channels,
+                                   cast(Tuple[int, int], c.kernel_size),
+                                   stride=cast(Tuple[int, int], c.stride),
+                                   padding=cast(Tuple[int, int], c.padding),
+                                   output_padding=cast(Tuple[int, int], c.padding),
+                                   bias=c.bias is not None,
+                                   padding_mode=c.padding_mode))
         return self
 
     def remove_bn(self) -> 'Conv2dBNReLU':
@@ -98,6 +113,14 @@ class Conv2dBNReLU(CondSeq):
         if hasattr(self, 'norm'):
             del self.norm
         self.norm = None
+        return self
+
+    def add_upsampling(self)->'Conv2dBNReLU':
+        """
+        Add a bilinear upsampling layer before the conv that doubles the
+        spatial size
+        """
+        insert_before(self, 'conv', InterpolateBilinear2d(scale_factor=2), 'upsample')
         return self
 
     def restore_bn(self) -> 'Conv2dBNReLU':
