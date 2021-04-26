@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torchelie.utils import kaiming_gain
 from torch.nn import Module
 from collections import OrderedDict
 from torch.nn.parameter import Parameter
@@ -206,7 +207,7 @@ def weight_norm_and_equal_lr(m: T_Module,
     See StyleGAN2 paper for more info.
 
     """
-    kai_gain = tu.kaiming_gain(m, a=leak, mode=mode)
+    kai_gain = kaiming_gain(m, a=leak, mode=mode)
     gain = kai_gain * init_gain * lr_gain
 
     def do_it(w):

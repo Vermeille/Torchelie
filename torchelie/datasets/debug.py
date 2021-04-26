@@ -12,10 +12,10 @@ class ColoredColumns(Dataset):
         transform (transforms or None): the image transforms to apply to the
             generated pictures
     """
-    def __init__(self, *size, transform=None):
+    def __init__(self, *size, transform=None) -> None:
         super(ColoredColumns, self).__init__()
         self.size = size
-        self.transform = transform if transform is not None else (lambda x:x)
+        self.transform = transform if transform is not None else (lambda x: x)
 
     def __len__(self):
         return 10000
@@ -36,10 +36,10 @@ class ColoredRows(Dataset):
         transform (transforms or None): the image transforms to apply to the
             generated pictures
     """
-    def __init__(self, *size, transform=None):
+    def __init__(self, *size, transform=None) -> None:
         super(ColoredRows, self).__init__()
         self.size = size
-        self.transform = transform if transform is not None else (lambda x:x)
+        self.transform = transform if transform is not None else (lambda x: x)
 
     def __len__(self):
         return 10000
@@ -49,4 +49,3 @@ class ColoredRows(Dataset):
         expanded = rows.expand(3, *self.size).float()
         img = TF.ToPILImage()(expanded / 255)
         return self.transform(img), 0
-

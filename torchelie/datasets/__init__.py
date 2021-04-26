@@ -7,10 +7,14 @@ from .concat import HorizontalConcatDataset, MergedDataset
 from .ms1m import MS1M
 from .pix2pix import Pix2PixDataset, ImagesPaths, UnlabeledImages
 
+from typing import Sequence
+from torchvision.datasets import ImageFolder
+from pathlib import Path
+import os
 import torch
 
 
-def FastImageFolder(root, *args, **kwargs):
+def FastImageFolder(root: str, *args, **kwargs) -> ImageFolder:
     """
     This loads an ImageFolder dataset faster by caching the file list the first
     time it is accessed.
@@ -20,9 +24,6 @@ def FastImageFolder(root, *args, **kwargs):
     Returns:
         The ImageFolder transparently loaded faster.
     """
-    from torchvision.datasets import ImageFolder
-    from pathlib import Path
-    import os
     cache = Path(root) / 'cached_list.pth'
     fields = ['samples', 'imgs', 'classes', 'class_to_idx']
     if cache.exists():
@@ -46,7 +47,7 @@ class PairedDataset(torch.utils.data.Dataset):
         dataset1 (Dataset): a dataset
         dataset2 (Dataset): another dataset
     """
-    def __init__(self, dataset1, dataset2):
+    def __init__(self, dataset1: Sequence, dataset2: Sequence) -> None:
         super(PairedDataset, self).__init__()
         self.dataset1 = dataset1
         self.dataset2 = dataset2
@@ -62,10 +63,10 @@ class PairedDataset(torch.utils.data.Dataset):
             return list(zip(x1, x2))
         return x1, x2
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.dataset1) * len(self.dataset2)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return ("PairedDataset:\n" + tu.indent(repr(self.dataset1)) +
                 "\n--\n" + tu.indent(repr(self.dataset2)))
 
@@ -190,6 +191,7 @@ class MixUpDataset(_Wrap):
 
     def __repr__(self):
         return f"MixUpDataset({self.mixer}):\n" + tu.indent(repr(self.ds))
+
 
 class _Proxy:
     def __init__(self, ds, indices, remap_unused_classes, cls_map):
@@ -363,5 +365,3 @@ class CachedDataset(_Wrap):
 
     def __repr__(self):
         return "CachedDataset:\n{}".format(tu.indent(repr(self.ds)))
-
-

@@ -1,19 +1,24 @@
 import torch
 from torch.utils.data import Dataset
 from torchelie.utils import indent
+from typing import List, Tuple, Optional, Any, Generic, TypeVar, Dict, Sequence
+from typing import overload
+
+T = TypeVar('T')
+U = TypeVar('U')
 
 
-class CatedSamples:
-    def __init__(self, samples):
+class CatedSamples(Generic[T]):
+    def __init__(self, samples: List[List[Tuple[T, int]]]) -> None:
         self.samples = samples
         self.n_classes = [
             len(set(samp[1] for samp in sample)) for sample in samples
         ]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return sum(len(ds) for ds in self.samples)
 
-    def __getitem__(self, i):
+    def __getitem__(self, i: int) -> Tuple[T, int]:
         class_offset = 0
         for samp, n_class in zip(self.samples, self.n_classes):
             if i < len(samp):
@@ -23,14 +28,25 @@ class CatedSamples:
         raise IndexError
 
 
-class CatedLists:
-    def __init__(self, ls):
+class CatedLists(Sequence[T]):
+    def __init__(self, ls: List[List[T]]) -> None:
         self.ls = ls
 
-    def __len__(self):
+    def __len__(self) -> int:
         return sum([len(ds) for ds in self.ls])
 
+    @overload
+    def __getitem__(self, i: int) -> T:
+        ...
+
+    @overload
+    def __getitem__(self, i: slice) -> Sequence[T]:
+        ...
+
     def __getitem__(self, i):
+        if isinstance(i, slice):
+            return [self[ii] for ii in range(*i.indices(len(self)))]
+
         for l in self.ls:
             if i < len(l):
                 return l[i]
@@ -48,17 +64,19 @@ class HorizontalConcatDataset(Dataset):
     Args:
         datasets (list of Dataset): the datasets to concatenate
     """
-    def __init__(self, datasets):
+    classes: CatedLists[str]
+
+    def __init__(self, datasets: List) -> None:
         self.datasets = datasets
 
         self.classes = CatedLists([ds.classes for ds in datasets])
         self.samples = CatedSamples([ds.samples for ds in datasets])
         self.class_to_idx = {nm: i for i, nm in enumerate(self.classes)}
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.samples)
 
-    def __getitem__(self, i):
+    def __getitem__(self, i: int) -> Tuple[Any, int]:
         class_offset = 0
         for ds in self.datasets:
             if i < len(ds):
@@ -68,19 +86,19 @@ class HorizontalConcatDataset(Dataset):
             class_offset += len(ds.classes)
         raise IndexError
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "DatasetConcat:\n" + '\n--\n'.join(
             [indent(repr(d)) for d in self.datasets])
 
 
 class MergedSamples:
-    def __init__(self, ds):
+    def __init__(self, ds) -> None:
         self.ds = ds
 
-    def __len__(self):
+    def __len__(self) -> int:
         return sum(len(d) for d in self.ds.datasets)
 
-    def __getitem__(self, i):
+    def __getitem__(self, i: int):
         for ds in self.ds.datasets:
             if i < len(ds):
                 x, y, *ys = ds.samples[i]

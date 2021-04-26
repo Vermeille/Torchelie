@@ -62,6 +62,8 @@ def kaiming_gain(m: T_Module,
                  a: float = 0,
                  nonlinearity='leaky_relu',
                  mode='fan_in') -> float:
+    """
+    """
     fan = nn.init._calculate_correct_fan(m.weight, mode)
     gain = nn.init.calculate_gain(nonlinearity, param=a)
     return gain / math.sqrt(fan)

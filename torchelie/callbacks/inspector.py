@@ -1,5 +1,6 @@
 from io import BytesIO
 import base64 as b64
+from typing import Union, List, Optional
 
 import torch
 import torch.nn.functional as F
@@ -9,7 +10,13 @@ import numpy as np
 from PIL import Image
 
 
-def img2html(img, opts=None):
+def img2html(img: Union[torch.Tensor, np.ndarray], opts: dict = None) -> str:
+    """
+    Convert an image to a b64 html inline image.
+
+    Possible options: width (int, pixels), height (int, pixels) or jpgquality
+    (int, percentage)
+    """
     if isinstance(img, torch.Tensor):
         img = img.cpu().detach().numpy()
 
@@ -47,7 +54,14 @@ def img2html(img, opts=None):
 
 
 class ClassificationInspector:
-    def __init__(self, topk, labels, center_value=0):
+    """
+    Visdom HTML display of classification results, with best, worst, and mode
+    indecisive results.
+    """
+    def __init__(self,
+                 topk: int,
+                 labels: List[str],
+                 center_value: float = 0) -> None:
         self.labels = labels
         self.center_value = center_value
         self.topk = topk
@@ -60,7 +74,12 @@ class ClassificationInspector:
         self.worst = []
         self.confused = []
 
-    def analyze(self, batch, pred, true, pred_label=None, paths=None):
+    def analyze(self,
+                batch: torch.Tensor,
+                pred: torch.Tensor,
+                true: torch.Tensor,
+                pred_label: Optional[torch.Tensor] = None,
+                paths: Optional[List[str]] = None) -> None:
         pred = as_multiclass_shape(pred, as_probs=True)
         for_label = pred.gather(1, true.unsqueeze(1))
         if pred_label is None:
@@ -68,8 +87,9 @@ class ClassificationInspector:
         best_pred = pred.gather(1, pred_label.unsqueeze(1))
         if paths is None:
             paths = [None] * len(batch)
-        this_data = list(zip(batch, for_label, true, pred_label == true,
-                             paths, pred_label, best_pred))
+        this_data = list(
+            zip(batch, for_label, true, pred_label == true, paths, pred_label,
+                best_pred))
 
         self.best += this_data
         self.best.sort(key=lambda x: -x[1])
@@ -106,18 +126,21 @@ class ClassificationInspector:
                  '<div style="padding:3px;width:{px_sz}px">'
                  '{img}{bar}{checkmark}{true_label} (pred: {pred_label})'
                  '</div>'
-                 '</div>').format(
-                     path=path,
-                     px_sz=dat[0][0].shape[2],
-                     img=img2html(img),
-                     bar=prob_as_bar(best_pred.item(), correct.item()),
-                     checkmark='✓' if correct.item() else '✗',
-                     true_label=tlabel,
-                     pred_label=plabel))
+                 '</div>').format(path=path,
+                                  px_sz=dat[0][0].shape[2],
+                                  img=img2html(img),
+                                  bar=prob_as_bar(best_pred.item(),
+                                                  correct.item()),
+                                  checkmark='✓' if correct.item() else '✗',
+                                  true_label=tlabel,
+                                  pred_label=plabel))
         html.append('</div>')
         return ''.join(html)
 
-    def show(self):
+    def show(self) -> str:
+        """
+        Get the HTML inspector view.
+        """
         html = [
             '<h1>Best predictions</h1>',
             self._report(self.best), '<h1>Worst predictions</h1>',
@@ -131,15 +154,25 @@ class SegmentationInspector(ClassificationInspector):
     def __init__(self, topk, labels, center_value=0):
         super().__init__(topk, labels, center_value=0)
 
-    def analyze(self, batch, pred, true, pred_label=None, paths=None):
+    def analyze(self,
+                batch: torch.Tensor,
+                pred: torch.Tensor,
+                true: torch.Tensor,
+                pred_label: Optional[Torch.Tensor] = None,
+                paths: Optional[List[str]] = None) -> None:
         pred = torch.sigmoid(pred)
-        for_label = torch.median((pred * true + (1 - pred) * (1 - true)).reshape(pred.shape[0], -1), -1)[0]
+        for_label = torch.median(
+            (pred * true + (1 - pred) * (1 - true)).reshape(pred.shape[0],
+                                                            -1), -1)[0]
         if pred_label is None:
             pred_label = (pred > 0.5).int()
         if paths is None:
             paths = [None] * len(batch)
-        this_data = list(zip(batch, for_label, true.mean(tuple(range(1,true.dim()))) > 0.5, (pred_label == true).float().mean(tuple(range(1,pred_label.dim()))) > 0.5,
-                             paths))
+        this_data = list(
+            zip(batch, for_label,
+                true.mean(tuple(range(1, true.dim()))) > 0.5,
+                (pred_label == true).float().mean(
+                    tuple(range(1, pred_label.dim()))) > 0.5, paths))
 
         self.best += this_data
         self.best.sort(key=lambda x: -x[1])
