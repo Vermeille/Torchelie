@@ -23,6 +23,8 @@ class AdaIN2d(nn.Module):
         super(AdaIN2d, self).__init__()
         self.make_weight = nn.Linear(cond_channels, channels)
         self.make_bias = nn.Linear(cond_channels, channels)
+        self.weight = torch.zeros(0) # make sphinx happy?
+        self.bias = torch.zeros(0) # make sphinx happy?
         self.register_buffer('weight', torch.zeros(0))
         self.register_buffer('bias', torch.zeros(0))
 
