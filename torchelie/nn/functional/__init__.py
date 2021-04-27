@@ -80,5 +80,11 @@ class InformationBottleneckFunc(Function):
         return d_mu, d_sigma, None
 
 
-information_bottleneck = InformationBottleneckFunc.apply
-unit_gaussian_prior = InformationBottleneckFunc.apply
+try:
+    # Sphinx doesn't import Function, so apply ain't defined
+    information_bottleneck = InformationBottleneckFunc.apply
+    unit_gaussian_prior = InformationBottleneckFunc.apply
+except Exception as e:
+    print(str(e))
+    information_bottleneck = lambda x:x
+    unit_gaussian_prior = lambda x:x
