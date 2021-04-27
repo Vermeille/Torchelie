@@ -591,18 +591,48 @@ def indent(text: str, amount: int = 4) -> str:
     """
     return '\n'.join((' ' * amount + l) for l in text.splitlines())
 
+
 from functools import wraps
 import warnings
+from inspect import isfunction
+
 
 def experimental(func):
     """
     Decorator that warns about a function being experimental
     """
-    @wraps(func)
-    def wrapped(*args, **kwargs):
-        warnings.warn(f'{func.__qualname__}() is an experimental function, '
-            'which may change or be deleted soon if not already broken',
-            FutureWarning, stacklevel=2)
-        return func(*args, **kwargs)
-    return wrapped
+    msg = (f'{func.__qualname__}() is an experimental function, '
+           'which may change or be deleted soon if not already broken')
 
+    def deprecate_doc(doc):
+        if doc is None:
+            return f'WARNING: {msg}'
+        else:
+            return f'WARNING: {msg}\n\n' + func.__doc__
+
+    if isfunction(func):
+        func.__doc__ = deprecate_doc(func.__doc__)
+
+        @wraps(func)
+        def wrapped(*args, **kwargs):
+            warnings.warn(msg, FutureWarning, stacklevel=2)
+            return func(*args, **kwargs)
+
+        return wrapped
+    else:
+        cls = func
+
+        def __getstate__(self):
+            return super(cls, self).__getstate__()
+
+        def __setstate__(self, state):
+            return super(cls, self).__setstate__(state)
+
+        d = {
+                '__doc__': cls.__doc__,#deprecate_doc(cls.__doc__),
+            '__init__': cls.__init__,
+            '__module__': cls.__module__,
+            '__getstate__': __getstate__,
+            '__setstate__': __setstate__
+        }
+        return type(cls.__name__, (cls, ), d)

@@ -80,3 +80,11 @@ class GaussianMixture:
         return torch.logsumexp(self.logistics.log_prob(x.unsqueeze(1)) +
                                log_pis,
                                dim=1)
+
+class TestBase(torch.Tensor):
+    def __init__(self, a: int, b:str):
+        ...
+
+class Test(TestBase):
+    def __init__(self, c: bool)->None:
+        ...

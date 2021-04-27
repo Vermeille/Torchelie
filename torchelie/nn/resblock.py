@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from .layers import Conv2d, Conv3x3, Conv1x1
+from .conv import Conv2d, Conv3x3, Conv1x1
 from torchelie.utils import kaiming, xavier, normal_init, constant_init
 from .condseq import CondSeq
 from .interpolate import InterpolateBilinear2d

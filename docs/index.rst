@@ -1,12 +1,6 @@
 Welcome to Torchélie's documentation!
 =====================================
 
-.. autosummary::
-   :toctree: _autosummary
-   :recursive:
-
-   torchelie
-
 .. toctree::
    :caption: Pytorch Utils
    :maxdepth: 1

@@ -8,37 +8,6 @@ from typing import List, Optional, Tuple, Union
 from .interpolate import InterpolateBilinear2d
 
 
-def Conv2d(in_ch, out_ch, ks, stride=1, bias=True):
-    """
-    A Conv2d with 'same' padding
-    """
-    return nn.Conv2d(in_ch,
-                     out_ch,
-                     ks,
-                     padding=(ks-1) // 2,
-                     stride=stride,
-                     bias=bias)
-
-
-def Conv3x3(in_ch: int,
-            out_ch: int,
-            stride: int = 1,
-            bias: bool = True) -> nn.Conv2d:
-    """
-    A 3x3 Conv2d with 'same' padding
-    """
-    return Conv2d(in_ch, out_ch, 3, stride=stride, bias=bias)
-
-
-def Conv1x1(in_ch: int,
-            out_ch: int,
-            stride: int = 1,
-            bias: bool = True) -> nn.Conv2d:
-    """
-    A 1x1 Conv2d
-    """
-    return Conv2d(in_ch, out_ch, 1, stride=stride, bias=bias)
-
 
 class AdaptiveConcatPool2d(nn.Module):
     """

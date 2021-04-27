@@ -30,11 +30,6 @@ Normalization
    :members:
    :undoc-members:
 
-FIXME: Uuughhh, this will be a pain to document
-.. automodule:: torchelie.nn.batchnom
-   :members:
-   :undoc-members:
-
 .. autoclass:: torchelie.nn.ImageNetInputNorm
    :members:
    :undoc-members:
@@ -69,15 +64,8 @@ Misc
 Blocks
 ~~~~~~
 
-FIXME: Document it in `torchelie.nn` namespace
-
-.. automodule:: torchelie.nn.blocks
+.. autoclass:: torchelie.nn.Conv2dBNReLU
    :members:
-   :undoc-members:
-
-.. automodule:: torchelie.nn.AdaptiveConcatPool2d
-   :members:
-   :undoc-members:
 
 Sequential
 ~~~~~~~~~~

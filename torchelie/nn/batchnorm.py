@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .layers import Conv3x3
+from .conv import Conv3x3
 from torchelie.utils import kaiming, xavier, experimental
 
 from typing import Optional, Tuple

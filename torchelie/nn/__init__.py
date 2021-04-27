@@ -1,4 +1,5 @@
 from .reshape import Reshape, Lambda
+from .conv import *
 from .debug import Debug, Dummy
 from .noise import Noise
 from .vq import VQ
