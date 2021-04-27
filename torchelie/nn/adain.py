@@ -8,8 +8,8 @@ from typing import Optional
 
 class AdaIN2d(nn.Module):
     """
-    Adaptive InstanceNormalization from _Arbitrary Style Transfer in Real-time
-    with Adaptive Instance Normalization_ (Huang et al, 2017)
+    Adaptive InstanceNormalization from *Arbitrary Style Transfer in Real-time
+    with Adaptive Instance Normalization* (Huang et al, 2017)
 
     Args:
         channels (int): number of input channels
@@ -35,7 +35,7 @@ class AdaIN2d(nn.Module):
         Args:
             x (4D tensor): input tensor
             z (2D tensor, optional): conditioning vector. If not present,
-            `condition(z)` must be called first
+                :code:`condition(z)` must be called first
 
         Returns:
             x, renormalized
@@ -95,7 +95,7 @@ class FiLM2d(nn.Module):
         Args:
             x (4D tensor): input tensor
             z (2D tensor, optional): conditioning vector. If not present,
-            `condition(z)` must be called first
+                :code:`condition(z)` must be called first
 
         Returns:
             x, conditioned

@@ -10,7 +10,7 @@ from .functional import quantize
 
 class VQ(nn.Module):
     """
-    Quantization layer from _Neural Discrete Representation Learning_
+    Quantization layer from *Neural Discrete Representation Learning*
 
     Args:
         latent_dim (int): number of features along which to quantize

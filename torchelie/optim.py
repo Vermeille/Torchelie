@@ -109,8 +109,17 @@ class AddSign(Optimizer):
 class RAdamW(Optimizer):
     r"""Implements RAdamW algorithm.
 
-    RAdam from _On the Variance of the Adaptive Learning Rate and Beyond_
-    https://arxiv.org/abs/1908.03265v1
+    RAdam from `On the Variance of the Adaptive Learning Rate and Beyond
+    <https://arxiv.org/abs/1908.03265v1>`_
+
+    * `Adam: A Method for Stochastic Optimization
+      <https://arxiv.org/abs/1412.6980>`_
+    * `Decoupled Weight Decay Regularization
+      <https://arxiv.org/abs/1711.05101>`_
+    * `On the Convergence of Adam and Beyond
+      <https://openreview.net/forum?id=ryQu7f-RZ>`_
+    * `On the Variance of the Adaptive Learning Rate and Beyond
+      <https://arxiv.org/abs/1908.03265v1>`_
 
     Arguments:
         params (iterable): iterable of parameters to optimize or dicts defining
@@ -121,15 +130,6 @@ class RAdamW(Optimizer):
         eps (float, optional): term added to the denominator to improve
             numerical stability (default: 1e-8)
         weight_decay (float, optional): weight decay coefficient (default: 1e-2)
-
-    .. _Adam\: A Method for Stochastic Optimization:
-        https://arxiv.org/abs/1412.6980
-    .. _Decoupled Weight Decay Regularization:
-        https://arxiv.org/abs/1711.05101
-    .. _On the Convergence of Adam and Beyond:
-        https://openreview.net/forum?id=ryQu7f-RZ
-    .. _On the Variance of the Adaptive Learning Rate and Beyond:
-        https://arxiv.org/abs/1908.03265v1
     """
     def __init__(self,
                  params,

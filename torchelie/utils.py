@@ -595,20 +595,21 @@ def indent(text: str, amount: int = 4) -> str:
 from functools import wraps
 import warnings
 from inspect import isfunction
+from textwrap import dedent
 
 
 def experimental(func):
     """
     Decorator that warns about a function being experimental
     """
-    msg = (f'{func.__qualname__}() is an experimental function, '
-           'which may change or be deleted soon if not already broken')
+    msg = (f'{func.__qualname__}() is experimental, '
+           'and may change or be deleted soon if not already broken')
 
     def deprecate_doc(doc):
         if doc is None:
-            return f'WARNING: {msg}'
+            return f'.. warning::\n  {msg}\n\n.\n'
         else:
-            return f'WARNING: {msg}\n\n' + func.__doc__
+            return f'.. warning::\n  {msg}\n\n\n' + dedent(func.__doc__)
 
     if isfunction(func):
         func.__doc__ = deprecate_doc(func.__doc__)
@@ -629,7 +630,7 @@ def experimental(func):
             return super(cls, self).__setstate__(state)
 
         d = {
-                '__doc__': cls.__doc__,#deprecate_doc(cls.__doc__),
+            '__doc__': deprecate_doc(cls.__doc__),
             '__init__': cls.__init__,
             '__module__': cls.__module__,
             '__getstate__': __getstate__,
