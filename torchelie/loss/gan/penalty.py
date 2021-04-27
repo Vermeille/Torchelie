@@ -1,7 +1,11 @@
+from typing import Tuple
 import torch
 
 
-def zero_gp(model, real: torch.Tensor, fake: torch.Tensor, amp_scaler=None):
+def zero_gp(model,
+            real: torch.Tensor,
+            fake: torch.Tensor,
+            amp_scaler=None) -> Tuple[torch.Tensor, float]:
     """
     0-GP from Improving Generalization And Stability Of Generative Adversarial
     Networks ( https://arxiv.org/abs/1902.03984 ).
@@ -22,7 +26,10 @@ def zero_gp(model, real: torch.Tensor, fake: torch.Tensor, amp_scaler=None):
     return gradient_penalty(model, x, 0., amp_scaler)
 
 
-def wgan_gp(model, real: torch.Tensor, fake: torch.Tensor, amp_scaler=None):
+def wgan_gp(model,
+            real: torch.Tensor,
+            fake: torch.Tensor,
+            amp_scaler=None) -> Tuple[torch.Tensor, float]:
     """
     1-GP from Improved Training of Wasserstein GANs (
     https://arxiv.org/abs/1704.00028 ).
@@ -44,7 +51,10 @@ def wgan_gp(model, real: torch.Tensor, fake: torch.Tensor, amp_scaler=None):
     return gradient_penalty(model, x, 1., amp_scaler)
 
 
-def R1(model, real: torch.Tensor, fake: torch.Tensor, amp_scaler=None):
+def R1(model,
+       real: torch.Tensor,
+       fake: torch.Tensor,
+       amp_scaler=None) -> Tuple[torch.Tensor, float]:
     """
     R1 regularizer from Which Training Methods for GANs do actually Converge?
     ( https://arxiv.org/abs/1801.04406 ).
@@ -67,7 +77,7 @@ def R1(model, real: torch.Tensor, fake: torch.Tensor, amp_scaler=None):
 def gradient_penalty(model,
                      data: torch.Tensor,
                      objective_norm: float,
-                     amp_scaler=None):
+                     amp_scaler=None) -> Tuple[torch.Tensor, float]:
     """
     Gradient penalty, mainly for GANs. Of the form
     :code:`E[(||dmodel(data)/ddata|| - objective_goal)²]`
@@ -99,5 +109,5 @@ def gradient_penalty(model,
 
     g = (g / amp_scaler.get_scale()) if fp16 else g
 
-    g_norm = g.pow(2).sum(dim=(1,2,3)).add_(1e-8).sqrt()
+    g_norm = g.pow(2).sum(dim=(1, 2, 3)).add_(1e-8).sqrt()
     return (g_norm - objective_norm).pow(2).mean(), g_norm.mean().item()

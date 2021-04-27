@@ -21,7 +21,10 @@ class DeepDreamLoss(nn.Module):
         max_reduction (int): the maximum factor of reduction of the image, for
             multiscale generation
     """
-    def __init__(self, model, dream_layer, max_reduction=3):
+    def __init__(self,
+                 model: nn.Module,
+                 dream_layer: str,
+                 max_reduction: int = 3) -> None:
         super(DeepDreamLoss, self).__init__()
         self.dream_layer = dream_layer
         self.octaves = max_reduction
@@ -29,13 +32,13 @@ class DeepDreamLoss(nn.Module):
         self.net = tnn.WithSavedActivations(model, names=[self.dream_layer])
         self.i = 0
 
-    def get_acts_(self, img, detach):
+    def get_acts_(self, img: torch.Tensor, detach: bool) -> torch.Tensor:
         octave = (self.i % (self.octaves * 2)) / 2 + 1
         this_sz_img = F.interpolate(img, scale_factor=1 / octave)
         _, activations = self.net(this_sz_img, detach=detach)
         return activations[self.dream_layer]
 
-    def forward(self, input_img):
+    def forward(self, input_img: torch.Tensor) -> torch.Tensor:
         """
         Compute the Deep Dream loss on `input_img`
         """

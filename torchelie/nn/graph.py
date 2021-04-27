@@ -1,6 +1,7 @@
 import torch.nn as nn
 from typing import Union, Tuple, Sequence, List, Iterator
 from collections import OrderedDict
+from torchelie.utils import experimental
 
 
 def tup(x):
@@ -81,6 +82,7 @@ class ModuleGraph(nn.Sequential):
             return variables[self.outputs]
         return {k: variables[k] for k in self.outputs}
 
+    @experimental
     def to_dot(self) -> str:
         txt = ''
         for i_names, f_nm, o_names in zip(self.ins, self._modules.keys(),

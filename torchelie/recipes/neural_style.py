@@ -6,21 +6,13 @@ torchelie.recipes.neural_style`
 """
 
 import torch
-from torchvision.transforms import ToTensor, ToPILImage
+from torchvision.transforms.functional import to_pil_image, to_tensor
 
 import torchelie as tch
 from torchelie.loss import NeuralStyleLoss
 from torchelie.data_learning import ParameterizedImg, PixelImage, SpectralImage
 from torchelie.recipes.recipebase import Recipe
 import torchelie.callbacks as tcb
-
-
-def t2pil(t):
-    return ToPILImage()(t)
-
-
-def pil2t(pil):
-    return ToTensor()(pil)
 
 
 class NeuralStyle(torch.nn.Module):
@@ -65,20 +57,20 @@ class NeuralStyle(torch.nn.Module):
                 content
         """
         self.loss.to(self.device)
-        self.loss.set_style(pil2t(style_img).to(self.device), style_ratio)
+        self.loss.set_style(to_tensor(style_img).to(self.device), style_ratio)
         self.loss.set_content(
-            pil2t(content_img).to(self.device), content_layers)
+            to_tensor(content_img).to(self.device), content_layers)
 
         self.loss2.to(self.device)
         self.loss2.set_style(
-            torch.nn.functional.interpolate(pil2t(style_img)[None],
+            torch.nn.functional.interpolate(to_tensor(style_img)[None],
                                             scale_factor=0.5,
                                             mode='bilinear',
                                             align_corners=False,
                                             recompute_scale_factor=True)[0].to(
                                                 self.device), style_ratio)
         self.loss2.set_content(
-            torch.nn.functional.interpolate(pil2t(content_img)[None],
+            torch.nn.functional.interpolate(to_tensor(content_img)[None],
                                             scale_factor=0.5,
                                             mode='bilinear',
                                             align_corners=False,
@@ -89,7 +81,7 @@ class NeuralStyle(torch.nn.Module):
                                   3,
                                   content_img.height,
                                   content_img.width,
-                                  init_img=pil2t(content_img).unsqueeze(0)
+                                  init_img=to_tensor(content_img).unsqueeze(0)
                                   if init_with_content else None)
 
         self.opt = tch.optim.RAdamW(canvas.parameters(),
@@ -169,6 +161,6 @@ if __name__ == '__main__':
 
     result = stylizer.fit(args.iters, content, style_img, args.ratio,
                           args.content_layers)
-    result = t2pil(result)
+    result = to_pil_image(result)
 
     result.save(args.out)

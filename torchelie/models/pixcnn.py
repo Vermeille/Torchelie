@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchelie.nn as tnn
+from torchelie.utils import experimental
 from typing import Tuple
 
 
@@ -61,6 +62,7 @@ class PixelPredictor(FactoredPredictor):
 
 
 class ResBlk(nn.Module):
+    @experimental
     def __init__(self, in_ch: int, hid_ch: int, out_ch: int, ks: int,
                  sz: Tuple[int, int]) -> None:
         super(ResBlk, self).__init__()
@@ -86,6 +88,7 @@ class ResBlk(nn.Module):
 
 # https://arxiv.org/pdf/1701.05517.pdf
 class PixCNNBase(nn.Module):
+    @experimental
     def __init__(self,
                  in_ch: int,
                  hid: int,
@@ -151,6 +154,7 @@ class PixelCNN(PixCNNBase):
         sz ((int, int)): the size of the images to learn. Must be square
         channels (int): number of channels in the data. 3 for RGB images
     """
+    @experimental
     def __init__(self,
                  hid: int,
                  sz: Tuple[int, int],

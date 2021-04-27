@@ -2,9 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torchelie.utils import kaiming
+from torchelie.utils import kaiming, experimental
 
 
+@experimental
 class MaskedConv2d(nn.Conv2d):
     """
     A masked 2D convolution for PixelCNN
@@ -68,6 +69,7 @@ class TopLeftConv2d(nn.Module):
             the same bias everywhere (default)
     """
 
+    @experimental
     def __init__(self, in_chan, out_chan, ks, center, stride=1, bias=(1, 1)):
         super(TopLeftConv2d, self).__init__()
         self.top = kaiming(

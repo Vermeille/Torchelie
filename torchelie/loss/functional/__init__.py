@@ -1,9 +1,10 @@
+from typing import Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
-def ortho(w):
+def ortho(w: torch.Tensor) -> torch.Tensor:
     r"""
     Returns the orthogonal loss for weight matrix `m`, from Big GAN.
 
@@ -16,7 +17,7 @@ def ortho(w):
     return (cosine * no_diag).pow(2).sum(dim=1).mean()
 
 
-def total_variation(i):
+def total_variation(i: torch.Tensor) -> torch.Tensor:
     """
     Returns the total variation loss for batch of images `i`
     """
@@ -25,7 +26,10 @@ def total_variation(i):
     return v + h
 
 
-def focal_loss(input, target, gamma=0, weight=None):
+def focal_loss(input: torch.Tensor,
+               target: torch.Tensor,
+               gamma: float = 0,
+               weight: Optional[torch.Tensor] = None) -> torch.Tensor:
     r"""
     Returns the focal loss between `target` and `input`
 
@@ -40,7 +44,10 @@ def focal_loss(input, target, gamma=0, weight=None):
     return loss.mean()
 
 
-def continuous_cross_entropy(pred, soft_targets, weights=None, reduction='mean'):
+def continuous_cross_entropy(pred: torch.Tensor,
+                             soft_targets: torch.Tensor,
+                             weights: Optional[torch.Tensor] = None,
+                             reduction: str = 'mean') -> torch.Tensor:
     r"""
     Compute the cross entropy between the logits `pred` and a normalized
     distribution `soft_targets`. If `soft_targets` is a one-hot vector, this is
@@ -57,3 +64,4 @@ def continuous_cross_entropy(pred, soft_targets, weights=None, reduction='mean')
         return ce.sum()
     if reduction == 'none':
         return ce
+    assert False, f'{reduction} not a valid reduction method'

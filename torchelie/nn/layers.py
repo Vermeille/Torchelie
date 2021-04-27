@@ -233,6 +233,7 @@ class Const(nn.Module):
     Args:
         *size (ints): the shape of the volume to learn
     """
+    @tu.experimental
     def __init__(self, *size: int) -> None:
         super().__init__()
         self.size = size
@@ -247,6 +248,24 @@ class Const(nn.Module):
             n (int): batch size to use
         """
         return self.weight.expand(n, *self.weight.shape[1:]).contiguous()
+
+
+class SinePositionEncoding2d(nn.Module):
+    @tu.experimental
+    def __init__(self, n_fourier_freqs:int)->None:
+        super().__init__()
+        self.register_buffer('fourier_freqs', torch.randn(n_fourier_freqs, 2,
+            1, 1))
+
+    def forward(self, x):
+        h = torch.arange(0, x.shape[2] * 0.1, 0.1)
+        v = torch.arange(0, x.shape[3] * 0.1, 0.1)
+        hv = torch.stack(torch.meshgrid(h, v), dim=0)[None]
+        out = F.conv2d(hv.to(x.device), self.fourier_freqs)
+        out = torch.cat([torch.sin(out), torch.cos(out)], dim=1)
+        out /= math.sqrt(out.shape[1])
+        out = torch.cat([x, out.expand(x.shape[0], -1, -1, -1)], dim=1)
+        return out
 
 
 class MinibatchStddev(nn.Module):

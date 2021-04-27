@@ -1,19 +1,20 @@
 import torch
+from typing import Optional
 
 
-def log_t(x, t):
+def log_t(x: torch.Tensor, t: float) -> torch.Tensor:
     if t == 1:
         return torch.log(x)
     return (x**(1 - t) - 1) / (1 - t)
 
 
-def exp_t(x, t):
+def exp_t(x: torch.Tensor, t: float) -> torch.Tensor:
     if t == 1:
         return torch.exp(x)
     return torch.clamp(1 + (1 - t) * x, min=0)**(1 / (1 - t))
 
 
-def lambdas(a, t, n_iters=3):
+def lambdas(a: torch.Tensor, t: float, n_iters: int = 3) -> torch.Tensor:
     mu = torch.max(a, dim=1, keepdim=True).values
     a_tilde = a - mu
     for i in range(n_iters):
@@ -22,7 +23,9 @@ def lambdas(a, t, n_iters=3):
     return -log_t(1 / za, t) + mu
 
 
-def tempered_log_softmax(x, t, n_iters=3):
+def tempered_log_softmax(x: torch.Tensor,
+                         t: float,
+                         n_iters: int = 3) -> torch.Tensor:
     """
     Tempered log softmax. Computes log softmax along dimension 1
 
@@ -37,7 +40,9 @@ def tempered_log_softmax(x, t, n_iters=3):
     return x - lambdas(x, t, n_iters=n_iters)
 
 
-def tempered_softmax(x, t, n_iters=3):
+def tempered_softmax(x: torch.Tensor,
+                     t: float,
+                     n_iters: int = 3) -> torch.Tensor:
     """
     Tempered softmax. Computes softmax along dimension 1
 
@@ -52,13 +57,13 @@ def tempered_softmax(x, t, n_iters=3):
     return exp_t(tempered_log_softmax(x, t, n_iters), t)
 
 
-def tempered_cross_entropy(x,
-                           y,
-                           t1,
-                           t2,
-                           n_iters=3,
-                           weight=None,
-                           reduction='mean'):
+def tempered_cross_entropy(x: torch.Tensor,
+                           y: torch.Tensor,
+                           t1: float,
+                           t2: float,
+                           n_iters: int = 3,
+                           weight: Optional[torch.Tensor] = None,
+                           reduction: str = 'mean') -> torch.Tensor:
     """
     The bi-tempered loss from https://arxiv.org/abs/1906.03361
 
@@ -78,7 +83,12 @@ def tempered_cross_entropy(x,
     return tempered_nll_loss(sm, y, t1, t2, weight=weight, reduction=reduction)
 
 
-def tempered_nll_loss(x, y, t1, t2, weight=None, reduction='mean'):
+def tempered_nll_loss(x: torch.Tensor,
+                      y: torch.Tensor,
+                      t1: float,
+                      t2: float,
+                      weight: Optional[torch.Tensor] = None,
+                      reduction: str = 'mean') -> torch.Tensor:
     """
     Compute tempered nll loss
 
@@ -107,6 +117,7 @@ def tempered_nll_loss(x, y, t1, t2, weight=None, reduction='mean'):
         return torch.sum(out / out.shape[0])
     if reduction == 'sum':
         return out.sum()
+    assert False, f'{reduction} not a valid reduction method'
 
 
 class TemperedCrossEntropyLoss(torch.nn.Module):
@@ -120,7 +131,6 @@ class TemperedCrossEntropyLoss(torch.nn.Module):
         reduction (str): how to reduce the batch of losses: 'none', 'sum', or
             'mean'
     """
-
     def __init__(self, t1, t2, weight=None, reduction='mean'):
         super(TemperedCrossEntropyLoss, self).__init__()
         self.t1 = t1

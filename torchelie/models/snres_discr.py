@@ -51,6 +51,7 @@ class ResidualDiscriminator(nn.Module):
                                           self.features.input.out_channels)
         return self
 
+    @tu.experimental
     def to_spectral_norm(self) -> 'ResidualDiscriminator':
         for m in self.modules():
             if isinstance(m, tnn.ResidualDiscrBlock):
@@ -68,6 +69,7 @@ class ResidualDiscriminator(nn.Module):
             self.classifier.to_spectral_norm()
         return self
 
+    @tu.experimental
     def to_equal_lr(self, leak=0.2) -> 'ResidualDiscriminator':
         for m in self.modules():
             if isinstance(m, (nn.Linear, nn.Conv2d)):
@@ -80,7 +82,7 @@ class ResidualDiscriminator(nn.Module):
         self.features.add_module('mbstd', tnn.MinibatchStddev())
         self.features.add_module(
             'mbconv',
-            tnn.Conv2dBNReLU(out_ch + 1, out_ch, 3).remove_bn().leaky())
+            tnn.Conv2dBNReLU(out_ch + 1, out_ch, 3).remove_batchnorm().leaky())
         return self
 
     def to_projection_discr(self, num_classes: int) -> 'ResidualDiscriminator':

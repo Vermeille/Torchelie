@@ -11,20 +11,21 @@ from .condseq import CondSeq
 from .maskedconv import MaskedConv2d
 import torchelie.utils as tu
 from torchelie.utils import kaiming, xavier, normal_init, constant_init
+from torchelie.utils import experimental
 from .layers import ModulatedConv
 from .noise import Noise
 from .resblock import ResBlock, ResBlockBottleneck, SEBlock
 from .resblock import PreactResBlock, PreactResBlockBottleneck
 from torchelie.nn.graph import ModuleGraph
 from typing import List, Tuple, Optional, cast
-from .utils import remove_bn, edit_model, insert_after, make_leaky
+from .utils import remove_batchnorm, edit_model, insert_after, make_leaky
 from .utils import remove_weight_scale
 from .interpolate import InterpolateBilinear2d
 from .encdec import ConvDeconvBlock
 from .conv import Conv2dBNReLU
 
 
-
+@experimental
 def MConvNormReLU(in_ch: int,
                   out_ch: int,
                   ks: int,
@@ -55,6 +56,7 @@ def MConvNormReLU(in_ch: int,
     return CondSeq(collections.OrderedDict(layers))
 
 
+@experimental
 def MConvBNrelu(in_ch: int, out_ch: int, ks: int, center=True) -> CondSeq:
     """
     A packed block with Masked Conv-BN-ReLU
@@ -138,10 +140,12 @@ class AutoGANGenBlock(nn.Module):
 
         self.preact = CondSeq()
 
-        self.conv1 = Conv2dBNReLU(in_ch, out_ch, ks).to_preact().remove_bn()
+        self.conv1 = Conv2dBNReLU(in_ch, out_ch, ks)
+        self.conv1.to_preact().remove_batchnorm()
         self.conv1.leaky()
 
-        self.conv2 = Conv2dBNReLU(out_ch, out_ch, ks).to_preact().remove_bn()
+        self.conv2 = Conv2dBNReLU(out_ch, out_ch, ks)
+        self.conv2.to_preact().remove_batchnorm()
         self.conv2.leaky()
 
         self.shortcut = None
@@ -196,9 +200,10 @@ class ResidualDiscrBlock(PreactResBlock):
         super().__init__(in_channels, out_channels)
         if downsample:
             self.post.add_module('downsample', nn.AvgPool2d(2))
-        self.remove_bn()
+        self.remove_batchnorm()
         make_leaky(self)
 
+    @experimental
     def to_equal_lr(self) -> 'ResidualDiscrBlock':
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -213,6 +218,7 @@ class ResidualDiscrBlock(PreactResBlock):
 
         return self
 
+    @experimental
     def to_spectral_norm(self) -> 'ResidualDiscrBlock':
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -241,6 +247,7 @@ class StyleGAN2Block(nn.Module):
             init scaling (weight_scale)
 
     """
+    @experimental
     def __init__(self,
                  in_ch: int,
                  out_ch: int,

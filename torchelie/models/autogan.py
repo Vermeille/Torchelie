@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from torchelie.utils import experimental
 import torchelie.nn as tnn
 from torchelie.utils import xavier, kaiming
 from typing import List
@@ -29,6 +30,7 @@ class AutoGAN(nn.Module):
     blocks: nn.ModuleList
     to_rgb: nn.Sequential
 
+    @experimental
     def __init__(self,
                  arch: List[int],
                  n_skip_max: int = 2,
@@ -76,6 +78,7 @@ class AutoGAN(nn.Module):
         return torch.sigmoid(self.to_rgb(F.leaky_relu(x, 0.2)))
 
 
+@experimental
 def autogan_128(in_noise: int, out_ch: int = 3) -> AutoGAN:
     return AutoGAN(arch=[512, 512, 256, 128, 64, 32],
                    n_skip_max=3,
@@ -83,6 +86,7 @@ def autogan_128(in_noise: int, out_ch: int = 3) -> AutoGAN:
                    out_ch=out_ch)
 
 
+@experimental
 def autogan_64(in_noise: int, out_ch: int = 3) -> AutoGAN:
     return AutoGAN(arch=[512, 256, 128, 64, 32],
                    n_skip_max=3,
@@ -90,6 +94,7 @@ def autogan_64(in_noise: int, out_ch: int = 3) -> AutoGAN:
                    out_ch=out_ch)
 
 
+@experimental
 def autogan_32(in_noise: int, out_ch: int = 3) -> AutoGAN:
     return AutoGAN(arch=[256, 128, 64, 32],
                    n_skip_max=3,

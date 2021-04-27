@@ -6,7 +6,7 @@ from .condseq import CondSeq
 from .interpolate import InterpolateBilinear2d
 import collections
 from typing import List, Tuple, Optional, cast
-from .utils import remove_bn, insert_after, insert_before
+from .utils import remove_batchnorm, insert_after, insert_before
 
 
 class SEBlock(nn.Module):
@@ -94,9 +94,9 @@ class ResBlockBottleneck(nn.Module):
         x = self.relu(self.branch(x).add_(self.shortcut(x)))
         return self.post(x)
 
-    def remove_bn(self) -> 'ResBlockBottleneck':
-        remove_bn(self.branch)
-        remove_bn(self.shortcut)
+    def remove_batchnorm(self) -> 'ResBlockBottleneck':
+        remove_batchnorm(self.branch)
+        remove_batchnorm(self.shortcut)
         assert isinstance(self.branch.conv3, nn.Conv2d)
         constant_init(self.branch.conv3, 0)
 
@@ -214,9 +214,9 @@ class ResBlock(nn.Module):
         x = self.relu(self.branch(x).add_(self.shortcut(x)))
         return self.post(x)
 
-    def remove_bn(self) -> 'ResBlock':
-        remove_bn(self.branch)
-        remove_bn(self.shortcut)
+    def remove_batchnorm(self) -> 'ResBlock':
+        remove_batchnorm(self.branch)
+        remove_batchnorm(self.shortcut)
         assert isinstance(self.branch.conv2, nn.Conv2d)
         constant_init(self.branch.conv2, 0)
         return self
@@ -288,10 +288,10 @@ class PreactResBlock(nn.Module):
 
         self.post = CondSeq()
 
-    def remove_bn(self) -> 'PreactResBlock':
-        remove_bn(self.branch)
-        remove_bn(self.shortcut)
-        remove_bn(self.preact)
+    def remove_batchnorm(self) -> 'PreactResBlock':
+        remove_batchnorm(self.branch)
+        remove_batchnorm(self.shortcut)
+        remove_batchnorm(self.preact)
         return self
 
     def condition(self, z: torch.Tensor) -> None:
@@ -367,10 +367,10 @@ class PreactResBlockBottleneck(nn.Module):
 
         self.post = CondSeq()
 
-    def remove_bn(self) -> 'PreactResBlockBottleneck':
-        remove_bn(self.branch)
-        remove_bn(self.shortcut)
-        remove_bn(self.preact)
+    def remove_batchnorm(self) -> 'PreactResBlockBottleneck':
+        remove_batchnorm(self.branch)
+        remove_batchnorm(self.shortcut)
+        remove_batchnorm(self.preact)
         return self
 
     def condition(self, z: torch.Tensor) -> None:

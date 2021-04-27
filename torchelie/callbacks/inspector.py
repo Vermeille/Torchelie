@@ -4,7 +4,7 @@ from typing import Union, List, Optional
 
 import torch
 import torch.nn.functional as F
-from torchelie.utils import as_multiclass_shape
+from torchelie.utils import as_multiclass_shape, experimental
 
 import numpy as np
 from PIL import Image
@@ -151,6 +151,7 @@ class ClassificationInspector:
 
 
 class SegmentationInspector(ClassificationInspector):
+    @experimental
     def __init__(self, topk, labels, center_value=0):
         super().__init__(topk, labels, center_value=0)
 
@@ -158,7 +159,7 @@ class SegmentationInspector(ClassificationInspector):
                 batch: torch.Tensor,
                 pred: torch.Tensor,
                 true: torch.Tensor,
-                pred_label: Optional[Torch.Tensor] = None,
+                pred_label: Optional[torch.Tensor] = None,
                 paths: Optional[List[str]] = None) -> None:
         pred = torch.sigmoid(pred)
         for_label = torch.median(

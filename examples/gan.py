@@ -22,6 +22,7 @@ BS = 32
 tfms = TF.Compose([
     TF.Resize(64),
     tch.transforms.AdaptPad((64, 64)),
+    TF.RandomHorizontalFlip(),
     TF.ToTensor()])
 ds = CIFAR10('~/.cache/torch/cifar10', download=True, transform=tfms)
 dl = torch.utils.data.DataLoader(ds,

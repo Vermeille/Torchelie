@@ -10,6 +10,7 @@ from torchelie.datasets.pix2pix import UnlabeledImages, Pix2PixDataset
 from torchelie.models import residual_patch70, pix2pix_generator, pix2pix_res_dev
 import torch.nn as nn
 
+@tu.experimental
 def train(rank, world_size):
     from argparse import ArgumentParser
     parser = ArgumentParser()
@@ -81,6 +82,7 @@ def train(rank, world_size):
         return {'G_loss': loss.item()}
 
     class GradientPenalty:
+        @tu.experimental
         def __init__(self, gamma):
             self.gamma = gamma
             self.iters = 0

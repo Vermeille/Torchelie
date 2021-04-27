@@ -130,7 +130,7 @@ def remove_weight_scale(module: Module, name: str = 'weight') -> Module:
     return remove_weight_lambda(module, 'scale', name)
 
 
-def remove_bn(m: nn.Sequential) -> None:
+def remove_batchnorm(m: nn.Sequential) -> None:
     """
     Remove BatchNorm in Sequentials / CondSeqs in a smart way, restoring biases
     in the preceding layer.

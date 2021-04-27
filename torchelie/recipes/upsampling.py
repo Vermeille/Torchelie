@@ -4,9 +4,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchelie as tch
 import torchelie.models.unet as U
+import torchelie.utils as tu
 from torchelie.recipes import TrainAndCall
 
 
+@tu.experimental
 def make_net(in_sz=256, n_down=4, max_ch=128, base_ch=8):
     layers = []
     for _ in range(n_down):
@@ -20,6 +22,7 @@ def make_net(in_sz=256, n_down=4, max_ch=128, base_ch=8):
     return model
 
 
+@tu.experimental
 def cutblur(base, patcher):
     a = max(base.shape[2], base.shape[3])
     s = random.randrange(int(a / 6), int(a / 4))
@@ -31,6 +34,7 @@ def cutblur(base, patcher):
     return base
 
 
+@tu.experimental
 def train(rank, world_size):
     from torchvision.datasets import ImageFolder
     import torchvision.transforms as TF

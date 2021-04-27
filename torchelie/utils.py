@@ -544,7 +544,7 @@ def dist_setup(rank):
                             world_size=torch.cuda.device_count())
 
 
-class WrapFun:
+class _WrapFun:
     def __init__(self, fun, *args, **kwargs):
         self.fun = fun
         self.args = args
@@ -573,7 +573,7 @@ def parallel_run(fun, *args, n_gpus: int = torch.cuda.device_count(),
         **kwargs: kw arguments passed to :code:`fun`
     """
     import torch.multiprocessing as mp
-    mp.spawn(WrapFun(fun, *args, **kwargs, world_size=n_gpus),
+    mp.spawn(_WrapFun(fun, *args, **kwargs, world_size=n_gpus),
              nprocs=n_gpus,
              join=True)
 
@@ -590,3 +590,19 @@ def indent(text: str, amount: int = 4) -> str:
         indented text
     """
     return '\n'.join((' ' * amount + l) for l in text.splitlines())
+
+from functools import wraps
+import warnings
+
+def experimental(func):
+    """
+    Decorator that warns about a function being experimental
+    """
+    @wraps(func)
+    def wrapped(*args, **kwargs):
+        warnings.warn(f'{func.__qualname__}() is an experimental function, '
+            'which may change or be deleted soon if not already broken',
+            FutureWarning, stacklevel=2)
+        return func(*args, **kwargs)
+    return wrapped
+

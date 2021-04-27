@@ -11,6 +11,7 @@ from torchelie.models import *
 import torch.nn as nn
 
 
+@tu.experimental
 def gradient_penalty_M(model, fake, ins, real, objective_norm: float):
     fake = fake.detach()
     ins = ins.detach()
@@ -33,6 +34,7 @@ def gradient_penalty_M(model, fake, ins, real, objective_norm: float):
 
 
 class Matcher(nn.Module):
+    @tu.experimental
     def __init__(self):
         super().__init__()
         self.net = res_discr_3l()
@@ -66,6 +68,7 @@ def Crop(x):
     return x.crop((20, 0, 220, 220))
 
 
+@tu.experimental
 def celeba(male, tfm=None):
     from torchvision.datasets import CelebA
     import os
@@ -79,6 +82,7 @@ def celeba(male, tfm=None):
     return tch.datasets.pix2pix.ImagesPaths(files, tfm)
 
 
+@tu.experimental
 def train(rank, world_size):
     from argparse import ArgumentParser
     parser = ArgumentParser()

@@ -6,6 +6,7 @@ from torchelie.recipes.recipebase import Recipe
 from typing import Optional, Iterable, Any
 
 
+@tu.experimental
 def GANRecipe(G: nn.Module,
               D: nn.Module,
               G_fun,

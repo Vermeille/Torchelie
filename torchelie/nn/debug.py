@@ -1,6 +1,7 @@
 import crayons
 
 import torch.nn as nn
+from torchelie.utils import experimental
 
 
 class Debug(nn.Module):
@@ -12,6 +13,7 @@ class Debug(nn.Module):
     Args:
         name (str): this layer's name
     """
+    @experimental
     def __init__(self, name):
         super(Debug, self).__init__()
         self.name = name

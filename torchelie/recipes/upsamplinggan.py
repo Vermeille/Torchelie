@@ -12,6 +12,7 @@ from torchelie.transforms.differentiable import center_crop
 import torchvision.transforms as TF
 from PIL import Image
 
+@tu.experimental
 def jpeg_compress(x):
     import io
     with io.BytesIO() as f:
@@ -23,6 +24,7 @@ def jpeg_compress(x):
         return im
 
 class ADATF:
+    @tu.experimental
     def __init__(self, target_loss: float, growth: float = 0.01):
         self.p = 0
         self.target_loss = target_loss
@@ -65,6 +67,7 @@ PAD_MODE = 'zeros'
 
 
 class UBlock(nn.Module):
+    @tu.experimental
     def __init__(self,
                  in_ch,
                  out_ch,
@@ -140,6 +143,7 @@ class UNetBone(nn.Module):
         in_ch (int): number of input channels
         out_ch (int): number of output channels
     """
+    @tu.experimental
     def __init__(self,
                  arch,
                  in_ch=3,
@@ -171,6 +175,7 @@ class UNetBone(nn.Module):
         return torch.sigmoid(out[1])
 
 
+@tu.experimental
 def make_net(in_sz=256, n_down=4, max_ch=128, base_ch=8):
     layers = []
     for _ in range(n_down):
@@ -184,11 +189,13 @@ def make_net(in_sz=256, n_down=4, max_ch=128, base_ch=8):
 
 
 class PerceptualDiscriminator(nn.Module):
+    @tu.experimental
     def __init__(self, n_downscales=4):
         super().__init__()
         layers = tu.FrozenModule(tch.models.PerceptualNet(layers))
 
 
+@tu.experimental
 def cutblur(base, patcher):
     a = min(base.shape[2], base.shape[3]) - 1
     s = random.randrange(int(a/5), int(a/3))
@@ -206,6 +213,7 @@ def cutblur(base, patcher):
     return base
 
 class RandomZoomNoLoss:
+    @tu.experimental
     def __init__(self, size):
         self.size = size
 
@@ -220,6 +228,7 @@ class RandomZoomNoLoss:
         return TF.functional.resize(img, a, interpolation=Image.BICUBIC)
 
 class PairedFrames:
+    @tu.experimental
     def __init__(self, root1, root2, transform=None):
         self.ds1 = tch.datasets.FastImageFolder(root1)
         self.ds2 = tch.datasets.FastImageFolder(root2)
@@ -237,6 +246,7 @@ class PairedFrames:
     def __len__(self):
         return len(self.ds1)
 
+@tu.experimental
 def train(rank, world_size):
     from torchvision.datasets import ImageFolder
     import torchelie.loss.gan.standard as gan_loss

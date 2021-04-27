@@ -2,6 +2,7 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 
+from torchelie.utils import experimental
 import torchelie.nn as tnn
 from torchelie.utils import kaiming, xavier
 
@@ -94,6 +95,7 @@ class ClassificationHead(tnn.CondSeq):
                       self.linear1.out_features))
         return self
 
+    @experimental
     def rm_dropout(self) -> 'ClassificationHead':
         if hasattr(self, 'dropout1'):
             del self.dropout1
@@ -134,12 +136,3 @@ class ProjectionDiscr(nn.Module):
         y_emb = self.emb(y)
         return self.discr(feats) + torch.mm(y_emb, feats.t())
 
-    def to_spectral_norm(self) -> 'ProjectionDiscr':
-        nn.utils.spectral_norm(self.emb)
-        nn.utils.spectral_norm(self.discr)
-        return self
-
-    def to_equal_lr(self) -> 'ProjectionDiscr':
-        xavier(self.emb, dynamic=True)
-        xavier(self.discr, dynamic=True)
-        return self

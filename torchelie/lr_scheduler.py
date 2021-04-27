@@ -1,5 +1,7 @@
+from typing import Tuple
 import math
 import torchelie.utils as tu
+from typing import List, Tuple
 
 
 class CurriculumScheduler:
@@ -14,8 +16,10 @@ class CurriculumScheduler:
             interpolated linearly between neighboring keypoints
         last_iter (int): starting iteration
     """
-
-    def __init__(self, optimizer, schedule, last_iter=-1):
+    def __init__(self,
+                 optimizer,
+                 schedule: List[Tuple[float, float, float]],
+                 last_iter: int=-1):
         self.optimizer = optimizer
         self.schedule = schedule
         self.last_iter = last_iter
@@ -26,7 +30,7 @@ class CurriculumScheduler:
     def load_state_dict(self, state):
         self.last_iter = state['last_iter']
 
-    def step(self, *unused):
+    def step(self, *unused) -> None:
         """
         Step the scheduler to another iteration
         """
@@ -53,7 +57,6 @@ class CurriculumScheduler:
         return "CurriculumScheduler({})".format(self.schedule)
 
 
-
 class OneCycle(CurriculumScheduler):
     """
     Implements 1cycle policy.
@@ -70,7 +73,13 @@ class OneCycle(CurriculumScheduler):
         mom (2-tuple): momentum range
         last_iter (int): last_iteration index
     """
-    def __init__(self, opt, lr, num_iters, mom=(0.95, 0.85), log=False, last_iter=-1):
+    def __init__(self,
+                 opt,
+                 lr: Tuple[float, float],
+                 num_iters: int,
+                 mom: Tuple[float, float] = (0.95, 0.85),
+                 log: bool = False,
+                 last_iter: int = -1):
         self.log = log
 
         if log:
@@ -79,9 +88,9 @@ class OneCycle(CurriculumScheduler):
 
         third = num_iters // 3
         super(OneCycle, self).__init__(
-            opt, [[0, lr[0], mom[0]], [third, lr[1], mom[1]],
-                  [2 * third, lr[0], mom[0]],
-                  [num_iters, lr[0] / (lr[1] / lr[0] * 10000), mom[0]]],
+            opt, [(0, lr[0], mom[0]), (third, lr[1], mom[1]),
+                  (2 * third, lr[0], mom[0]),
+                  (num_iters, lr[0] / (lr[1] / lr[0] * 10000), mom[0])],
             last_iter=last_iter)
 
     def step(self, *unused):
@@ -95,7 +104,8 @@ class OneCycle(CurriculumScheduler):
             if 'momentum' in group:
                 group['momentum'] = math.exp(group['momentum'])
             elif 'betas' in group:
-                group['betas'] = (math.exp(group['betas'][0]), group['betas'][1])
+                group['betas'] = (math.exp(group['betas'][0]),
+                                  group['betas'][1])
 
     def __repr__(self):
         return 'OneCycle({})'.format(self.schedule)

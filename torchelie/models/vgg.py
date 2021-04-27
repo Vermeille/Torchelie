@@ -23,8 +23,9 @@ class VGG(nn.Module):
                 conv_num = 1
             else:
                 ch = cast(int, l)
-                feats.add_module(f'conv_{block_num}_{conv_num}',
-                                 tnn.Conv2dBNReLU(in_ch, ch, 3).remove_bn())
+                feats.add_module(
+                    f'conv_{block_num}_{conv_num}',
+                    tnn.Conv2dBNReLU(in_ch, ch, 3).remove_batchnorm())
                 in_ch = ch
                 conv_num += 1
         self.out_channels = ch

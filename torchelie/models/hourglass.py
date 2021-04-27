@@ -9,6 +9,7 @@ class Hourglass(nn.Module):
     """
     Hourglass model from Deep Image Prior.
     """
+    @tu.experimental
     def __init__(self,
                  noise_dim=32,
                  down_channels=[128, 128, 128, 128, 128],

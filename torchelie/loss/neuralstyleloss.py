@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 import random
+from typing import Dict, Optional, List, cast, Tuple
 
 from torchelie.utils import bgram
 
@@ -10,6 +11,8 @@ import torchelie.utils as tu
 from torchelie.nn import ImageNetInputNorm
 from torchelie.models import PerceptualNet
 
+
+@tu.experimental
 def hist_match(source, template):
     oldshape = source.shape
 
@@ -18,8 +21,8 @@ def hist_match(source, template):
     sm, sM = source.min(), source.max()
     tm, tM = template.min(), template.max()
     RES = 256
-    ssz = (sM - sm) / (RES-1)
-    tsz = (tM - tm) / (RES-1)
+    ssz = (sM - sm) / (RES - 1)
+    tsz = (tM - tm) / (RES - 1)
     #s_counts, s_values = np.histogram(source, bins=256, range=(m, M))
     #t_counts, t_values = np.histogram(template, bins=256, range=(m, M))
     s_counts = torch.histc(source, bins=RES, min=sm, max=sM)
@@ -38,22 +41,27 @@ def hist_match(source, template):
     # interpolate linearly to find the pixel values in the template image
     # that correspond most closely to the quantiles in the source image
     #interp_t_values = np.interp(s_quantiles, t_quantiles, t_values[1:])
-    interp_t_values = (t_quantiles[:, None] < s_quantiles[None, :]).sum(0).float().mul_(tsz).add_(tm)
+    interp_t_values = (t_quantiles[:, None] <
+                       s_quantiles[None, :]).sum(0).float().mul_(tsz).add_(tm)
 
     bin = (source - sm) / (ssz + 1e-8)
     bin_idx = bin.long()
     low = interp_t_values[bin_idx]
-    diff = interp_t_values[torch.clamp(bin_idx+1, max=RES-1)] - low
+    diff = interp_t_values[torch.clamp(bin_idx + 1, max=RES - 1)] - low
     return low + (bin - bin_idx.float()) * diff
 
+
+@tu.experimental
 def hist_loss(src, tgt):
     N, C, H, W = src.shape
 
     with torch.no_grad():
         remapped = torch.zeros_like(src)
-        for s, t, r in zip(src.view(N * C, -1), tgt.view(N * C, -1), remapped.view(N * C, -1)):
+        for s, t, r in zip(src.view(N * C, -1), tgt.view(N * C, -1),
+                           remapped.view(N * C, -1)):
             r[:] = hist_match(s, t)
     return F.mse_loss(src, remapped) * 1
+
 
 class NeuralStyleLoss(nn.Module):
     """
@@ -63,21 +71,30 @@ class NeuralStyleLoss(nn.Module):
 
     set the style and content before performing a forward pass.
     """
-    def __init__(self):
+    style_hists: Dict[str, torch.Tensor]
+    net: PerceptualNet
+
+    def __init__(self) -> None:
         super(NeuralStyleLoss, self).__init__()
         self.style_layers = [
-            'conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'conv5_1',
+            'conv1_1',
+            'conv2_1',
+            'conv3_1',
+            'conv4_1',
+            'conv5_1',
         ]
-        self.style_weights = {'conv5_1': 1, 'conv4_1': 1}
+        self.style_weights = {'conv5_1': 1.0, 'conv4_1': 1.0}
         self.style_hists = {}
         self.content_layers = ['conv3_2']
         self.hists_layers = ['conv5_1']
         self.net = PerceptualNet(self.style_layers + self.content_layers,
-                remove_unused_layers=False)
+                                 remove_unused_layers=False)
         tu.freeze(self.net)
         self.norm = ImageNetInputNorm()
 
-    def get_style_content_(self, img, detach):
+    def get_style_content_(self, img: torch.Tensor,
+                           detach: bool) -> Dict[str, Dict[str, torch.Tensor]]:
+        activations: Dict[str, torch.Tensor]
         _, activations = self.net(self.norm(img), detach=detach)
         style = {
             l: a
@@ -101,12 +118,15 @@ class NeuralStyleLoss(nn.Module):
                 if small.shape[-1] > big.shape[-1]:
                     small, big = big, small
 
-                small = F.interpolate(small, size=big.shape[-2:], mode='nearest')
+                small = F.interpolate(small,
+                                      size=big.shape[-2:],
+                                      mode='nearest')
                 comb = torch.cat([big, small], dim=1)
                 grams[comb_name] = bgram(comb)
 
         content = {
-            l: (a - a.mean((2, 3), keepdim=True)) / torch.sqrt(a.std((2, 3), keepdim=True)+1e-8)
+            l: (a - a.mean((2, 3), keepdim=True)) /
+            torch.sqrt(a.std((2, 3), keepdim=True) + 1e-8)
             for l, a in activations.items() if l in self.content_layers
         }
 
@@ -116,8 +136,11 @@ class NeuralStyleLoss(nn.Module):
         }
         return {'grams': grams, 'content': content, 'hists': hists}
 
-    def set_style(self, style_img, style_ratio, style_layers=None,
-            style_weights=None):
+    def set_style(self,
+                  style_img: torch.Tensor,
+                  style_ratio: float,
+                  style_layers: Optional[List[str]] = None,
+                  style_weights: Optional[Dict[str, float]] = None) -> None:
         """
         Set the style.
 
@@ -143,7 +166,9 @@ class NeuralStyleLoss(nn.Module):
         self.style_grams = out['grams']
         self.style_hists = out['hists']
 
-    def set_content(self, content_img, content_layers=None):
+    def set_content(self,
+                    content_img: torch.Tensor,
+                    content_layers: Optional[List[str]] = None) -> None:
         """
         Set the content.
 
@@ -161,49 +186,52 @@ class NeuralStyleLoss(nn.Module):
             acts = self.get_style_content_(content_img, detach=True)['content']
         self.photo_activations = acts
 
-    def forward(self, input_img):
+    def forward(
+            self,
+            input_img: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, float]]:
         """
         Actually compute the loss
         """
         out = self.get_style_content_(input_img, detach=False)
-        style_grams, content_acts, hists = out['grams'], out['content'], out['hists']
+        style_grams, content_acts, hists = out['grams'], out['content'], out[
+            'hists']
 
         c_ratio = 1. - self.ratio.squeeze()
         s_ratio = self.ratio.squeeze()
         losses = {}
 
-        style_loss = 0
+        style_loss = cast(torch.Tensor, 0.)
         avg = 1 / len(style_grams)
         for j in style_grams:
             this_loss = F.l1_loss(style_grams[j],
-                                   self.style_grams[j],
-                                   reduction='none').sum((1,2))
+                                  self.style_grams[j],
+                                  reduction='none').sum((1, 2))
 
             w = self.style_weights.get(j, 1)
             this_loss = avg * w * this_loss
-            losses['style:'+j] = (s_ratio * this_loss).mean().item()
+            losses['style:' + j] = (s_ratio * this_loss).mean().item()
             style_loss = style_loss + this_loss
         losses['style_loss'] = (s_ratio * style_loss).mean().item()
 
-        content_loss = 0
+        content_loss = cast(torch.Tensor, 0.)
         avg = 1 / len(content_acts)
         for j in content_acts:
             this_loss = F.mse_loss(content_acts[j],
-                                       self.photo_activations[j],
-                                       reduction='none').mean((1,2,3))
+                                   self.photo_activations[j],
+                                   reduction='none').mean((1, 2, 3))
             content_loss = content_loss + avg * this_loss
-            losses['content:'+j] = (c_ratio * this_loss).mean().item()
+            losses['content:' + j] = (c_ratio * this_loss).mean().item()
         losses['content_loss'] = (c_ratio * content_loss).mean().item()
 
-        hists_loss = 0
+        hists_loss = cast(torch.Tensor, 0.)
         losses['hists_loss'] = 0
         if random.randint(0, 20) > 18:
             for l in hists.keys():
                 hists_loss = hists_loss + hist_loss(hists[l],
-                        self.style_hists[l])
+                                                    self.style_hists[l])
             losses['hists_loss'] = hists_loss.mean().item()
-        loss = (c_ratio * content_loss + s_ratio * (style_loss + hists_loss)).mean()
+        loss = (c_ratio * content_loss + s_ratio *
+                (style_loss + hists_loss)).mean()
         losses['loss'] = loss.item()
 
         return loss, losses
-

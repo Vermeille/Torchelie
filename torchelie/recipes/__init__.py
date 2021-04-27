@@ -16,3 +16,4 @@ from torchelie.recipes.feature_vis import FeatureVis
 from torchelie.recipes.neural_style import NeuralStyle
 from torchelie.recipes.trainandtest import TrainAndTest
 from torchelie.recipes.trainandcall import TrainAndCall
+from torchelie.recipes.gan import GANRecipe

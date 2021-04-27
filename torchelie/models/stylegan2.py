@@ -16,6 +16,7 @@ class LinearReLU(tnn.CondSeq):
     relu: nn.Module
     linear: nn.Module
 
+    @tu.experimental
     def __init__(self, in_features: int, out_features) -> None:
         super().__init__()
         self.linear = tu.kaiming(nn.Linear(in_features, out_features))
@@ -83,6 +84,7 @@ class StyleGAN2Generator(nn.Module):
     """
     w_avg: torch.Tensor
 
+    @tu.experimental
     def __init__(self,
                  noise_size: int,
                  ch_mul: float = 1,
@@ -179,6 +181,7 @@ class StyleGAN2Generator(nn.Module):
         }
 
 
+@tu.experimental
 def StyleGAN2Discriminator(input_sz,
                            max_ch: int = 512,
                            ch_mul: int = 1) -> ResidualDiscriminator:

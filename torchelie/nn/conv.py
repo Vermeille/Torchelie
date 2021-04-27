@@ -1,13 +1,14 @@
 import torch
 import torch.nn as nn
 from typing import Tuple, Optional, Union, cast
-from .utils import remove_bn, insert_after, insert_before
+from .utils import remove_batchnorm, insert_after, insert_before
 from .condseq import CondSeq
-from torchelie.utils import kaiming
+from torchelie.utils import kaiming, experimental
 from .layers import Conv2d
 from .interpolate import InterpolateBilinear2d
 
 
+@experimental
 class Conv2dBNReLU(CondSeq):
     """
     A packed block with Conv-BatchNorm-ReLU
@@ -72,6 +73,7 @@ class Conv2dBNReLU(CondSeq):
                    bias=c.bias))
         return self
 
+    @experimental
     def to_transposed_conv(self) -> 'Conv2dBNReLU':
         """
         Transform the convolution into a hopefully equivalent transposed
@@ -102,14 +104,14 @@ class Conv2dBNReLU(CondSeq):
                                    padding_mode=c.padding_mode))
         return self
 
-    def remove_bn(self) -> 'Conv2dBNReLU':
+    def remove_batchnorm(self) -> 'Conv2dBNReLU':
         """
         Remove the BatchNorm, restores the bias term in conv.
 
         Returns:
             self
         """
-        remove_bn(self)
+        remove_batchnorm(self)
         if hasattr(self, 'norm'):
             del self.norm
         self.norm = None

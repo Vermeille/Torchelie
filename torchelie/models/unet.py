@@ -9,6 +9,7 @@ import torch.nn as nn
 
 
 class UNet(nn.Module):
+    @tu.experimental
     def __init__(self, arch: List[int]) -> None:
         super().__init__()
         self.arch = arch
@@ -26,7 +27,7 @@ class UNet(nn.Module):
         self.classifier = tnn.CondSeq()
         assert isinstance(encdec.out_channels, int)
         self.classifier.conv = tnn.Conv2dBNReLU(encdec.out_channels, 3,
-                                                3).remove_bn()
+                                                3).remove_batchnorm()
 
     def forward(self, x):
         return self.classifier(self.features(x))
@@ -44,17 +45,18 @@ class UNet(nn.Module):
 
     def remove_first_batchnorm(self) -> 'UNet':
         assert isinstance(self.features.input, tnn.Conv2dBNReLU)
-        self.features.input.remove_bn()
+        self.features.input.remove_batchnorm()
         return self
 
     def remove_batchnorm(self) -> 'UNet':
         for m in self.modules():
             if isinstance(m, tnn.Conv2dBNReLU):
-                m.remove_bn()
+                m.remove_batchnorm()
         return self
 
 
 class Pix2PixGenerator(UNet):
+    @tu.experimental
     def __init__(self, arch: List[int]) -> None:
         super().__init__(arch)
         self.remove_first_batchnorm()
@@ -88,6 +90,7 @@ class Pix2PixGenerator(UNet):
 
 
 class Pix2PixResidualGenerator(tnn.CondSeq):
+    @tu.experimental
     def __init__(self, arch: List[str])->None:
         super().__init__()
         self.arch = arch
@@ -134,7 +137,7 @@ def pix2pix_256() -> Pix2PixGenerator:
     return Pix2PixGenerator([64, 128, 256, 512, 512, 512, 512])
 
 
-def pix2pix_res_dev() -> Pix2PixGenerator:
+def pix2pix_res_dev() -> Pix2PixResidualGenerator:
     return Pix2PixResidualGenerator([32, 'd128', 'd512', 'd512', 'R512', 'R512',
         'R512', 'R512', 'R512', 'u512', 'u512', 'u128'])
 

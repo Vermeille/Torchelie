@@ -36,17 +36,17 @@ class Sampler:
         low (float): lower bound
         high (float): higher bound
     """
-    def __init__(self, low, high):
+    def __init__(self, low: float, high: float) -> None:
         self.low = low
         self.high = high
 
-    def sample(self):
+    def sample(self) -> float:
         """
         Sample from the distribution.
         """
         return random.uniform(self.low, self.high)
 
-    def inverse(self, x):
+    def inverse(self, x: float) -> float:
         return x
 
 
@@ -200,6 +200,7 @@ class HyperparamSearch:
         res.append(full)
         with open('hpsearch.json', 'w') as f:
             json.dump(res, f)
+
 
 if __name__ == '__main__':
     from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -377,6 +378,7 @@ if __name__ == '__main__':
         </body>
         </html>
         """
+
     class Server(BaseHTTPRequestHandler):
         def do_GET(self):
             self.handle_http(200, 'text/html', make_html())

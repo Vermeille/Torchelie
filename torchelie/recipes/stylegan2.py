@@ -16,6 +16,7 @@ from typing import Optional
 from torchelie.callbacks.avg import ExponentialAvg
 
 
+@tu.experimental
 class ADATF:
     p: float
 
@@ -58,6 +59,7 @@ class ADATF:
 
 
 class PPL:
+    @tu.experimental
     def __init__(self, every=4):
         self.every = every
         self.ppl_goal = 0.
@@ -92,6 +94,7 @@ class PPL:
 
 
 class GradientPenalty:
+    @tu.experimental
     def __init__(self, gamma):
         self.gamma = gamma
         self.iters = 0
@@ -110,6 +113,7 @@ class GradientPenalty:
         return self.last_norm
 
 
+@tu.experimental
 def StyleGAN2Recipe(G: nn.Module,
                     D: nn.Module,
                     dataloader,
@@ -308,6 +312,7 @@ def StyleGAN2Recipe(G: nn.Module,
     return recipe, G_polyak
 
 
+@tu.experimental
 def train(rank, world_size):
     from torchelie.models import StyleGAN2Generator, StyleGAN2Discriminator
     from torchvision.datasets import ImageFolder

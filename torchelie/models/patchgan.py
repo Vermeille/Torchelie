@@ -10,7 +10,7 @@ class PatchDiscriminator(nn.Module):
         super().__init__()
         layers: List[nn.Module] = [
             tnn.Conv2dBNReLU(3, arch[0], kernel_size=4,
-                             stride=2).remove_bn().leaky()
+                             tride=2).remove_batchnorm().leaky()
         ]
 
         in_ch = arch[0]
@@ -75,6 +75,7 @@ def patch34() -> PatchDiscriminator:
     Patch Discriminator from pix2pix
     """
     return PatchDiscriminator([64, 128, 256])
+
 
 def patch16() -> PatchDiscriminator:
     """

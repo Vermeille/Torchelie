@@ -12,7 +12,7 @@ import torch
 import torch.nn.functional as F
 
 
-def real(x, reduction='mean'):
+def real(x: torch.Tensor, reduction: str='mean') -> torch.Tensor:
     out = F.relu(1 - x)
     if reduction == 'none':
         return out
@@ -20,9 +20,10 @@ def real(x, reduction='mean'):
         return out.mean()
     if reduction == 'sum':
         return out.sum()
+    assert False, f'{reduction} is not a valid reduction method'
 
 
-def fake(x, reduction='mean'):
+def fake(x: torch.Tensor, reduction: str='mean') -> torch.Tensor:
     out = F.relu(1 + x)
     if reduction == 'none':
         return out
@@ -30,9 +31,10 @@ def fake(x, reduction='mean'):
         return out.mean()
     if reduction == 'sum':
         return out.sum()
+    assert False, f'{reduction} is not a valid reduction method'
 
 
-def generated(x, reduction='mean'):
+def generated(x: torch.Tensor, reduction: str='mean') -> torch.Tensor:
     out = -x
     if reduction == 'none':
         return out
@@ -40,3 +42,4 @@ def generated(x, reduction='mean'):
         return out.mean()
     if reduction == 'sum':
         return out.sum()
+    assert False, f'{reduction} is not a valid reduction method'

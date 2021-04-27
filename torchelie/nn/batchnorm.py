@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .layers import Conv3x3
-from torchelie.utils import kaiming, xavier
+from torchelie.utils import kaiming, xavier, experimental
 
 from typing import Optional, Tuple
 
@@ -11,6 +11,7 @@ __all__ = []
 
 
 class BatchNorm2dBase_(nn.Module):
+    @experimental
     def __init__(self, channels, momentum=0.8):
         super(BatchNorm2dBase_, self).__init__()
         self.register_buffer('running_mean', torch.zeros(1, channels, 1, 1))
@@ -40,6 +41,7 @@ __all__.append('BatchNorm2dBase_')
 
 
 class MovingAverageBN2dBase_(nn.Module):
+    @experimental
     def __init__(self, channels, momentum=0.8):
         super(MovingAverageBN2dBase_, self).__init__()
         self.register_buffer('running_mean', torch.zeros(1, channels, 1, 1))
@@ -72,6 +74,7 @@ __all__.append('MovingAverageBN2dBase_')
 
 def make_no_affine(base, name):
     class NoAffineBN(base):
+        @experimental
         def __init__(self, channels, momentum=0.8):
             super(NoAffineBN, self).__init__(channels, momentum)
 
@@ -91,6 +94,7 @@ __all__.append('NoAffineMABN2d')
 
 def make_bn(base, name):
     class BatchNorm2d(base):
+        @experimental
         def __init__(self, channels, momentum=0.8):
             super(BatchNorm2d, self).__init__(channels, momentum)
             self.weight = nn.Parameter(torch.zeros(channels, 1, 1))
@@ -114,6 +118,7 @@ __all__.append('MovingAverageBN2d')
 
 def make_cbn(base, name):
     class ConditionalBN2d(base):
+        @experimental
         def __init__(self, channels, cond_channels, momentum=0.8):
             super(ConditionalBN2d, self).__init__(channels, momentum)
             self.make_weight = nn.Linear(cond_channels, channels)
@@ -155,6 +160,7 @@ __all__.append('ConditionalMABN2d')
 
 def make_spade(base, name):
     class Spade2d(base):
+        @experimental
         def __init__(self,
                      channels,
                      cond_channels,

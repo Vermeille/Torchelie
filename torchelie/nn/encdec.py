@@ -137,7 +137,7 @@ class UBlock(nn.Module):
     def remove_batchnorm(self) -> 'UBlock':
         for m in self.modules():
             if isinstance(m, Conv2dBNReLU):
-                m.remove_bn()
+                m.remove_batchnorm()
         return self
 
     def leaky(self) -> 'UBlock':

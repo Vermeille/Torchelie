@@ -3,6 +3,7 @@ import torch
 import torchelie.utils as tu
 import torch.nn as nn
 import torchelie.nn as tnn
+from torchelie.models import ClassificationHead
 from typing import Optional
 from collections import OrderedDict
 
@@ -14,6 +15,7 @@ class UBlock(nn.Module):
     skip: Optional[nn.Module]
     encode: nn.Module
 
+    @tu.experimental
     def __init__(self,
                  ch: int,
                  inner: Optional[nn.Module],
@@ -44,6 +46,7 @@ class UBlock(nn.Module):
 
 
 class UBlock1(nn.Module):
+    @tu.experimental
     def __init__(self, ch):
         super(UBlock1, self).__init__()
         self.inner = tnn.CondSeq(nn.MaxPool2d(3, 1, 1),
@@ -104,11 +107,12 @@ class Attention56Bone(tnn.CondSeq):
     Args:
         in_ch (int): number of channels in the images
     """
-    def __init__(self, in_ch: int = 3) -> None:
+    @tu.experimental
+    def __init__(self, num_classes: int) -> None:
         super(Attention56Bone, self).__init__(
             OrderedDict([
                 ('head',
-                 tnn.CondSeq(tu.kaiming(tnn.Conv2d(in_ch, 64, 7, stride=2)),
+                 tnn.CondSeq(tu.kaiming(tnn.Conv2d(3, 64, 7, stride=2)),
                              nn.ReLU(True), nn.MaxPool2d(3, 2, 1))),
                 ('pre1', Block(64, 256)), ('attn1', AttentionBlock(256, 3)),
                 ('pre2', Block(256, 512, stride=2)),
@@ -120,11 +124,13 @@ class Attention56Bone(tnn.CondSeq):
                      Block(1024, 2048, stride=2),
                      Block(2048, 2048),
                      Block(2048, 2048),
-                 ))
+                 )),
+                 ('classifier', ClassificationHead(2048, num_classes))
             ]))
 
 
-def attention56(num_classes, in_ch=3):
+@tu.experimental
+def attention56(num_classes):
     """
     Build a attention56 network
 
@@ -132,4 +138,4 @@ def attention56(num_classes, in_ch=3):
         num_classes (int): number of classes
         in_ch (int): number of channels in the images
     """
-    return Classifier1(Attention56Bone(in_ch), 2048, num_classes=num_classes)
+    return Attention56Bone(num_classes)
