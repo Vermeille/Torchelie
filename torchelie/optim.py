@@ -40,8 +40,6 @@ class DeepDreamOptim(Optimizer):
                 # Perform stepweight decay
                 p.data.mul_(1 - group['lr'] * group['weight_decay'])
 
-                state = self.state[p]
-
                 step_size = group['lr']
                 eps = group['eps']
 
