@@ -175,7 +175,6 @@ class ResizedCrop(object):
         """
         scale = math.sqrt(scale)
         width, height = ResizedCrop._get_image_size(img)
-        area = height * width
 
         # Fallback to central crop
         in_ratio = float(width) / float(height)
