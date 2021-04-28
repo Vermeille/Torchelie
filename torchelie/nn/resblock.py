@@ -69,7 +69,6 @@ class ResBlockBottleneck(nn.Module):
 
         self.pre = CondSeq()
 
-        mid = out_channels // 4
         self.wide(divisor=4)
 
         self.relu = nn.ReLU(True)

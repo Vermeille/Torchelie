@@ -92,7 +92,6 @@ class SelfAttention2d(nn.Module):
         v = self.value(x_flat)
 
         affinity = torch.einsum('bki,bkj->bij', q, k)
-        attention = F.softmax(affinity, dim=1)
         out = torch.einsum('bci,bih->bch', v, affinity).view(*x.shape)
         return self.gamma * out + x
 
