@@ -1,5 +1,5 @@
-Recipes
-=======
+torchelie.recipes
+=================
 
 .. automodule:: torchelie.recipes
 
@@ -16,8 +16,6 @@ Recipes
 .. autofunction:: torchelie.recipes.CrossEntropyClassification
 
 .. autofunction:: torchelie.recipes.gan.GANRecipe
-
-(unstable)
 
 Model Training
 ~~~~~~~~~~~~~~

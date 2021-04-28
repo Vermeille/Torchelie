@@ -37,7 +37,7 @@ class AutoGAN(nn.Module):
                  in_noise: int = 256,
                  out_ch: int = 3,
                  batchnorm_in_output: bool = False) -> None:
-        super(AutoGAN, self).__init__()
+        super().__init__()
         self.n_skip_max = n_skip_max
         self.make_noise = xavier(nn.Linear(in_noise, 4 * 4 * arch[0]))
 

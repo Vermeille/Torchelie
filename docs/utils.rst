@@ -1,5 +1,5 @@
-Utils
-=====
+torchelie.utils
+===============
 
 .. automodule:: torchelie.utils
    :members:

@@ -14,13 +14,13 @@ Welcome to Torchélie's documentation!
    distributions
    datasets
    transforms
+   recipes
 
 .. toctree::
    :caption: Algorithms and training
    :maxdepth: 1
 
    recipe_tuto
-   recipes
    callbacks
    hyper
 

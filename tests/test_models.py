@@ -3,7 +3,7 @@ from torchelie.models import *
 
 
 def test_patchgan():
-    for M in [Patch286, Patch70, Patch32, Patch16]:
+    for M in [patch286, patch70, patch34, patch16]:
         m = M()
         m(torch.randn(1, 3, 128, 128))
 
@@ -30,10 +30,11 @@ def test_pixelcnn():
 
 
 def test_resnet():
-    m = snres_discr_ctor([2, 'D', 3], in_ch=3)
+    m = ResidualDiscriminator([2, 'D', 3])
     m(torch.randn(1, 3, 8, 8))
 
-    m = snres_projdiscr([2, 'D', 3], in_ch=3, num_classes=4)
+    m = ResidualDiscriminator([2, 'D', 3])
+    m.to_projection_discr(3)
     m(torch.randn(1, 3, 8, 8), torch.LongTensor([1]))
 
     def run(M):
@@ -50,13 +51,13 @@ def test_resnet():
 
 
 def test_unet():
-    m = UNet()
+    m = UNet([3, 6, 12])
     m(torch.randn(1, 3, 128, 128))
 
 
 def test_vgg():
-    m = VggDebug(2)
-    m(torch.randn(1, 1, 32, 32))
+    m = vgg11(2)
+    m(torch.randn(1, 3, 32, 32))
 
 
 def test_attention():
@@ -65,7 +66,7 @@ def test_attention():
 
 def test_hourglass():
     m = Hourglass()
-    m(torch.randn(2, 32, 128, 128))
+    m(torch.randn(2, 32, 256, 256))
 
 
 def test_autogan():

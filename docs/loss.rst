@@ -1,5 +1,5 @@
-Loss
-====
+torchelie.loss
+==============
 
 Functions
 ~~~~~~~~~

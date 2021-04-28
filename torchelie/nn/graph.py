@@ -16,12 +16,11 @@ NamedModule = Tuple[str, nn.Module]
 
 class ModuleGraph(nn.Sequential):
     """
-    Deprecates CondSeq as ModuleGraph is strictly superior.
-
-    Allows description of networks as computation graphs by labelling inputs
-    and outputs of each node. Each node will be ran in declaration order,
-    fetching its input values from a pool of named values populated from
-    previous node's output values and keyword arguments in forward.
+    Allows description of networks as computation graphs. The graph is
+    constructed by labelling inputs and outputs of each node. Each node will be
+    ran in declaration order, fetching its input values from a pool of named
+    values populated from previous node's output values and keyword arguments
+    in forward.
 
     Simple example:
 

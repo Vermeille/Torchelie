@@ -1,5 +1,5 @@
-Optimizers
-==========
+torchelie.optim
+===============
 
 .. autoclass:: torchelie.optim.Lookahead
    :members:
@@ -14,8 +14,8 @@ Optimizers
 .. autoclass:: torchelie.optim.AddSign
    :members:
 
-LR Schedulers
-=============
+torchelie.lr_scheduler
+======================
 
 .. automodule:: torchelie.lr_scheduler
    :members:

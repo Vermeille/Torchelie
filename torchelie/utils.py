@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Optional, Iterable, Generator, TypeVar, Union, Any, overload
-from typing import Callable
+from typing import Callable, List
 
 T = TypeVar('T')
 T_Module = TypeVar('T_Module', bound=nn.Module)
@@ -13,6 +13,10 @@ Numeric = TypeVar('Numeric', torch.Tensor, float)
 
 
 def fast_zero_grad(net: nn.Module) -> None:
+    """
+    Set :code:`.grad` to None for all parameters instead of zeroing out. It is
+    faster.
+    """
     for p in net.parameters():
         p.grad = None
 
@@ -63,6 +67,7 @@ def kaiming_gain(m: T_Module,
                  nonlinearity='leaky_relu',
                  mode='fan_in') -> float:
     """
+    Return the std needed to initialize a weight matrix with given parameters.
     """
     fan = nn.init._calculate_correct_fan(m.weight, mode)
     gain = nn.init.calculate_gain(nonlinearity, param=a)
@@ -513,7 +518,13 @@ def as_multiclass_shape(preds, as_probs=False):
 
 
 class AutoStateDict:
-    def __init__(self, except_names=[]):
+    """
+    Inherit this class for automatic :code:`state_dict()` and
+    :code:`load_state_dict()` members based on `__dict__`
+
+    Exclusions can be specified via `except_names`
+    """
+    def __init__(self, except_names: List[str] = []):
         self._except = except_names
 
     def state_dict(self):
@@ -535,6 +546,10 @@ class AutoStateDict:
 
 
 def dist_setup(rank):
+    """
+    initialize a NCCL process group with default port / address. For internal
+    use.
+    """
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
 

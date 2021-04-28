@@ -10,7 +10,7 @@ class PatchDiscriminator(nn.Module):
         super().__init__()
         layers: List[nn.Module] = [
             tnn.Conv2dBNReLU(3, arch[0], kernel_size=4,
-                             tride=2).remove_batchnorm().leaky()
+                             stride=2).remove_batchnorm().leaky()
         ]
 
         in_ch = arch[0]

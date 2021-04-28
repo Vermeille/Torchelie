@@ -132,7 +132,7 @@ class ProjectionDiscr(nn.Module):
             x: argument for `feat_extractor`
             y: class label
         """
-        feats = self.head(self.bone(x, y))
+        feats = self.head(x)
         y_emb = self.emb(y)
         return self.discr(feats) + torch.mm(y_emb, feats.t())
 

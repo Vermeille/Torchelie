@@ -161,7 +161,7 @@ T_Module = TypeVar('T_Module', bound=nn.Module)
 
 def edit_model(m: T_Module, f: Callable[[nn.Module], nn.Module]) -> nn.Module:
     """
-    Allow to edit any part of a model by recursively edit its modules.
+    Allow to edit any part of a model by recursively editing its modules.
 
     For instance, in order to delete all dropout layers and change relus into
     leakyrelus

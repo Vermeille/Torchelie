@@ -16,8 +16,9 @@ import torch
 
 def FastImageFolder(root: str, *args, **kwargs) -> ImageFolder:
     """
-    This loads an ImageFolder dataset faster by caching the file list the first
-    time it is accessed.
+    Load an ImageFolder dataset faster by caching the file list the first
+    time it is accessed. Force refreshing by deleting
+    :code:`{root}/cached_list.pth`.
 
     Forwards all arguments to torchvision.datasets.ImageFolder
 
@@ -328,7 +329,8 @@ class WithIndexDataset(_Wrap):
 
 class CachedDataset(_Wrap):
     """
-    Wrap a dataset. Lazily caches elements returned by the underlying dataset.
+    Wrap a dataset. Lazily caches *in RAM* elements returned by the underlying
+    dataset.
 
     Args:
         ds (Dataset): A dataset

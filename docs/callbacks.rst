@@ -1,5 +1,5 @@
-Callbacks for Recipes
-=====================
+torchelie.callbacks
+===================
 
 Loggers
 -------

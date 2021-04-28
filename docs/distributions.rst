@@ -1,5 +1,5 @@
-Distributions
-=============
+torchelie.distributions
+=======================
 
 .. automodule:: torchelie.distributions
    :members:

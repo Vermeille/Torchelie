@@ -1,42 +1,41 @@
-Datasets
-========
+torchelie.datasets
+==================
+
+.. currentmodule:: torchelie.datasets
 
 Debug datasets
 ~~~~~~~~~~~~~~
 
-.. autoclass:: torchelie.datasets.ColoredColumns
-   :members:
-   :undoc-members:
-.. autoclass:: torchelie.datasets.ColoredRows
-   :members:
-   :undoc-members:
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
+
+   ColoredColumns
+   ColoredRows
+   MS1M
+   Pix2PixDataset
 
 Datasets wrappers
 ~~~~~~~~~~~~~~~~~
 
-.. autoclass:: torchelie.datasets.HorizontalConcatDataset
-   :members:
-   :undoc-members:
-.. autoclass:: torchelie.datasets.PairedDataset
-   :members:
-   :undoc-members:
-.. autoclass:: torchelie.datasets.MixUpDataset
-   :members:
-   :undoc-members:
-.. autoclass:: torchelie.datasets.NoexceptDataset
-   :members:
-   :undoc-members:
-.. autoclass:: torchelie.datasets.WithIndexDataset
-   :members:
-   :undoc-members:
-.. autoclass:: torchelie.datasets.CachedDataset
-   :members:
-   :undoc-members:
-.. autoclass:: torchelie.datasets.Subset
-   :members:
-   :undoc-members:
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
 
-.. autofunction:: torchelie.datasets.FastImageFolder
+   FastImageFolder
+   PairedDataset
+   RandomPairsDataset
+   MixUpDataset
+   Subset
+   NoexceptDataset
+   WithIndexDataset
+   CachedDataset
+   HorizontalConcatDataset
+   MergedDataset
+   UnlabeledImages
+   ImagesPaths
 
 Functions
 ~~~~~~~~~

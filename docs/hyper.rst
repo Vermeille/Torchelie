@@ -1,5 +1,5 @@
-Hyper parameters
-================
+torchelie.hyper
+===============
 
 .. automodule:: torchelie.hyper
    :members:

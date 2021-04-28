@@ -1,8 +1,5 @@
-Transforms
-==========
-
-Transforms
-~~~~~~~~~~
+torchelie.transforms
+====================
 
 .. autoclass:: torchelie.transforms.ResizeNoCrop
    :members:
@@ -19,8 +16,8 @@ Transforms
 .. autoclass:: torchelie.transforms.Canny
    :members:
 
-Differentiable
-~~~~~~~~~~~~~~
+torchelie.transforms.differentiable
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: torchelie.transforms.differentiable
    :members:

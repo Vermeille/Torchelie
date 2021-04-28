@@ -108,11 +108,11 @@ Activations
 torchelie.nn.utils
 ==================
 
-.. currentmodule:: torchelie.nn.utils
 
 Model edition
 ~~~~~~~~~~~~~
 
+.. currentmodule:: torchelie.nn.utils
 .. autosummary::
    :toctree: generated
    :template: klass.rst

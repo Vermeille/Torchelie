@@ -17,7 +17,7 @@ class Hourglass(nn.Module):
                  down_kernel=[3, 3, 3, 3, 3],
                  up_kernel=[3, 3, 3, 3, 3],
                  upsampling='bilinear') -> None:
-        super(Hourglass, self).__init__()
+        super().__init__()
 
         assert (len(down_channels) == len(down_kernel)), (len(down_channels),
                                                           len(down_kernel))
