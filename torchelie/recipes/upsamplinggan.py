@@ -192,7 +192,6 @@ class PerceptualDiscriminator(nn.Module):
     @tu.experimental
     def __init__(self, n_downscales=4):
         super().__init__()
-        layers = tu.FrozenModule(tch.models.PerceptualNet(layers))
 
 
 @tu.experimental
