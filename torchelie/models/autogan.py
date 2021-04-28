@@ -8,6 +8,7 @@ from torchelie.utils import xavier, kaiming
 from typing import List
 
 
+@experimental
 class AutoGAN(nn.Module):
     """
     Generator discovered in AutoGAN: Neural Architecture Search for Generative
@@ -30,7 +31,6 @@ class AutoGAN(nn.Module):
     blocks: nn.ModuleList
     to_rgb: nn.Sequential
 
-    @experimental
     def __init__(self,
                  arch: List[int],
                  n_skip_max: int = 2,

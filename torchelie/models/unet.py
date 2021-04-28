@@ -8,8 +8,8 @@ import torch
 import torch.nn as nn
 
 
+@tu.experimental
 class UNet(nn.Module):
-    @tu.experimental
     def __init__(self, arch: List[int]) -> None:
         super().__init__()
         self.arch = arch
@@ -55,8 +55,8 @@ class UNet(nn.Module):
         return self
 
 
+@tu.experimental
 class Pix2PixGenerator(UNet):
-    @tu.experimental
     def __init__(self, arch: List[int]) -> None:
         super().__init__(arch)
         self.remove_first_batchnorm()
@@ -89,8 +89,8 @@ class Pix2PixGenerator(UNet):
                 tnn.Noise(m.out_conv.conv_0.out_channels, True), 'noise')
 
 
+@tu.experimental
 class Pix2PixResidualGenerator(tnn.CondSeq):
-    @tu.experimental
     def __init__(self, arch: List[str])->None:
         super().__init__()
         self.arch = arch

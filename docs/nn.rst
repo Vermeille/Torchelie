@@ -1,5 +1,5 @@
-Layers
-======
+torchelie.nn
+============
 
 Convolutions
 ~~~~~~~~~~~~
@@ -105,8 +105,10 @@ Activations
    HardSigmoid
    HardSwish
 
-Utils
-=====
+torchelie.nn.utils
+==================
+
+.. currentmodule:: torchelie.nn.utils
 
 Model edition
 ~~~~~~~~~~~~~
@@ -116,11 +118,11 @@ Model edition
    :template: klass.rst
    :nosignatures:
 
-   utils.edit_model
-   utils.insert_after
-   utils.insert_before
-   utils.make_leaky
-   utils.remove_batchnorm
+   edit_model
+   insert_after
+   insert_before
+   make_leaky
+   remove_batchnorm
 
 Lambda
 ~~~~~~
@@ -130,9 +132,9 @@ Lambda
    :template: klass.rst
    :nosignatures:
 
-   utils.WeightLambda
-   utils.weight_lambda
-   utils.remove_weight_lambda
+   WeightLambda
+   weight_lambda
+   remove_weight_lambda
 
 Weight normalization / equalized learning rate
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -142,8 +144,8 @@ Weight normalization / equalized learning rate
    :template: klass.rst
    :nosignatures:
 
-   utils.weight_norm_and_equal_lr
-   utils.remove_weight_norm_and_equal_lr
-   utils.remove_weight_scale
-   utils.weight_scale
+   weight_norm_and_equal_lr
+   remove_weight_norm_and_equal_lr
+   remove_weight_scale
+   weight_scale
 
