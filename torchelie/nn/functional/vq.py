@@ -47,7 +47,7 @@ class VectorQuantization(Function):
         codes, inputs, beta, codebook, indices = ctx.saved_tensors
 
         # TODO: figure out proper vq loss reduction
-        vq_loss = F.mse_loss(inputs, codes).detach()
+        # vq_loss = F.mse_loss(inputs, codes).detach()
 
         # gradient of vq_loss
         diff = 2 * (inputs - codes) / inputs.numel()
