@@ -14,8 +14,6 @@ from torchelie.models import PerceptualNet
 
 @tu.experimental
 def hist_match(source, template):
-    oldshape = source.shape
-
     # get the set of unique pixel values and their corresponding indices and
     # counts
     sm, sM = source.min(), source.max()
@@ -96,10 +94,6 @@ class NeuralStyleLoss(nn.Module):
                            detach: bool) -> Dict[str, Dict[str, torch.Tensor]]:
         activations: Dict[str, torch.Tensor]
         _, activations = self.net(self.norm(img), detach=detach)
-        style = {
-            l: a
-            for l, a in activations.items() if l in self.style_layers
-        }
 
         grams = {
             layer_id: bgram(layer_data)
