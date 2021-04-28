@@ -5,8 +5,6 @@ import torch.nn.functional as F
 import torchelie.utils as tu
 import torchelie as tch
 from typing import List, Optional, Tuple, Union
-from .interpolate import InterpolateBilinear2d
-
 
 
 class AdaptiveConcatPool2d(nn.Module):
@@ -194,6 +192,7 @@ class InformationBottleneck(UnitGaussianPrior):
     pass
 
 
+@tu.experimental
 class Const(nn.Module):
     """
     Return a constant learnable volume. Disregards the input except its batch
@@ -202,7 +201,6 @@ class Const(nn.Module):
     Args:
         *size (ints): the shape of the volume to learn
     """
-    @tu.experimental
     def __init__(self, *size: int) -> None:
         super().__init__()
         self.size = size
@@ -219,8 +217,8 @@ class Const(nn.Module):
         return self.weight.expand(n, *self.weight.shape[1:]).contiguous()
 
 
+@tu.experimental
 class SinePositionEncoding2d(nn.Module):
-    @tu.experimental
     def __init__(self, n_fourier_freqs:int)->None:
         super().__init__()
         self.register_buffer('fourier_freqs', torch.randn(n_fourier_freqs, 2,
@@ -243,3 +241,21 @@ class MinibatchStddev(nn.Module):
         stddev_map = torch.sqrt(x.var(dim=0) + 1e-8).mean()
         stddev = stddev_map.expand(x.shape[0], 1, *x.shape[2:])
         return torch.cat([x, stddev], dim=1)
+
+
+class HardSigmoid(nn.Module):
+    """
+    Hard Sigmoid
+    """
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x.add_(0.5).clamp_(min=0, max=1)
+
+
+class HardSwish(nn.Module):
+    """
+    Hard Swish
+    """
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x.add(0.5).clamp_(min=0, max=1).mul_(x)
+
+

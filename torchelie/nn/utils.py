@@ -164,17 +164,17 @@ def edit_model(m: T_Module, f: Callable[[nn.Module], nn.Module]) -> nn.Module:
     Allow to edit any part of a model by recursively edit its modules.
 
     For instance, in order to delete all dropout layers and change relus into
-    leakyrelus:
+    leakyrelus
 
-    :code:```
-    def make_leaky_no_dropout(m):
-        if isinstance(m, nn.ReLU):
-            return nn.LeakyReLU(inplace=True)
-        if isinstance(m, nn.Dropout2d):
-            return nn.Identity()
-        return m
-    model = edit_model(model, make_leaky_no_dropout)
-    ```
+    ::
+
+        def make_leaky_no_dropout(m):
+            if isinstance(m, nn.ReLU):
+                return nn.LeakyReLU(inplace=True)
+            if isinstance(m, nn.Dropout2d):
+                return nn.Identity()
+            return m
+        model = edit_model(model, make_leaky_no_dropout)
 
     Args:
         m (nn.Module): the model to edit

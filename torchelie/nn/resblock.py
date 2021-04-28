@@ -34,7 +34,7 @@ class SEBlock(nn.Module):
         return x * self.proj(x)
 
 
-def make_resnet_shortcut(in_channels: int, out_channels: int,
+def _make_resnet_shortcut(in_channels: int, out_channels: int,
                          stride: int) -> CondSeq:
     shortcut = CondSeq()
     if stride != 1:
@@ -74,7 +74,7 @@ class ResBlockBottleneck(nn.Module):
 
         self.relu = nn.ReLU(True)
 
-        self.shortcut = make_resnet_shortcut(in_channels, out_channels, stride)
+        self.shortcut = _make_resnet_shortcut(in_channels, out_channels, stride)
 
         self.post = CondSeq()
 
@@ -192,7 +192,7 @@ class ResBlock(nn.Module):
                 ('bn2', constant_init(nn.BatchNorm2d(out_channels), 0))
             ]))
 
-        self.shortcut = make_resnet_shortcut(in_channels, out_channels, stride)
+        self.shortcut = _make_resnet_shortcut(in_channels, out_channels, stride)
 
         self.relu = nn.ReLU(True)
 

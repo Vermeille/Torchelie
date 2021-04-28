@@ -5,7 +5,6 @@ import torch.nn.functional as F
 from torchelie.utils import kaiming, experimental
 
 
-@experimental
 class MaskedConv2d(nn.Conv2d):
     """
     A masked 2D convolution for PixelCNN

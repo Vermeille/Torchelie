@@ -7,7 +7,7 @@ from torchelie.utils import kaiming, experimental
 from .interpolate import InterpolateBilinear2d
 
 
-def Conv2d(in_ch, out_ch, ks, stride=1, bias=True):
+def Conv2d(in_ch, out_ch, ks, stride=1, bias=True) -> nn.Conv2d:
     """
     A Conv2d with 'same' padding
     """
@@ -39,7 +39,7 @@ def Conv1x1(in_ch: int,
     return Conv2d(in_ch, out_ch, 1, stride=stride, bias=bias)
 
 
-#@experimental
+@experimental
 class Conv2dBNReLU(CondSeq):
     """
     A packed block with Conv-BatchNorm-ReLU

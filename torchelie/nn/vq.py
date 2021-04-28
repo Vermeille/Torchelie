@@ -99,7 +99,8 @@ class VQ(nn.Module):
 
 class MultiVQ(nn.Module):
     """
-    Multi codebooks quantization layer from _Neural Discrete Representation Learning_
+    Multi codebooks quantization layer from *Neural Discrete Representation
+    Learning*
 
     Args:
         latent_dim (int): number of features along which to quantize

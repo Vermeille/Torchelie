@@ -35,7 +35,7 @@ master_doc = 'index'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.mathjax',
-        'sphinx.ext.napoleon', 'sphinx_rtd_theme', #'sphinx.ext.autosummary'
+        'sphinx.ext.napoleon', 'sphinx_rtd_theme', 'sphinx.ext.autosummary'
         ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -60,4 +60,4 @@ autodoc_inherit_docstrings = False
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-#autosummary_generate = True
+autosummary_generate = True

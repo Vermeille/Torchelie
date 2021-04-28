@@ -56,7 +56,7 @@ def MConvNormReLU(in_ch: int,
 
 
 @experimental
-def MConvBNrelu(in_ch: int, out_ch: int, ks: int, center=True) -> CondSeq:
+def MConvBNReLU(in_ch: int, out_ch: int, ks: int, center=True) -> CondSeq:
     """
     A packed block with Masked Conv-BN-ReLU
 
@@ -71,22 +71,6 @@ def MConvBNrelu(in_ch: int, out_ch: int, ks: int, center=True) -> CondSeq:
         A packed block with MaskedConv-BN-ReLU as a CondSeq
     """
     return MConvNormReLU(in_ch, out_ch, ks, nn.BatchNorm2d, center=center)
-
-
-class HardSigmoid(nn.Module):
-    """
-    Hard Sigmoid
-    """
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x.add_(0.5).clamp_(min=0, max=1)
-
-
-class HardSwish(nn.Module):
-    """
-    Hard Swish
-    """
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x.add(0.5).clamp_(min=0, max=1).mul_(x)
 
 
 class SpadeResBlock(PreactResBlock):
@@ -192,6 +176,10 @@ class AutoGANGenBlock(nn.Module):
 
 
 class ResidualDiscrBlock(PreactResBlock):
+    """
+    A preactivated resblock suited for discriminators: it features leaky relus,
+    no batchnorm, and an optional downsampling operator.
+    """
     def __init__(self,
                  in_channels: int,
                  out_channels: int,
@@ -232,6 +220,7 @@ class ResidualDiscrBlock(PreactResBlock):
         return self
 
 
+@experimental
 class StyleGAN2Block(nn.Module):
     """
     A Upsample-(ModulatedConv-Noise-LeakyReLU)* block from StyleGAN2
@@ -246,7 +235,6 @@ class StyleGAN2Block(nn.Module):
             init scaling (weight_scale)
 
     """
-    @experimental
     def __init__(self,
                  in_ch: int,
                  out_ch: int,

@@ -4,95 +4,146 @@ Layers
 Convolutions
 ~~~~~~~~~~~~
 
-.. autofunction:: torchelie.nn.Conv2d
-.. autofunction:: torchelie.nn.Conv3x3
-.. autofunction:: torchelie.nn.Conv1x1
+.. currentmodule:: torchelie.nn
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
 
-.. autoclass:: torchelie.nn.MaskedConv2d
-   :members:
-   :undoc-members:
-.. autoclass:: torchelie.nn.TopLeftConv2d
-   :members:
-   :undoc-members:
+   Conv2d
+   Conv3x3
+   Conv1x1
+   MaskedConv2d
+   TopLeftConv2d
 
 Normalization
 ~~~~~~~~~~~~~
 
-.. autoclass:: torchelie.nn.AdaIN2d
-   :members:
-   :undoc-members:
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
 
-.. autoclass:: torchelie.nn.FiLM2d
-   :members:
-   :undoc-members:
-
-.. autoclass:: torchelie.nn.PixelNorm
-   :members:
-   :undoc-members:
-
-.. autoclass:: torchelie.nn.ImageNetInputNorm
-   :members:
-   :undoc-members:
+   AdaIN2d
+   FiLM2d
+   PixelNorm
+   ImageNetInputNorm
+   ConditionalBN2d
+   Spade2d
+   AttenNorm2d
 
 Misc
 ~~~~
 
-.. autoclass:: torchelie.nn.VQ
-   :members:
-   :undoc-members:
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
 
-.. autoclass:: torchelie.nn.Noise
-   :members:
-   :undoc-members:
-
-.. autoclass:: torchelie.nn.Debug
-   :members:
-   :undoc-members:
-
-.. autoclass:: torchelie.nn.Dummy
-   :members:
-   :undoc-members:
-
-.. autoclass:: torchelie.nn.Lambda
-   :members:
-   :undoc-members:
-
-.. autoclass:: torchelie.nn.Reshape
-   :members:
-   :undoc-members:
+   VQ
+   MultiVQ
+   Noise
+   Debug
+   Dummy
+   Lambda
+   Reshape
+   Interpolate2d
+   InterpolateBilinear2d
+   AdaptiveConcatPool2d
+   ModulatedConv
+   SelfAttention2d
+   GaussianPriorFunc
+   UnitGaussianPrior
+   InformationBottleneck
+   Const
+   SinePositionEncoding2d
+   MinibatchStddev
 
 Blocks
 ~~~~~~
 
-.. autoclass:: torchelie.nn.Conv2dBNReLU
-   :members:
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
+
+   MConvNormReLU
+   MConvBNReLU
+   SpadeResBlock
+   AutoGANGenBlock
+   ResidualDiscrBlock
+   StyleGAN2Block
+   SEBlock
+   PreactResBlock
+   PreactResBlockBottleneck
+   ResBlock
+   ResBlockBottleneck
+   ConvDeconvBlock
+   UBlock
+
 
 Sequential
 ~~~~~~~~~~
 
-.. autoclass:: torchelie.nn.WithSavedActivations
-   :members:
-   :undoc-members:
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
 
-.. autoclass:: torchelie.nn.CondSeq
-   :members:
-   :undoc-members:
+   WithSavedActivations
+   CondSeq
+   ModuleGraph
 
-.. autoclass:: torchelie.nn.ModuleGraph
-   :members:
-   :undoc-members:
+Activations
+~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
+
+   HardSigmoid
+   HardSwish
 
 Utils
 =====
 
-.. autoclass:: torchelie.nn.utils.WeightLambda
-   :members:
-   :undoc-members:
+Model edition
+~~~~~~~~~~~~~
 
-.. autofunction:: torchelie.nn.utils.weight_lambda
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
 
-.. autofunction:: torchelie.nn.utils.remove_weight_lambda
+   utils.edit_model
+   utils.insert_after
+   utils.insert_before
+   utils.make_leaky
+   utils.remove_batchnorm
 
-.. autofunction:: torchelie.nn.utils.weight_scale
+Lambda
+~~~~~~
 
-.. autofunction:: torchelie.nn.utils.remove_weight_scale
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
+
+   utils.WeightLambda
+   utils.weight_lambda
+   utils.remove_weight_lambda
+
+Weight normalization / equalized learning rate
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
+
+   utils.weight_norm_and_equal_lr
+   utils.remove_weight_norm_and_equal_lr
+   utils.remove_weight_scale
+   utils.weight_scale
+

@@ -5,6 +5,9 @@ from typing import List, Optional, Tuple, Union
 
 
 class Interpolate2d(nn.Module):
+    """
+    A wrapper around :func:`pytorch.nn.functional.interpolate`
+    """
     def __init__(self,
                  mode: str,
                  size: Optional[List[int]] = None,
@@ -37,6 +40,10 @@ class Interpolate2d(nn.Module):
 
 
 class InterpolateBilinear2d(Interpolate2d):
+    """
+    A wrapper around :func:`pytorch.nn.functional.interpolate` with bilinear
+    mode.
+    """
     def __init__(
         self,
         size: Optional[List[int]] = None,
