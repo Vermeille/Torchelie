@@ -1,10 +1,7 @@
-from collections import OrderedDict
-from typing import Optional, List, Tuple, cast
+from typing import List, Tuple, cast
 
-import torchelie as tch
 import torchelie.nn as tnn
 import torchelie.utils as tu
-import torch
 import torch.nn as nn
 
 

@@ -1,11 +1,9 @@
 import torch
-import functools
 import torch.nn as nn
 import torchelie.nn as tnn
 import torchelie.utils as tu
 
-from typing import List, Callable, Optional
-from typing_extensions import Literal
+from typing import List, Optional
 from .classifier import ClassificationHead
 
 PREACT_BLOCKS = (tnn.PreactResBlock, tnn.PreactResBlockBottleneck)

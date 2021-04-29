@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import torchelie.nn as tnn
-from torchelie.utils import kaiming, xavier
-from typing import List, Union, cast
+from torchelie.utils import kaiming
+from typing import cast
 from .classifier import ClassificationHead
 
 

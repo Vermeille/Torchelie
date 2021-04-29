@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torchelie.utils as tu
 import torchelie.nn as tnn
-import numpy as np
 
 
 @tu.experimental

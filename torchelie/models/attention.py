@@ -1,4 +1,3 @@
-import functools
 import torch
 import torchelie.utils as tu
 import torch.nn as nn
