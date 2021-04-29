@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 from typing import Tuple, Optional, Union, cast
 from .utils import remove_batchnorm, insert_after, insert_before

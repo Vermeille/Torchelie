@@ -5,8 +5,6 @@ import torch.nn.functional as F
 from .conv import Conv3x3
 from torchelie.utils import kaiming, xavier, experimental
 
-from typing import Optional, Tuple
-
 __all__ = []
 
 

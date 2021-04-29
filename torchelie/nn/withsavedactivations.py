@@ -1,8 +1,7 @@
 import functools
 
-import torch
 import torch.nn as nn
-from torchelie.utils import layer_by_name, freeze
+from torchelie.utils import layer_by_name
 
 
 class WithSavedActivations(nn.Module):

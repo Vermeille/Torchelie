@@ -5,7 +5,6 @@ import torch.nn as nn
 from .condseq import CondSeq
 from .conv import Conv2dBNReLU, Conv3x3
 from .interpolate import InterpolateBilinear2d
-from typing import Optional
 
 
 class ConvDeconvBlock(nn.Module):

@@ -1,6 +1,5 @@
 import torch.nn as nn
-from typing import Union, Tuple, Sequence, List, Iterator
-from collections import OrderedDict
+from typing import Union, Tuple, List
 from torchelie.utils import experimental
 
 
