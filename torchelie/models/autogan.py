@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from torchelie.utils import experimental
 import torchelie.nn as tnn
-from torchelie.utils import xavier, kaiming
+from torchelie.utils import xavier
 from typing import List
 
 

@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from torchelie.utils import experimental
 import torchelie.nn as tnn
-from torchelie.utils import kaiming, xavier
+from torchelie.utils import kaiming
 
 
 class ClassificationHead(tnn.CondSeq):

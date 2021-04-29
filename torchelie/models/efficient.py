@@ -1,5 +1,4 @@
 import math
-import torch
 import torch.nn as nn
 import torchelie.nn as tnn
 import torchelie.utils as tu

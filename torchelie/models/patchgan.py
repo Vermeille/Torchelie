@@ -1,8 +1,7 @@
 import torch.nn as nn
 import torchelie.nn as tnn
-import torchelie.utils as tu
-from torchelie.utils import kaiming, xavier
-from typing import Callable, Optional, List
+from torchelie.utils import kaiming
+from typing import List
 
 
 class PatchDiscriminator(nn.Module):
@@ -32,7 +31,7 @@ class PatchDiscriminator(nn.Module):
     def set_input_specs(self, in_channels: int) -> 'PatchDiscriminator':
         c = self.features[0].conv
         assert isinstance(c, nn.Conv2d)
-        self.features[0].conv = tu.kaiming(nn.Conv2d(in_channels,
+        self.features[0].conv = kaiming(nn.Conv2d(in_channels,
                                                      c.out_channels,
                                                      4,
                                                      stride=2,
@@ -44,7 +43,7 @@ class PatchDiscriminator(nn.Module):
     def set_kernel_size(self, kernel_size: int) -> 'PatchDiscriminator':
         def change_ks(m):
             if isinstance(m, nn.Conv2d) and m.kernel_size[0] != 1:
-                return tu.kaiming(
+                return kaiming(
                     nn.Conv2d(m.in_channels,
                               m.out_channels,
                               kernel_size,

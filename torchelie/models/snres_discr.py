@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 import torchelie.nn as tnn
 import torchelie.utils as tu
-from typing import List, Union, Tuple, cast, Optional
-from collections import OrderedDict
+from typing import List, Union, Optional
 from .classifier import ClassificationHead, ProjectionDiscr
 
 
