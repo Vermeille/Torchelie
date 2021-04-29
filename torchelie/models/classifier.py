@@ -9,7 +9,10 @@ from torchelie.utils import kaiming
 
 class ClassificationHead(tnn.CondSeq):
     """
-    A one layer classification head added on top of a feature extraction model.
+    A one layer classification head, turning activations / features into class
+    log probabilities.
+
+    It initially contains an avgpool-flatten-linear architecture.
 
     Args:
         in_channels (int): the number of features in the last layer of the
@@ -26,6 +29,9 @@ class ClassificationHead(tnn.CondSeq):
         self.to_resnet_style()
 
     def to_resnet_style(self) -> 'ClassificationHead':
+        """
+        Set the classifier architecture to avgpool-flatten-linear.
+        """
         self._modules = OrderedDict([
             ('pool', nn.AdaptiveAvgPool2d(1)),
             ('reshape', tnn.Reshape(self.in_channels)),
@@ -36,6 +42,9 @@ class ClassificationHead(tnn.CondSeq):
         return self
 
     def to_two_layers(self, hidden_channels: int) -> 'ClassificationHead':
+        """
+        Set the classifier architecture to avgpool-flatten-linear1-relu-linear2.
+        """
         self._modules = OrderedDict([
             ('pool', nn.AdaptiveAvgPool2d(1)),
             ('reshape', tnn.Reshape(self.in_channels)),
@@ -46,6 +55,11 @@ class ClassificationHead(tnn.CondSeq):
         return self
 
     def to_vgg_style(self, hidden_channels: int) -> 'ClassificationHead':
+        """
+        Set the classifier architecture to
+        avgpool-flatten-linear1-relu-dropout-linear2-relu-dropout-linear3, like
+        initially done with VGG.
+        """
         self._modules = OrderedDict([
             ('pool', nn.AdaptiveAvgPool2d(7)),
             ('reshape', tnn.Reshape(7 * 7 * self.in_channels)),
@@ -62,6 +76,9 @@ class ClassificationHead(tnn.CondSeq):
         return self
 
     def to_convolutional(self) -> 'ClassificationHead':
+        """
+        Remove pooling and flattening operations, convert linears to conv1x1
+        """
         del self.reshape
         del self.pool
 
@@ -73,21 +90,34 @@ class ClassificationHead(tnn.CondSeq):
         return self
 
     def leaky(self) -> 'ClassificationHead':
+        """
+        Make relus leaky
+        """
         tnn.utils.make_leaky(self)
         return self
 
     def set_num_classes(self, classes: int) -> 'ClassificationHead':
+        """
+        change the number of output classes
+        """
         self.num_classes = classes
         old = self[-1]
         self[-1] = kaiming(nn.Linear(old.in_features, self.num_classes))
         return self
 
     def remove_pool(self, spatial_size: int) -> 'ClassificationHead':
+        """
+        remove the pooling operation
+        """
         self.set_pool_size(spatial_size)
         del self.pool
         return self
 
     def set_pool_size(self, size: int) -> 'ClassificationHead':
+        """
+        Average pool to spatial size :code:`size` rather than 1. Recreate the
+        first Linear to accomodate the change.
+        """
         self.pool = nn.AdaptiveAvgPool2d(size)
         self.reshape = tnn.Reshape(size * size * self.in_channels)
         self.linear1 = kaiming(
@@ -97,6 +127,9 @@ class ClassificationHead(tnn.CondSeq):
 
     @experimental
     def rm_dropout(self) -> 'ClassificationHead':
+        """
+        Remove the dropout layers if any.
+        """
         if hasattr(self, 'dropout1'):
             del self.dropout1
         if hasattr(self, 'dropout2'):
@@ -104,10 +137,11 @@ class ClassificationHead(tnn.CondSeq):
         return self
 
 
+@experimental
 class ProjectionDiscr(nn.Module):
     """
     A classification head for conditional GANs discriminators using a
-    projection discriminator from https://arxiv.org/abs/1802.05637
+    `projection discriminator <https://arxiv.org/abs/1802.05637>`_ .
 
     Args:
         feat_extractor (nn.Module): a feature extraction model

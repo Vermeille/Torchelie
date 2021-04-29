@@ -622,7 +622,7 @@ def experimental(func):
 
     def deprecate_doc(doc):
         if doc is None:
-            return f'.. warning::\n  {msg}\n\n.\n'
+            return f'**Experimental**\n\n.. warning::\n  {msg}\n\n.\n'
         else:
             return ('**Experimental**: ' + dedent(func.__doc__) +
                     f'.. warning::\n {msg}\n\n\n')
