@@ -6,7 +6,6 @@ WARNING: this might move to torchelie.recipes.callbacks
 """
 import time
 import copy
-from collections import defaultdict
 import os
 from shutil import copyfile
 from pathlib import Path
@@ -15,7 +14,6 @@ import torch.nn as nn
 from visdom import Visdom
 
 from torchelie.utils import dict_by_key, recursive_state_dict
-from torchelie.utils import load_recursive_state_dict, AutoStateDict
 from torchelie.callbacks.inspector import ClassificationInspector as CIVis
 from torchelie.callbacks.inspector import SegmentationInspector as SIVis
 import torchelie.utils as tu
