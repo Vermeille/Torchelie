@@ -3,7 +3,6 @@ import base64 as b64
 from typing import Union, List, Optional
 
 import torch
-import torch.nn.functional as F
 from torchelie.utils import as_multiclass_shape, experimental
 
 import numpy as np
