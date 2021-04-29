@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from typing import List, Tuple
+from typing import Tuple
 from typing_extensions import Literal
 
 
