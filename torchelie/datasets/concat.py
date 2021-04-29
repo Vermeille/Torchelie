@@ -1,7 +1,6 @@
-import torch
 from torch.utils.data import Dataset
 from torchelie.utils import indent
-from typing import List, Tuple, Optional, Any, Generic, TypeVar, Dict, Sequence
+from typing import List, Tuple, Any, Generic, TypeVar, Sequence
 from typing import overload
 
 T = TypeVar('T')

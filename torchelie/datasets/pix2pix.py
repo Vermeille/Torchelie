@@ -1,7 +1,6 @@
 import torch
 from torchvision.transforms.functional import to_tensor
 from PIL import Image
-from torchvision.datasets import ImageFolder
 from torchvision.datasets.utils import download_and_extract_archive
 from typing import Optional, Callable, Tuple, List
 import os
