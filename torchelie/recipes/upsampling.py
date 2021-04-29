@@ -36,7 +36,6 @@ def cutblur(base, patcher):
 
 @tu.experimental
 def train(rank, world_size):
-    from torchvision.datasets import ImageFolder
     import torchvision.transforms as TF
     net = make_net(base_ch=16, max_ch=512, n_down=6)
 

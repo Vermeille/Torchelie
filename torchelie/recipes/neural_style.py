@@ -10,7 +10,7 @@ from torchvision.transforms.functional import to_pil_image, to_tensor
 
 import torchelie as tch
 from torchelie.loss import NeuralStyleLoss
-from torchelie.data_learning import ParameterizedImg, PixelImage, SpectralImage
+from torchelie.data_learning import ParameterizedImg
 from torchelie.recipes.recipebase import Recipe
 import torchelie.callbacks as tcb
 

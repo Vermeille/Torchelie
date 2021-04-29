@@ -11,7 +11,6 @@ import random
 import torch
 import torchvision.transforms as TF
 
-import torchelie
 import torchelie.nn as tnn
 import torchelie.callbacks as tcb
 from torchelie.optim import DeepDreamOptim

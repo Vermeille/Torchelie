@@ -2,11 +2,10 @@ import torch
 import torchelie as tch
 import torchelie.utils as tu
 from torchelie.recipes.gan import GANRecipe
-from torchelie.transforms import MultiBranch
 import torchvision.transforms as TF
 import torchelie.loss.gan.standard as gan_loss
 from torchelie.loss.gan.penalty import zero_gp
-from torchelie.datasets.pix2pix import UnlabeledImages, Pix2PixDataset
+from torchelie.datasets.pix2pix import UnlabeledImages
 from torchelie.models import *
 import torch.nn as nn
 
@@ -71,7 +70,6 @@ def Crop(x):
 @tu.experimental
 def celeba(male, tfm=None):
     from torchvision.datasets import CelebA
-    import os
     celeba = CelebA('~/.torch/celeba', download=True, target_type=[])
     male_idx = celeba.attr_names.index('Male')
     files = [

@@ -6,13 +6,10 @@ import torch.nn as nn
 import torchelie as tch
 import torchelie.utils as tu
 import torchelie.callbacks as tcb
-import torchelie.nn as tnn
 import torchelie.loss.gan.standard as gan_loss
-from torchelie.optim import RAdamW, Lookahead
+from torchelie.optim import RAdamW
 from torchelie.loss.gan.penalty import zero_gp
 from torchelie.recipes.gan import GANRecipe
-from collections import OrderedDict
-from typing import Optional
 from torchelie.callbacks.avg import ExponentialAvg
 
 

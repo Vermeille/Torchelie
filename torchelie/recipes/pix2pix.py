@@ -7,7 +7,7 @@ import torchvision.transforms as TF
 import torchelie.loss.gan.standard as gan_loss
 from torchelie.loss.gan.penalty import zero_gp
 from torchelie.datasets.pix2pix import UnlabeledImages, Pix2PixDataset
-from torchelie.models import residual_patch70, pix2pix_256, pix2pix_res_dev
+from torchelie.models import residual_patch70, pix2pix_res_dev
 import torch.nn as nn
 
 @tu.experimental
