@@ -4,8 +4,8 @@ import torch.distributed as dist
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional, Iterable, Generator, TypeVar, Union, Any, overload
-from typing import Callable, List
+from typing import Optional, Iterable, TypeVar, Any, overload
+from typing import List
 
 T = TypeVar('T')
 T_Module = TypeVar('T_Module', bound=nn.Module)
