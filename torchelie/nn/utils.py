@@ -5,7 +5,6 @@ from torch.nn import Module
 from collections import OrderedDict
 from torch.nn.parameter import Parameter
 from typing import Any, TypeVar, Callable
-from torch.nn.utils.weight_norm import WeightNorm
 
 
 class WeightLambda:

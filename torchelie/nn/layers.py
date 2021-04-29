@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchelie.utils as tu
 import torchelie as tch
-from typing import List, Optional, Tuple, Union
+from typing import Optional
 
 
 class AdaptiveConcatPool2d(nn.Module):

@@ -1,12 +1,12 @@
 import torch
 import torch.nn as nn
 from .conv import Conv2d, Conv3x3, Conv1x1
-from torchelie.utils import kaiming, xavier, normal_init, constant_init
+from torchelie.utils import kaiming, constant_init
 from .condseq import CondSeq
 from .interpolate import InterpolateBilinear2d
 import collections
 from typing import List, Tuple, Optional, cast
-from .utils import remove_batchnorm, insert_after, insert_before
+from .utils import remove_batchnorm, insert_before
 
 
 class SEBlock(nn.Module):

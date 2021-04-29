@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional
 
 
 class Interpolate2d(nn.Module):
