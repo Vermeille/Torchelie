@@ -10,10 +10,7 @@ directory with a folder per class, you can run it with a command line.
 `python3 -m torchelie.recipes.classification --trainset path/to/train --testset
 path/to/test`
 """
-import copy
-
 import torch
-import torch.optim as optim
 import torchvision.models as tvmodels
 
 import torchelie.callbacks as tcb

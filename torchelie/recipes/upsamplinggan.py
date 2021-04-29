@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchelie as tch
 import torchelie.utils as tu
-import torchelie.models.unet as U
 from torchelie.recipes.gan import GANRecipe
 from torchelie.transforms.differentiable import center_crop
 import torchvision.transforms as TF
@@ -247,7 +246,6 @@ class PairedFrames:
 
 @tu.experimental
 def train(rank, world_size):
-    from torchvision.datasets import ImageFolder
     import torchelie.loss.gan.standard as gan_loss
     from torchelie.loss.gan.penalty import zero_gp
     scale = 1
