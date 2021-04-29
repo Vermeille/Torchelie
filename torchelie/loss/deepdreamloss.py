@@ -2,11 +2,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-from torchelie.utils import bgram
 import torchelie.nn as tnn
-
-from torchelie.nn import ImageNetInputNorm
-from torchelie.models import PerceptualNet
 
 
 class DeepDreamLoss(nn.Module):
