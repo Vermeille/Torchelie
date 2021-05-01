@@ -59,7 +59,37 @@ class ImagesPaths:
         return img
 
 
-class Pix2PixDataset(UnlabeledImages):
+class SideBySideImagePairsDataset(UnlabeledImages):
+    """
+    Dataset for side-by-side images. It splits the images so that the same
+    transforms are applied to pairs and remain meaningful.
+    """
+    def __init__(self, root: str, transform: Optional[Callable] = None)->None:
+        super().__init__(root, transform)
+
+    def __getitem__(self, i: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Return the ith paired image as (img1, img2)
+        """
+        img_path = self.samples[i]
+        img = to_tensor(Image.open(img_path))
+
+        img = self._concat(img)
+
+        if self.transform is not None:
+            img = self.transform(img)
+        return self._split(img)
+
+    def _concat(self, x: torch.Tensor) -> torch.Tensor:
+        w = x.shape[2] // 2
+        return torch.cat([x[:, :, w:2 * w], x[:, :, :w]], dim=0)
+
+    def _split(self, x):
+        c = x.shape[0] //2
+        return x[:c], x[c:]
+
+
+class Pix2PixDataset(SideBySideImagePairsDataset):
     """
     Paired images datasets made for the Pix2Pix paper for paired image
     translation.
@@ -95,26 +125,3 @@ class Pix2PixDataset(UnlabeledImages):
                 root)
         super().__init__(f'{root}/{which}/{split}', transform=transform)
 
-    def _concat(self, x: torch.Tensor) -> torch.Tensor:
-        w = x.shape[2] // 2
-        return torch.cat([x[:, :, w:2 * w], x[:, :, :w]], dim=0)
-
-    def _split(self, x):
-        c = x.shape[0] //2
-        return x[:c], x[c:]
-
-    def __len__(self) -> int:
-        return len(self.samples)
-
-    def __getitem__(self, i: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Return the ith paired image as (img1, img2)
-        """
-        img_path = self.samples[i]
-        img = to_tensor(Image.open(img_path))
-
-        img = self._concat(img)
-
-        if self.transform is not None:
-            img = self.transform(img)
-        return self._split(img)

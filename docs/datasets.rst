@@ -16,6 +16,19 @@ Debug datasets
    MS1M
    Pix2PixDataset
 
+Loaders
+~~~~~~~
+
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
+
+   FastImageFolder
+   UnlabeledImages
+   ImagesPaths
+   SideBySideImagePairsDataset
+
 Datasets wrappers
 ~~~~~~~~~~~~~~~~~
 
@@ -24,7 +37,6 @@ Datasets wrappers
    :template: klass.rst
    :nosignatures:
 
-   FastImageFolder
    PairedDataset
    RandomPairsDataset
    MixUpDataset
@@ -34,8 +46,6 @@ Datasets wrappers
    CachedDataset
    HorizontalConcatDataset
    MergedDataset
-   UnlabeledImages
-   ImagesPaths
 
 Functions
 ~~~~~~~~~
