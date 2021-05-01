@@ -15,4 +15,5 @@ from .condseq import CondSeq
 from .graph import ModuleGraph
 from .encdec import *
 from .interpolate import *
+from .resblock import *
 import torchelie.nn.utils
