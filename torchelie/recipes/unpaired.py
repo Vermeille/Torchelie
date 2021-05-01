@@ -44,8 +44,8 @@ class Matcher(nn.Module):
         self.proj_B = tu.kaiming(tnn.Conv1x1(128, self.proj_size), dynamic=True)
 
     def forward(self, fake, ins):
-        #fake = F.interpolate(fake, scale_factor=0.5, mode='bilinear')
-        #ins = F.interpolate(ins, scale_factor=0.5, mode='bilinear')
+        # fake = F.interpolate(fake, scale_factor=0.5, mode='bilinear')
+        # ins = F.interpolate(ins, scale_factor=0.5, mode='bilinear')
         f1 = self.proj_A(self.net(fake))
         f2 = self.proj_B(self.net(ins))
         n, c, h, w = f1.shape
@@ -100,7 +100,7 @@ def train(rank, world_size):
 
     for m in G.modules():
         if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
-            #tu.kaiming(m, a=0.2, dynamic=True)
+            # tu.kaiming(m, a=0.2, dynamic=True)
             weight_norm_and_equal_lr(m, 0.2)
     G.remove_batchnorm()
 
@@ -171,8 +171,8 @@ def train(rank, world_size):
             clf_loss = opts.consistency * M(out * 2 - 1, x * 2 -
                     1)['loss']
 
-        #labels = torch.arange(len(matches), device=matches.device)
-        #clf_loss = opts.consistency * F.cross_entropy( matches, torch.arange(len(matches), device=matches.device))
+        # labels = torch.arange(len(matches), device=matches.device)
+        # clf_loss = opts.consistency * F.cross_entropy( matches, torch.arange(len(matches), device=matches.device))
         clf_loss.backward()
         return {'G_loss': loss.item()}
 
@@ -272,7 +272,7 @@ def train(rank, world_size):
         tch.callbacks.Log('out', 'out'),
         tch.callbacks.Log('batch.0', 'x'),
         tch.callbacks.Log('batch.1', 'y'),
-        #tch.callbacks.Log('batch.0.1', 'y'),
+        # tch.callbacks.Log('batch.0.1', 'y'),
         tch.callbacks.WindowedMetricAvg('fake_loss', 'fake_loss'),
         tch.callbacks.WindowedMetricAvg('real_loss', 'real_loss'),
         tch.callbacks.WindowedMetricAvg('prob_fake', 'prob_fake'),

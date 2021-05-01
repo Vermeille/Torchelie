@@ -20,24 +20,24 @@ def hist_match(source, template):
     RES = 256
     ssz = (sM - sm) / (RES - 1)
     tsz = (tM - tm) / (RES - 1)
-    #s_counts, s_values = np.histogram(source, bins=256, range=(m, M))
-    #t_counts, t_values = np.histogram(template, bins=256, range=(m, M))
+    # s_counts, s_values = np.histogram(source, bins=256, range=(m, M))
+    # t_counts, t_values = np.histogram(template, bins=256, range=(m, M))
     s_counts = torch.histc(source, bins=RES, min=sm, max=sM)
     t_counts = torch.histc(template, bins=RES, min=tm, max=tM)
 
     # take the cumsum of the counts and normalize by the number of pixels to
     # get the empirical cumulative distribution functions for the source and
     # template images (maps pixel value --> quantile)
-    #s_quantiles = np.cumsum(s_counts).astype(np.float64)
+    # s_quantiles = np.cumsum(s_counts).astype(np.float64)
     s_quantiles = torch.cumsum(s_counts, dim=0).float()
     s_quantiles /= s_quantiles[-1].clone()
-    #t_quantiles = np.cumsum(t_counts).astype(np.float64)
+    # t_quantiles = np.cumsum(t_counts).astype(np.float64)
     t_quantiles = torch.cumsum(t_counts, dim=0).float()
     t_quantiles /= t_quantiles[-1].clone()
 
     # interpolate linearly to find the pixel values in the template image
     # that correspond most closely to the quantiles in the source image
-    #interp_t_values = np.interp(s_quantiles, t_quantiles, t_values[1:])
+    # interp_t_values = np.interp(s_quantiles, t_quantiles, t_values[1:])
     interp_t_values = (t_quantiles[:, None] <
                        s_quantiles[None, :]).sum(0).float().mul_(tsz).add_(tm)
 

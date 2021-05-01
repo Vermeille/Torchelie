@@ -117,7 +117,7 @@ class SpectralImage(LearnableImage):
         """
         Return the image
         """
-        #return self.bite[0].to(self.spectrum_var.device)
+        # return self.bite[0].to(self.spectrum_var.device)
         n, ch, h, w = self.shape
 
         scaled_spectrum = self.spectrum_var * self.spertum_scale
