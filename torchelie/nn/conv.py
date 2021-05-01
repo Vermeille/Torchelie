@@ -175,7 +175,7 @@ class ConvBlock(CondSeq):
             self
         """
         if hasattr(self.norm, 'bias') and self.norm is not None:
-            self.norm.bias = None  #type: ignore
+            self.norm.bias = None  # type: ignore
         self.conv.bias = None
         return self
 
