@@ -151,7 +151,7 @@ def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
 class _Wrap:
     def __init__(self, instance):
         # FIXME: NOT WORKING WHEN SETTING MEMBERS
-        #self.__dict__ = instance.__dict__
+        # self.__dict__ = instance.__dict__
         self.ds = instance
 
     def __getattr__(self, attr):

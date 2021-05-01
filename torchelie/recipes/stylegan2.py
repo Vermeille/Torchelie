@@ -317,7 +317,7 @@ def train(rank, world_size):
     import argparse
 
     parser = argparse.ArgumentParser()
-    #parser.add_argument('--device', default='cuda')
+    # parser.add_argument('--device', default='cuda')
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--noise-size', type=int, default=128)
     parser.add_argument('--img-size', type=int, default=64)

@@ -67,40 +67,40 @@ class EfficientNet(tnn.CondSeq):
             return int(224 * 1.15**B)
 
         super(EfficientNet, self).__init__(
-            #Stage 1
-            #nn.UpsamplingBilinear2d(size=(r(), r())),
+            # Stage 1
+            # nn.UpsamplingBilinear2d(size=(r(), r())),
             tu.kaiming(tnn.Conv3x3(in_ch, ch(32), stride=2, bias=False)),
             nn.BatchNorm2d(ch(32)),
             tnn.HardSwish(),
 
-            #Stage 2
+            # Stage 2
             MBConv(ch(32), ch(16), 3, mul_factor=1),
             *[
                 MBConv(ch(16), ch(16), 3, mul_factor=1)
                 for _ in range(l(1) - 1)
             ],
 
-            #Stage 3
+            # Stage 3
             MBConv(ch(16), ch(24), 3, stride=2),
             *[MBConv(ch(24), ch(24), 3) for _ in range(l(2) - 1)],
 
-            #Stage 4
+            # Stage 4
             MBConv(ch(24), ch(40), 5, stride=2),
             *[MBConv(ch(40), ch(40), 5) for _ in range(l(2) - 1)],
 
-            #Stage 5
+            # Stage 5
             MBConv(ch(40), ch(80), 3, stride=2),
             *[MBConv(ch(80), ch(80), 3) for _ in range(l(3) - 1)],
 
-            #Stage 6
+            # Stage 6
             MBConv(ch(80), ch(112), 5),
             *[MBConv(ch(112), ch(112), 5) for _ in range(l(3) - 1)],
 
-            #Stage 7
+            # Stage 7
             MBConv(ch(112), ch(192), 5, stride=2),
             *[MBConv(ch(192), ch(192), 5) for _ in range(l(4) - 1)],
 
-            #Stage 8
+            # Stage 8
             MBConv(ch(192), ch(320), 3),
             *[MBConv(ch(320), ch(320), 3) for _ in range(l(1) - 1)],
             tu.kaiming(tnn.Conv1x1(ch(320), ch(1280), bias=False)),
