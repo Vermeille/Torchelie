@@ -2,6 +2,7 @@ import torch.nn as nn
 import torchelie.nn as tnn
 from torchelie.utils import kaiming
 from typing import List
+from torchelie.transforms.differentiable import BinomialFilter2d
 
 
 class PatchDiscriminator(nn.Module):
@@ -27,6 +28,31 @@ class PatchDiscriminator(nn.Module):
 
     def forward(self, x):
         return self.classifier(self.features(x))
+
+    def to_equal_lr(self, leak=0.2) -> 'ResidualDiscriminator':
+        for m in self.modules():
+            if isinstance(m, (nn.Linear, nn.Conv2d)):
+                kaiming(m, dynamic=True, a=leak)
+
+        return self
+
+    def to_binomial_downsampling(self) -> 'PatchDiscriminator':
+        for m in self.features.modules():
+            if isinstance(m, tnn.Conv2dBNReLU):
+                if m.conv.stride[0] != 2:
+                    continue
+                tnn.utils.insert_before(m, 'conv', BinomialFilter2d(2), 'pool')
+                m.conv.stride = (1, 1)
+        return self
+
+    def to_avg_pool(self) -> 'PatchDiscriminator':
+        for m in self.features.modules():
+            if isinstance(m, tnn.Conv2dBNReLU):
+                if m.conv.stride[0] != 2:
+                    continue
+                tnn.utils.insert_before(m, 'conv', nn.AvgPool2d(2), 'pool')
+                m.conv.stride = (1, 1)
+        return self
 
     def set_input_specs(self, in_channels: int) -> 'PatchDiscriminator':
         c = self.features[0].conv

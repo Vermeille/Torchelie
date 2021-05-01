@@ -1,3 +1,4 @@
+import torch
 from typing import List, cast
 
 import torchelie.nn as tnn
@@ -5,24 +6,34 @@ import torchelie.utils as tu
 import torch.nn as nn
 from .unet import UNet
 
-@tu.experimental
+
 class Pix2PixGenerator(UNet):
+    """
+    UNet generator from Pix2Pix. Dropout layers have been substitued with Noise
+    injections from StyleGAN2.
+
+    Args:
+        arch (List[int]): the number of channel for each depth level of the
+            UNet.
+    """
     def __init__(self, arch: List[int]) -> None:
         super().__init__(arch)
         self.remove_first_batchnorm()
+
+        self.features.input = tnn.CondSeq(
+            tnn.SinePositionEncoding2d(15),
+            tnn.Conv2dBNReLU(33, int(arch[0]), 7),
+        )
 
         encdec = cast(nn.Module, self.features.encoder_decoder)
         for m in encdec.modules():
             if isinstance(m, tnn.UBlock):
                 m.to_bilinear_sampling()
                 m.set_encoder_num_layers(1)
+                m.set_decoder_num_layers(1)
 
         tnn.utils.make_leaky(self)
         self.classifier.conv.relu = nn.Sigmoid()
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                m.padding_mode = 'reflect'
 
         self._add_noise()
 
@@ -38,75 +49,27 @@ class Pix2PixGenerator(UNet):
                 m.out_conv.conv_0, 'norm',
                 tnn.Noise(m.out_conv.conv_0.out_channels, True), 'noise')
 
+    def to_equal_lr(self) -> 'Pix2PixHDGlobalGenerator':
+        return tnn.utils.net_to_equal_lr(self)
 
-@tu.experimental
-class Pix2PixResidualGenerator(tnn.CondSeq):
-    """
-    Residual generator used in `Pix2PixHD <https://arxiv.org/abs/1711.11585>`_
-    .
-
-    :code:`arch` is a list of strings representing blocks.
-
-    For example, this creates a first conv with 32 output channels, 3
-    downsampling stride 2 convs that double the number of channels, 5 residual
-    blocks, 3 upsampling convs halving the number of channels, and a final conv
-    that converts back to RGB.
-
-    :code:```
-    Pix2PixResidualGenerator(['32', 'd128', 'd512', 'd512', 'R512', 'R512',
-        'R512', 'R512', 'R512', 'u512', 'u512', 'u128'])
-    ```
-
-    """
-    def __init__(self, arch: List[str])->None:
-        super().__init__()
-        self.arch = arch
-        self.input = tnn.CondSeq(
-            tnn.SinePositionEncoding2d(15),
-            tnn.Conv2dBNReLU(33, int(arch[0]), 7),
-        )
-        ch, i = int(arch[0]), 1
-
-        self.encode = tnn.CondSeq()
-        while arch[i][0] == 'd':
-            out_ch = int(arch[i][1:])
-            self.encode.add_module(f'conv_{i}', tnn.Conv2dBNReLU(ch, out_ch, 3, stride=2))
-            ch = out_ch
-            i += 1
-
-        self.transform = tnn.CondSeq()
-        while arch[i][0] == 'R':
-            out_ch = int(arch[i][1:])
-            self.encode.add_module(f'transform_{i}', tnn.ResBlock(ch, out_ch))
-            ch = out_ch
-            i += 1
-
-        self.decode = tnn.CondSeq()
-        while i < len(arch) and arch[i][0] == 'u':
-            out_ch = int(arch[i][1:])
-            self.encode.add_module(f'out_conv_{i}', tnn.Conv2dBNReLU(ch, out_ch, 3,
-                stride=1).add_upsampling())
-            ch = out_ch
-            i += 1
-        self.to_rgb = tnn.Conv2dBNReLU(out_ch, 3, 7)
-        self.to_rgb.relu = nn.Sigmoid()
-
-        def to_instance_norm(m):
-            if isinstance(m, nn.BatchNorm2d):
-                return nn.InstanceNorm2d(m.num_features, affine=True)
+    def set_padding_mode(self, mode: str) -> 'Pix2PixGenerator':
+        for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                m.padding_mode = 'reflect'
-            return m
-        tnn.utils.edit_model(self, to_instance_norm)
+                m.padding_mode = mode
+        return self
 
 
 def pix2pix_256() -> Pix2PixGenerator:
-    return Pix2PixGenerator([64, 128, 256, 512, 512, 512, 512])
+    """
+    The architecture used in `Pix2Pix <https://arxiv.org/abs/1611.07004>`_,
+    able to train on 256x256 or 512x512 images.
+    """
+    return Pix2PixGenerator([64, 128, 256, 512, 512, 512, 512, 512])
 
-
-def pix2pix_res_dev() -> Pix2PixResidualGenerator:
-    return Pix2PixResidualGenerator(['32', 'd128', 'd512', 'd512', 'R512', 'R512',
-        'R512', 'R512', 'R512', 'u512', 'u512', 'u128'])
 
 def pix2pix_dev() -> Pix2PixGenerator:
-    return Pix2PixGenerator([32, 64, 128, 128, 256, 256, 512])
+    """
+    A version of pix2pix_256 with less filter to use less memory and compute.
+    """
+    return Pix2PixGenerator([32, 64, 128, 128, 256, 256, 512, 512])
+

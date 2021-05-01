@@ -51,8 +51,8 @@ Resnets
    wide_resnet101
    wide_resnet50
 
-GAN from Pix2Pix
-~~~~~~~~~~~~~~~~
+Pix2Pix
+~~~~~~~
 
 .. autosummary::
    :toctree: generated
@@ -60,7 +60,6 @@ GAN from Pix2Pix
    :nosignatures:
 
    Pix2PixGenerator
-   Pix2PixResidualGenerator
    pix2pix_256
    pix2pix_res_dev
    pix2pix_dev
