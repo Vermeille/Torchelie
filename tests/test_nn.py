@@ -46,7 +46,7 @@ def test_attnnorm():
 
 
 def test_blocks():
-    m = MConvBNrelu(4, 8, 3)
+    m = MConvBNReLU(4, 8, 3)
     m(torch.randn(1, 4, 8, 8))
 
     m = Conv2dBNReLU(4, 8, 3)
