@@ -266,3 +266,13 @@ Modules:
   classification task `argmin L(f(x, z), y)` where `x` is a MNIST sample, `z` a
   class label, and `y = 1` if `z` is the correct label for `x`, 0 otherwise.
 
+## Testing without OpenCV
+
+Since OpenCV is an optional dependency, you might want to run tests in such a
+setup (therefore not testing Canny). You can do so by excluding the
+`require_opencv` [pytest custom
+marker](https://docs.pytest.org/en/stable/example/markers.html) like so:
+
+```shell
+pytest -m "not require_opencv"
+```
