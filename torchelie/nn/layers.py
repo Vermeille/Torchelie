@@ -228,7 +228,7 @@ class SinePositionEncoding2d(nn.Module):
         h = torch.arange(0, x.shape[2] * 0.1, 0.1)
         v = torch.arange(0, x.shape[3] * 0.1, 0.1)
         hv = torch.stack(torch.meshgrid(h, v), dim=0)[None]
-        out = F.conv2d(hv.to(x.device), self.fourier_freqs)
+        out = F.conv2d(hv.to(x.device, x.dtype), self.fourier_freqs)
         out = torch.cat([torch.sin(out), torch.cos(out)], dim=1)
         out /= math.sqrt(out.shape[1])
         out = torch.cat([x, out.expand(x.shape[0], -1, -1, -1)], dim=1)

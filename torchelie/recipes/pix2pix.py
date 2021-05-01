@@ -1,3 +1,5 @@
+from typing import Tuple
+import os
 import torch
 import torchelie as tch
 import torchelie.utils as tu
@@ -6,78 +8,136 @@ from torchelie.transforms import MultiBranch
 import torchvision.transforms as TF
 import torchelie.loss.gan.standard as gan_loss
 from torchelie.loss.gan.penalty import zero_gp
-from torchelie.datasets.pix2pix import UnlabeledImages, Pix2PixDataset
-from torchelie.models import residual_patch70, pix2pix_res_dev
+from torchelie.datasets import UnlabeledImages, Pix2PixDataset
+from torchelie.datasets import SideBySideImagePairsDataset
+from torchelie.models import *
 import torch.nn as nn
+
+
+def get_dataset(dataset_specs: Tuple[str, str], img_size: int):
+    ty, path = dataset_specs
+    if ty == 'pix2pix':
+        return Pix2PixDataset('~/.torch',
+                              opts.dataset,
+                              split='train',
+                              download=True,
+                              transform=TF.Compose([
+                                  TF.Resize(img_size),
+                                  TF.RandomResizedCrop(img_size, scale=(0.9, 1)),
+                                  TF.RandomHorizontalFlip(),
+                              ]))
+    if ty == 'colorize':
+        return UnlabeledImages(
+            path,
+            TF.Compose([
+                TF.Resize(img_size),
+                TF.RandomCrop(img_size),
+                TF.RandomHorizontalFlip(),
+                MultiBranch([
+                    TF.Compose([
+                        TF.Grayscale(3),
+                        TF.ToTensor(),
+                    ]),
+                    TF.ToTensor(),
+                ])
+            ]))
+    if ty == 'inpainting':
+        return UnlabeledImages(
+            path,
+            TF.Compose([
+                TF.Resize(img_size),
+                TF.RandomCrop(img_size),
+                TF.RandomHorizontalFlip(),
+                TF.ToTensor(),
+                MultiBranch([
+                    TF.Compose([
+                        TF.RandomErasing(p=1, value=(1., 1., 0)),
+                    ]),
+                    TF.Compose([])
+                ])
+            ]))
+    if ty == 'edges':
+        return UnlabeledImages(
+            path,
+            TF.Compose([
+                TF.Resize(img_size),
+                TF.CenterCrop(img_size),
+                TF.RandomHorizontalFlip(),
+                MultiBranch([
+                    TF.Compose([
+                        tch.transforms.Canny(),
+                        TF.Grayscale(3),
+                        TF.ToTensor(),
+                    ]),
+                    TF.Compose([
+                        TF.ToTensor(),
+                    ])
+                ])
+            ]))
+    if ty == 'pairs':
+        return SideBySideImagePairsDataset(
+            path,
+            TF.Compose([
+                TF.Resize(img_size),
+                TF.CenterCrop(img_size),
+                TF.RandomHorizontalFlip(),
+                TF.ToTensor(),
+            ]))
+    assert False, "dataset's type not understood"
+
+class DecayVal(tu.AutoStateDict):
+    def __init__(self, decay):
+        self.decay = decay
+        self.i = 0
+
+    def on_batch_end(self, state):
+        self.i += 1
+
+    def get(self):
+        return self.decay ** self.i
+
 
 @tu.experimental
 def train(rank, world_size):
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument('--dataset', required=True)
+    parser.add_argument('--dataset', required=True, type=lambda x: x.split(':'))
     parser.add_argument('--r0-gamma', default=0.0001, type=float)
+    parser.add_argument('--l1-gain', default=100, type=float)
+    parser.add_argument('--batch-size', default=4, type=int)
     parser.add_argument('--from-ckpt')
     opts = parser.parse_args()
 
-    G = pix2pix_res_dev()
-    D = residual_patch70()
+    G = pix2pix_256().to_equal_lr()
+    D = patch286()
     D.set_input_specs(6)
-    D.add_minibatch_stddev()
     D.to_equal_lr()
-
-    for m in G.modules():
-        if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
-            tu.kaiming(m, a=0., dynamic=True, mode='fan_out')
-    #G.remove_batchnorm()
 
     if rank == 0:
         print(G)
         print(D)
 
-    G  = torch.nn.parallel.DistributedDataParallel(G.to(rank), [rank], rank)
-    D  = torch.nn.parallel.DistributedDataParallel(D.to(rank), [rank], rank)
+    G = torch.nn.parallel.DistributedDataParallel(G.to(rank), [rank], rank)
+    D = torch.nn.parallel.DistributedDataParallel(D.to(rank), [rank], rank)
 
-    if True:
-        ds = Pix2PixDataset(
-            '~/.torch',
-            opts.dataset,
-            #split='train',
-            download=True,
-            transform=TF.Compose([
-                TF.Resize(256),
-                TF.RandomResizedCrop(256, scale=(0.9, 1)),
-                TF.RandomHorizontalFlip(),
-            ]))
+    ds = get_dataset(opts.dataset, 256)
+    ds = torch.utils.data.DataLoader(ds,
+                                     opts.batch_size,
+                                     num_workers=4,
+                                     shuffle=True,
+                                     pin_memory=True,
+                                     drop_last=True)
 
-    else:
-        ds = UnlabeledImages(
-                #'~/jaqen/face_clf_data/train/faces_ph/filtered/',
-                '~/1bd/',
-                TF.Compose([
-                    TF.Resize(256),
-                    TF.CenterCrop(256),
-                    TF.RandomHorizontalFlip(),
-                    MultiBranch([
-                        TF.Compose([
-                            TF.Grayscale(3),
-                            TF.ToTensor(),
-                        ]),
-                        TF.ToTensor(),
-                    ])
-                    ])
-                )
-
-    sampler = None#torch.utils.data.WeightedRandomSampler([1] * len(ds), 10000*4, True)
-    ds = torch.utils.data.DataLoader(ds, 2, num_workers=4, sampler=sampler,
-            shuffle=sampler is None,
-            pin_memory=True, drop_last=True)
+    l1_decay = DecayVal(0.9999)
 
     def G_fun(batch) -> dict:
         x, y = batch
-        D.eval()
+        G.train()
+        D.train()
         out = G(x * 2 - 1)
         with D.no_sync():
             loss = gan_loss.generated(D(torch.cat([out, x], dim=1) * 2 - 1))
+        loss += opts.l1_gain * l1_decay.get() * F.l1_loss(out, y)
         loss.backward()
         return {'G_loss': loss.item()}
 
@@ -103,8 +163,10 @@ def train(rank, world_size):
             return self.last_norm
 
     gradient_penalty = GradientPenalty(opts.r0_gamma)
+
     def D_fun(batch) -> dict:
-        G.eval()
+        G.train()
+        D.train()
         x, y = batch
         with G.no_sync():
             with torch.no_grad():
@@ -125,7 +187,6 @@ def train(rank, world_size):
         real_loss = gan_loss.real(prob_real)
         real_loss.backward()
 
-
         return {
             'out': out.detach(),
             'fake_loss': fake_loss.item(),
@@ -133,20 +194,22 @@ def train(rank, world_size):
             'prob_real': torch.sigmoid(prob_real).mean().item(),
             'real_loss': real_loss.item(),
             'g_norm': g_norm,
-            'D-correct': (fake_correct + real_correct) / (2 * prob_fake.numel())
+            'D-correct':
+            (fake_correct + real_correct) / (2 * prob_fake.numel())
         }
 
     def test_fun(_):
         return {}
 
+    tag = f'pix2pix_{opts.dataset[0]}:{os.path.basename(opts.dataset[1])}'
     recipe = GANRecipe(G,
                        D,
                        G_fun,
                        D_fun,
                        test_fun,
                        ds,
-                       checkpoint='face_inpaint' if rank == 0 else None,
-                       visdom_env='main' if rank == 0 else None)
+                       checkpoint=tag if rank == 0 else None,
+                       visdom_env=tag if rank == 0 else None)
 
     recipe.callbacks.add_callbacks([
         tch.callbacks.Optimizer(
@@ -157,7 +220,6 @@ def train(rank, world_size):
         tch.callbacks.Log('out', 'out'),
         tch.callbacks.Log('batch.0', 'x'),
         tch.callbacks.Log('batch.1', 'y'),
-        #tch.callbacks.Log('batch.0.1', 'y'),
         tch.callbacks.WindowedMetricAvg('fake_loss', 'fake_loss'),
         tch.callbacks.WindowedMetricAvg('real_loss', 'real_loss'),
         tch.callbacks.WindowedMetricAvg('prob_fake', 'prob_fake'),
@@ -171,11 +233,13 @@ def train(rank, world_size):
                              lr=2e-3,
                              betas=(0., 0.99),
                              weight_decay=0)),
+        l1_decay,
     ])
     recipe.to(rank)
     if opts.from_ckpt is not None:
         recipe.load_state_dict(torch.load(opts.from_ckpt, map_location='cpu'))
     recipe.run(200)
+
 
 if __name__ == '__main__':
     tu.parallel_run(train)

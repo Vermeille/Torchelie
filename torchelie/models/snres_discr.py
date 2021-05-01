@@ -19,15 +19,17 @@ class ResidualDiscriminator(nn.Module):
         assert isinstance(in_ch, int)
         features.add_module('input', tnn.Conv3x3(3, in_ch))
 
+        ii = 0
         for i, (x, x2) in enumerate(zip(arch, arch[1:] + ['dummy'])):
             if x == 'D':
                 continue
 
             downsample = x2 == 'D'
             assert isinstance(x, int)
-            features.add_module(f'block_{i}',
+            features.add_module(f'block_{ii}',
                                 tnn.ResidualDiscrBlock(in_ch, x, downsample))
             in_ch = x
+            ii += 1
         self.out_channels = in_ch
         features.add_module('final_relu', nn.LeakyReLU(0.2, True))
         assert isinstance(features.block_0, tnn.ResidualDiscrBlock)

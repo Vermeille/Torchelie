@@ -6,6 +6,7 @@ from torchelie.datasets.debug import *
 from .concat import HorizontalConcatDataset, MergedDataset
 from .ms1m import MS1M
 from .pix2pix import Pix2PixDataset, ImagesPaths, UnlabeledImages
+from .pix2pix import SideBySideImagePairsDataset
 
 from typing import Sequence
 from torchvision.datasets import ImageFolder

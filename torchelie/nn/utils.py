@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
-from torchelie.utils import kaiming_gain
+from torchelie.utils import kaiming_gain, kaiming, fast_zero_grad
 from torch.nn import Module
 from collections import OrderedDict
 from torch.nn.parameter import Parameter
-from typing import Any, TypeVar, Callable
+from typing import Any, TypeVar, Callable, Tuple
 
 
 class WeightLambda:
@@ -276,3 +276,76 @@ def make_leaky(net: nn.Module) -> nn.Module:
         return m
 
     return edit_model(net, do_it)
+
+
+def net_to_equal_lr(net: nn.Module,
+                    leak: float = 0.,
+                    mode: str = 'fan_in') -> T_Module:
+    """
+    Set all Conv2d, ConvTransposed2d and Linear of :code:`net` to equalized
+    learning rate, initialized with :func:`torchelie.utils.kaiming` and
+    :code:`dynamic=True`.
+
+    Returns:
+        :code:`net`.
+    """
+    for m in net.modules():
+        if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d, nn.Linear)):
+            kaiming(m, a=leak, mode=mode, dynamic=True)
+    return net
+
+
+def net_to_weight_norm_and_equal_lr(net: T_Module,
+                                    leak: float = 0.,
+                                    mode: str = 'fan_in',
+                                    init_gain: float = 1.,
+                                    lr_gain: float = 1.) -> T_Module:
+    """
+    Set all Conv2d, ConvTransposed2d and Linear of :code:`net` to equalized
+    learning rate and weight normalization, initialized with
+    :func:`torchelie.utils.weight_norm_and_equal_lr`.
+
+    Returns:
+        :code:`net`.
+    """
+    for m in net.modules():
+        if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d, nn.Linear)):
+            weight_norm_and_equal_lr(m,
+                                     leak=leak,
+                                     mode=mode,
+                                     init_gain=init_gain,
+                                     lr_gain=lr_gain)
+    return net
+
+
+def receptive_field_for(net: nn.Module,
+                        input_size: Tuple[int, int, int]) -> Tuple[int, int]:
+    """
+    Compute the receptive field of :code:`net` using a backward pass.
+
+    .. warning::
+        Make sure the net does not have any normalization operation: mean /
+        std operations impact the whole volume and make the calculation
+        invalid. (BatchNorm is okay in eval mode)
+
+    Args:
+        input_size (Tuple[int, int, int]): a (C, H, W) volume size that the
+            model can accept. Note that the receptive field calculation is
+            bounded by this size.
+
+    Returns:
+        height and width receptive fields.
+    """
+    device = next(iter(net.parameters())).device
+    input = torch.randn(1, *input_size, requires_grad=True)
+    net.eval()
+    out = net(input)
+    net.train()
+    if out.dim() == 2:
+        out.mean().backward()
+    elif out.dim() == 4:
+        out[:, :, out.shape[2] // 2, out.shape[3] // 2].mean().backward()
+    fast_zero_grad(net)
+    has_grad = torch.nonzero(input.grad[0, 0])
+    recep_field = has_grad.max(dim=0).values - has_grad.min(dim=0).values + 1
+    return recep_field[0].item(), recep_field[1].item()

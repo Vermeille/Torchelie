@@ -6,7 +6,8 @@ from torchelie.utils import layer_by_name
 
 class WithSavedActivations(nn.Module):
     """
-    FIXME: PLZ DOCUMENT ME
+    Hook :code:`model` in order to get intermediate activations. The
+    activations to save can be either specified by module type or layer name.
     """
     def __init__(self, model, types=(nn.Conv2d, nn.Linear), names=None):
         super(WithSavedActivations, self).__init__()
@@ -42,7 +43,19 @@ class WithSavedActivations(nn.Module):
         else:
             self.activations[name] = output.clone()
 
-    def forward(self, input, detach):
+    def forward(self, input, detach: bool):
+        """
+        Call :code:`self.model(input)`.
+
+        Args:
+            input: input to the model
+            detach (bool): if True, intermediate activations will be
+                :code:`.detach()`d.
+
+        Returns
+            model output, a name => activation dict with saved intermediate
+            activations.
+        """
         self.detach = detach
         self.activations = {}
         out = self.model(input)
