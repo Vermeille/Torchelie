@@ -1,4 +1,5 @@
 import torch
+import pytest
 from torchvision.transforms import ToPILImage
 from torchelie.transforms import *
 import torchelie.transforms.differentiable as dtf
@@ -27,6 +28,7 @@ def test_multibranch():
     assert tf(1) == (2, 3, 0)
 
 
+@pytest.mark.require_opencv
 def test_canny():
     img = ToPILImage()(torch.clamp(torch.randn(3, 30, 16) + 1, min=0, max=1))
     tf = Canny()
