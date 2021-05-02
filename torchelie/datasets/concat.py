@@ -46,10 +46,10 @@ class CatedLists(Sequence[T]):
         if isinstance(i, slice):
             return [self[ii] for ii in range(*i.indices(len(self)))]
 
-        for l in self.ls:
-            if i < len(l):
-                return l[i]
-            i -= len(l)
+        for catedlist in self.ls:
+            if i < len(catedlist):
+                return catedlist[i]
+            i -= len(catedlist)
         raise IndexError
 
 
