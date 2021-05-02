@@ -5,6 +5,7 @@ import torchelie.nn as tnn
 import torchelie.utils as tu
 import torch.nn as nn
 
+
 class Pix2PixHDGlobalGenerator(tnn.CondSeq):
     """
     Residual generator used in `Pix2PixHD <https://arxiv.org/abs/1711.11585>`_
@@ -149,5 +150,3 @@ def pix2pix_res_dev() -> Pix2PixHDGlobalGenerator:
     return Pix2PixHDGlobalGenerator(['8', 'd16', 'd32', 'd128', 'd256'] +
                                     ['R256'] * 10 +
                                     ['u256', 'u128', 'u32', 'u16'])
-
-

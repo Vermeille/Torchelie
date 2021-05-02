@@ -139,7 +139,6 @@ class BinomialFilter2d(torch.nn.Module):
                                     padding=0)
 
 
-
 def mblur(input):
     """
     Mean (or average) blur with kernel size 3
@@ -336,4 +335,3 @@ class AllAtOnceColor:
         out = F.conv2d(x, w, None, groups=self.B)
         out = out.view(B, C, H, W)
         return out + b
-

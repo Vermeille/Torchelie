@@ -67,7 +67,6 @@ class FeatureVis(torch.nn.Module):
         canvas = ParameterizedImg(1, 3, self.input_size[0] + 10,
                                        self.input_size[1] + 10)
 
-
         def forward(_):
             cim = canvas()
             rnd = random.randint(0, cim.shape[2] // 10)

@@ -207,6 +207,7 @@ class ResizedCrop(object):
         format_string += ', interpolation={0})'.format(self.interpolation)
         return format_string
 
+
 class Noise:
     def __init__(self, std):
         self.std = std

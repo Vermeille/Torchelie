@@ -257,5 +257,3 @@ class HardSwish(nn.Module):
     """
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x.add(0.5).clamp_(min=0, max=1).mul_(x)
-
-

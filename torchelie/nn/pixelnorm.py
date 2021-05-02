@@ -1,5 +1,6 @@
 import torch
 
+
 class PixelNorm(torch.nn.Module):
     """
     PixelNorm from ProgressiveGAN

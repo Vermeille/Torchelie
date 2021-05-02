@@ -50,5 +50,3 @@ class UNet(nn.Module):
             if isinstance(m, tnn.ConvBlock):
                 m.remove_batchnorm()
         return self
-
-

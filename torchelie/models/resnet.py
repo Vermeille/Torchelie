@@ -159,7 +159,6 @@ class ResNet(nn.Module):
         return self
 
 
-
 ###
 ### CIFAR
 ###
@@ -285,6 +284,7 @@ def preact_wide_resnet101(num_classes: int) -> ResNet:
 ###
 ### Wide
 ###
+
 
 def wide_resnet50(num_classes: int) -> ResNet:
     return resnet50(num_classes).to_wide()

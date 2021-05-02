@@ -169,4 +169,3 @@ class ProjectionDiscr(nn.Module):
         feats = self.head(x)
         y_emb = self.emb(y)
         return self.discr(feats) + torch.mm(y_emb, feats.t())
-
