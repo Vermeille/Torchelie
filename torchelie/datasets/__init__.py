@@ -69,8 +69,8 @@ class PairedDataset(torch.utils.data.Dataset):
         return len(self.dataset1) * len(self.dataset2)
 
     def __repr__(self) -> str:
-        return ("PairedDataset:\n" + tu.indent(repr(self.dataset1)) +
-                "\n--\n" + tu.indent(repr(self.dataset2)))
+        return ("PairedDataset:\n" + tu.indent(repr(self.dataset1))
+                + "\n--\n" + tu.indent(repr(self.dataset2)))
 
 
 class RandomPairsDataset(torch.utils.data.Dataset):
@@ -107,8 +107,8 @@ class RandomPairsDataset(torch.utils.data.Dataset):
         return 10000
 
     def __repr__(self):
-        return ("PairedDataset:\n" + tu.indent(repr(self.dataset1)) +
-                "\n--\n" + tu.indent(repr(self.dataset2)))
+        return ("PairedDataset:\n" + tu.indent(repr(self.dataset1))
+                + "\n--\n" + tu.indent(repr(self.dataset2)))
 
 
 def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):

@@ -168,8 +168,7 @@ def train(rank, world_size):
         loss.backward(retain_graph=True)
 
         with M.no_sync():
-            clf_loss = opts.consistency * M(out * 2 - 1, x * 2 -
-                    1)['loss']
+            clf_loss = opts.consistency * M(out * 2 - 1, x * 2 - 1)['loss']
 
         # labels = torch.arange(len(matches), device=matches.device)
         # clf_loss = opts.consistency * F.cross_entropy( matches, torch.arange(len(matches), device=matches.device))

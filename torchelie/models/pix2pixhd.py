@@ -141,12 +141,12 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
 
 @tu.experimental
 def pix2pix_res() -> Pix2PixHDGlobalGenerator:
-    return Pix2PixHDGlobalGenerator(['64', 'd128', 'd512', 'd1024'] +
-                                    ['R1024'] * 10 + ['u1024', 'u512', 'u128'])
+    return Pix2PixHDGlobalGenerator(['64', 'd128', 'd512', 'd1024']
+                                    + ['R1024'] * 10 + ['u1024', 'u512', 'u128'])
 
 
 @tu.experimental
 def pix2pix_res_dev() -> Pix2PixHDGlobalGenerator:
-    return Pix2PixHDGlobalGenerator(['8', 'd16', 'd32', 'd128', 'd256'] +
-                                    ['R256'] * 10 +
-                                    ['u256', 'u128', 'u32', 'u16'])
+    return Pix2PixHDGlobalGenerator(['8', 'd16', 'd32', 'd128', 'd256']
+                                    + ['R256'] * 10
+                                    + ['u256', 'u128', 'u32', 'u16'])

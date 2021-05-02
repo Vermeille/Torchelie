@@ -123,10 +123,10 @@ class UBlock(nn.Module):
 
         layers = CondSeq()
         for i in range(num_layers):
-            in_ch = (self.inner.out_channels // 2 +
-                     self.hidden_channels if i == 0 else self.hidden_channels)
-            out_ch = (self.in_channels if i == (num_layers -
-                                                1) else self.hidden_channels)
+            in_ch = (self.inner.out_channels // 2
+                     + self.hidden_channels if i == 0 else self.hidden_channels)
+            out_ch = (self.in_channels if i == (num_layers
+                                                - 1) else self.hidden_channels)
 
             layers.add_module(f'conv_{i}', ConvBlock(in_ch, out_ch, 3))
         self.out_conv = layers

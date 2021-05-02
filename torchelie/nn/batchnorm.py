@@ -22,11 +22,11 @@ class BatchNorm2dBase_(nn.Module):
             m = x.mean(dim=(0, 2, 3), keepdim=True)
             v = torch.sqrt(x.var(dim=(0, 2, 3), unbiased=False, keepdim=True) + 1e-8)
 
-            self.running_mean.copy_((self.momentum * self.running_mean +
-                                     (1 - self.momentum) * m))
+            self.running_mean.copy_((self.momentum * self.running_mean
+                                     + (1 - self.momentum) * m))
 
-            self.running_var.copy_((self.momentum * self.running_var +
-                                    (1 - self.momentum) * v))
+            self.running_var.copy_((self.momentum * self.running_var
+                                    + (1 - self.momentum) * v))
 
             self.step += 1
         else:
