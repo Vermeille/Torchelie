@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   install-dependencies:
-    name: "Dependencies + Unit tests"
+    name: "Dependencies + Tests"
     runs-on: ubuntu-20.04
     steps:
       - name: "Checkout code"
