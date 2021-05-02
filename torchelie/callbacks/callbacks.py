@@ -734,7 +734,7 @@ class ConfusionMatrix:
         s = "<tr><th>Pred\\True</th><th>{}</th></tr>".format("</th><th>".join(
             self.labels))
 
-        for l, row in zip(self.labels, cm):
+        for label, row in zip(self.labels, cm):
             total = sum(row)
             if total == 0:
                 row_str = "".join(["<td>0</td>" for _ in range(len(row))])
@@ -744,7 +744,7 @@ class ConfusionMatrix:
                      '</td>').format(int(255 - x / total * 255), x)
                     for x in row
                 ])
-            s += "<tr><th>{}</th>{}</tr>".format(l, row_str)
+            s += "<tr><th>{}</th>{}</tr>".format(label, row_str)
 
         html = "<table>" + s + "</table>"
         return html
