@@ -64,7 +64,7 @@ class SideBySideImagePairsDataset(UnlabeledImages):
     Dataset for side-by-side images. It splits the images so that the same
     transforms are applied to pairs and remain meaningful.
     """
-    def __init__(self, root: str, transform: Optional[Callable] = None)->None:
+    def __init__(self, root: str, transform: Optional[Callable] = None) -> None:
         super().__init__(root, transform)
 
     def __getitem__(self, i: int) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -85,7 +85,7 @@ class SideBySideImagePairsDataset(UnlabeledImages):
         return torch.cat([x[:, :, w:2 * w], x[:, :, :w]], dim=0)
 
     def _split(self, x):
-        c = x.shape[0] //2
+        c = x.shape[0] // 2
         return x[:c], x[c:]
 
 
