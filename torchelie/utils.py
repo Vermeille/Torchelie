@@ -604,7 +604,7 @@ def indent(text: str, amount: int = 4) -> str:
     Returns:
         indented text
     """
-    return '\n'.join((' ' * amount + l) for l in text.splitlines())
+    return '\n'.join((' ' * amount + line) for line in text.splitlines())
 
 
 from functools import wraps
