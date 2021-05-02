@@ -10,15 +10,14 @@ class PatchDiscriminator(nn.Module):
         super().__init__()
         layers: List[nn.Module] = [
             tnn.ConvBlock(3, arch[0], kernel_size=4,
-                             stride=2).remove_batchnorm().leaky()
+                          stride=2).remove_batchnorm().leaky()
         ]
 
         in_ch = arch[0]
         self.in_channels = in_ch
         for next_ch in arch[1:]:
             layers.append(
-                tnn.ConvBlock(in_ch, next_ch, kernel_size=4,
-                                 stride=2).leaky())
+                tnn.ConvBlock(in_ch, next_ch, kernel_size=4, stride=2).leaky())
             in_ch = next_ch
         assert isinstance(layers[-1], tnn.ConvBlock)
         layers[-1].conv.stride = (1, 1)
@@ -58,12 +57,12 @@ class PatchDiscriminator(nn.Module):
         c = self.features[0].conv
         assert isinstance(c, nn.Conv2d)
         self.features[0].conv = kaiming(nn.Conv2d(in_channels,
-                                                     c.out_channels,
-                                                     4,
-                                                     stride=2,
-                                                     padding=c.padding,
-                                                     bias=c.bias is not None),
-                                           a=0.2)
+                                                  c.out_channels,
+                                                  4,
+                                                  stride=2,
+                                                  padding=c.padding,
+                                                  bias=c.bias is not None),
+                                        a=0.2)
         return self
 
     def set_kernel_size(self, kernel_size: int) -> 'PatchDiscriminator':
