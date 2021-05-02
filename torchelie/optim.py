@@ -1,6 +1,7 @@
 import math
 import torch
 from torch.optim import Optimizer
+from collections import defaultdict
 
 
 class DeepDreamOptim(Optimizer):
@@ -224,9 +225,6 @@ class RAdamW(Optimizer):
                     p.data.add_(exp_avg_no_bias, alpha=-lr)
 
         return loss
-
-
-from collections import defaultdict
 
 
 class Lookahead(Optimizer):
