@@ -9,13 +9,11 @@ from typing import Optional, cast, List
 
 
 def _rollx(img, begin):
-    return torch.cat(
-            [img[..., :, begin:], img[..., :, :begin]], dim=-1)
+    return torch.cat([img[..., :, begin:], img[..., :, :begin]], dim=-1)
 
 
 def _rolly(img, begin):
-    return torch.cat(
-            [img[..., begin:, :], img[..., :begin, :]], dim=-2)
+    return torch.cat([img[..., begin:, :], img[..., :begin, :]], dim=-2)
 
 
 def roll(img, x_roll, y_roll):
@@ -294,8 +292,7 @@ class AllAtOnceColor:
         tfm = torch.stack([
             torch.eye(4, 4) * random.uniform(1 - alpha, 1 + alpha)
             for _ in range(self.B)
-        ],
-                          dim=0)
+        ], dim=0)
         tfm[:, 3, 3] = 1
         self._mix(tfm, prob)
         return self

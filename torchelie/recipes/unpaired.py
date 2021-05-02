@@ -50,9 +50,9 @@ class Matcher(nn.Module):
         f2 = self.proj_B(self.net(ins))
         n, c, h, w = f1.shape
         out = torch.bmm(
-                f1.permute(2, 3, 0, 1).reshape(-1, n, c),
-                f2.permute(2, 3, 0, 1).reshape(-1, n, c).permute(0, 2, 1)
-            )
+            f1.permute(2, 3, 0, 1).reshape(-1, n, c),
+            f2.permute(2, 3, 0, 1).reshape(-1, n, c).permute(0, 2, 1)
+        )
         out = out.view(h, w, n, n).permute(2, 3, 0, 1)
 
         N = len(out)

@@ -25,8 +25,7 @@ class FactoredPredictor(nn.Module):
         out = torch.stack([
             self.heads[i](torch.cat([x, y[..., :i]], dim=-1))
             for i in range(len(self.heads))
-        ],
-                          dim=2)
+        ], dim=2)
         # NCKHW
         return out.transpose(1, -1)
 
@@ -208,7 +207,6 @@ class PixelCNN(PixCNNBase):
                 img: torch.Tensor,
                 temp: float = 0,
                 start_coord: Tuple[int, int] = (0, 0)) -> torch.Tensor:
-
         self.eval()
         with torch.no_grad():
             for l in range(start_coord[0], self.sz[0]):
