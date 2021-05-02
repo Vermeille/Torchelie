@@ -47,8 +47,8 @@ class LogisticMixture:
 
     def log_prob(self, x: torch.Tensor) -> torch.Tensor:
         log_pis = nn.functional.log_softmax(self.weights, dim=self.dim)
-        return torch.logsumexp(self.logistics.log_prob(x.unsqueeze(self.dim)) +
-                               log_pis,
+        return torch.logsumexp(self.logistics.log_prob(x.unsqueeze(self.dim))
+                               + log_pis,
                                dim=self.dim)
 
 
@@ -77,6 +77,6 @@ class GaussianMixture:
 
     def log_prob(self, x: torch.Tensor) -> torch.Tensor:
         log_pis = nn.functional.log_softmax(self.weights, dim=1)
-        return torch.logsumexp(self.logistics.log_prob(x.unsqueeze(1)) +
-                               log_pis,
+        return torch.logsumexp(self.logistics.log_prob(x.unsqueeze(1))
+                               + log_pis,
                                dim=1)

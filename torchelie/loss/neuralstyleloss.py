@@ -38,8 +38,8 @@ def hist_match(source, template):
     # interpolate linearly to find the pixel values in the template image
     # that correspond most closely to the quantiles in the source image
     # interp_t_values = np.interp(s_quantiles, t_quantiles, t_values[1:])
-    interp_t_values = (t_quantiles[:, None] <
-                       s_quantiles[None, :]).sum(0).float().mul_(tsz).add_(tm)
+    interp_t_values = (t_quantiles[:, None]
+                       < s_quantiles[None, :]).sum(0).float().mul_(tsz).add_(tm)
 
     bin = (source - sm) / (ssz + 1e-8)
     bin_idx = bin.long()
@@ -118,8 +118,8 @@ class NeuralStyleLoss(nn.Module):
                 grams[comb_name] = bgram(comb)
 
         content = {
-            l: (a - a.mean((2, 3), keepdim=True)) /
-            torch.sqrt(a.std((2, 3), keepdim=True) + 1e-8)
+            l: (a - a.mean((2, 3), keepdim=True))
+            / torch.sqrt(a.std((2, 3), keepdim=True) + 1e-8)
             for l, a in activations.items() if l in self.content_layers
         }
 
@@ -148,8 +148,8 @@ class NeuralStyleLoss(nn.Module):
 
         if style_layers is not None:
             self.style_layers = style_layers
-            self.net.set_keep_layers(names=self.style_layers +
-                                     self.content_layers)
+            self.net.set_keep_layers(names=self.style_layers
+                                     + self.content_layers)
         if style_weights is not None:
             self.style_weights = style_weights
 
@@ -172,8 +172,8 @@ class NeuralStyleLoss(nn.Module):
         """
         if content_layers is not None:
             self.content_layers = content_layers
-            self.net.set_keep_layers(names=self.style_layers +
-                                     self.content_layers)
+            self.net.set_keep_layers(names=self.style_layers
+                                     + self.content_layers)
 
         with torch.no_grad():
             acts = self.get_style_content_(content_img, detach=True)['content']
@@ -223,8 +223,8 @@ class NeuralStyleLoss(nn.Module):
                 hists_loss = hists_loss + hist_loss(hists[l],
                                                     self.style_hists[l])
             losses['hists_loss'] = hists_loss.mean().item()
-        loss = (c_ratio * content_loss + s_ratio *
-                (style_loss + hists_loss)).mean()
+        loss = (c_ratio * content_loss + s_ratio
+                * (style_loss + hists_loss)).mean()
         losses['loss'] = loss.item()
 
         return loss, losses

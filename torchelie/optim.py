@@ -44,8 +44,8 @@ class DeepDreamOptim(Optimizer):
                 eps = group['eps']
 
                 p.data.add_(p.grad.data,
-                            alpha=-step_size /
-                            (eps + p.grad.data.abs().mean()))
+                            alpha=-step_size
+                            / (eps + p.grad.data.abs().mean()))
 
         return loss
 
@@ -208,16 +208,16 @@ class RAdamW(Optimizer):
                 # Perform stepweight decay
                 if stable:
                     # AdamS
-                    p.data.mul_(1 - group['lr'] * group['weight_decay'] /
-                                var.mean().add_(1e-8).sqrt_())
+                    p.data.mul_(1 - group['lr'] * group['weight_decay']
+                                / var.mean().add_(1e-8).sqrt_())
                 else:
                     # AdamW
                     p.data.mul_(1 - group['lr'] * group['weight_decay'])
 
                 if rho_t > 4:
                     var.sqrt_()
-                    r = math.sqrt(((rho_t - 4) * (rho_t - 2) * rho_inf) /
-                                  ((rho_inf - 4) * (rho_inf - 2) * rho_t))
+                    r = math.sqrt(((rho_t - 4) * (rho_t - 2) * rho_inf)
+                                  / ((rho_inf - 4) * (rho_inf - 2) * rho_t))
 
                     p.data.addcdiv_(exp_avg_no_bias, var + eps, value=-lr * r)
                 else:

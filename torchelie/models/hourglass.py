@@ -32,8 +32,8 @@ class Hourglass(nn.Module):
             ])
 
         self.ups = nn.ModuleList([
-            self.up(down_channels[-1] +
-                    skip_channels, down_channels[-1], up_kernel[0])
+            self.up(down_channels[-1]
+                    + skip_channels, down_channels[-1], up_kernel[0])
         ] + [
             self.up(d1 + skip_channels, d2, k) for d1, d2, k in zip(
                 down_channels[:0:-1], down_channels[-2::-1], up_kernel[1:])

@@ -624,8 +624,8 @@ def experimental(func):
         if doc is None:
             return f'**Experimental**\n\n.. warning::\n  {msg}\n\n.\n'
         else:
-            return ('**Experimental**: ' + dedent(func.__doc__) +
-                    f'.. warning::\n {msg}\n\n\n')
+            return ('**Experimental**: ' + dedent(func.__doc__)
+                    + f'.. warning::\n {msg}\n\n\n')
 
     if isfunction(func):
         func.__doc__ = deprecate_doc(func.__doc__)
