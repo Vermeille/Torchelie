@@ -159,9 +159,9 @@ class ResNet(nn.Module):
         return self
 
 
-###
-### CIFAR
-###
+#
+# CIFAR
+#
 
 
 def resnet20_cifar() -> ResNet:
@@ -174,9 +174,9 @@ def preact_resnet20_cifar() -> ResNet:
     return resnet20_cifar().to_preact()
 
 
-###
-### ResNets
-###
+#
+# ResNets
+#
 
 
 def resnet18(num_classes: int) -> ResNet:
@@ -211,9 +211,9 @@ def resnet152(num_classes: int) -> ResNet:
     return net
 
 
-###
-### Preact ResNet
-###
+#
+# Preact ResNet
+#
 
 
 def preact_resnet18(num_classes: int) -> ResNet:
@@ -236,9 +236,9 @@ def preact_resnet152(num_classes: int) -> ResNet:
     return resnet152(num_classes).to_preact_bottleneck()
 
 
-###
-### ResNeXt
-###
+#
+# ResNeXt
+#
 
 
 def resnext50_32x4d(num_classes: int) -> ResNet:
@@ -253,9 +253,9 @@ def resnext152_32x4d(num_classes: int) -> ResNet:
     return resnet152(num_classes).to_resnext()
 
 
-###
-### Preact ResNeXt
-###
+#
+# Preact ResNeXt
+#
 
 
 def preact_resnext50_32x4d(num_classes: int) -> ResNet:
@@ -270,9 +270,9 @@ def preact_resnext152_32x4d(num_classes: int) -> ResNet:
     return resnet152(num_classes).to_preact_resnext()
 
 
-###
-### Wide
-###
+#
+# Wide
+#
 
 def preact_wide_resnet50(num_classes: int) -> ResNet:
     return resnet50(num_classes).to_preact_wide()
@@ -281,9 +281,9 @@ def preact_wide_resnet50(num_classes: int) -> ResNet:
 def preact_wide_resnet101(num_classes: int) -> ResNet:
     return resnet101(num_classes).to_preact_wide()
 
-###
-### Wide
-###
+#
+# Wide
+#
 
 
 def wide_resnet50(num_classes: int) -> ResNet:
