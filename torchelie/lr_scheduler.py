@@ -19,7 +19,7 @@ class CurriculumScheduler:
     def __init__(self,
                  optimizer,
                  schedule: List[Tuple[float, float, float]],
-                 last_iter: int=-1):
+                 last_iter: int = -1):
         self.optimizer = optimizer
         self.schedule = schedule
         self.last_iter = last_iter

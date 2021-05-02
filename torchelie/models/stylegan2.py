@@ -146,7 +146,7 @@ class StyleGAN2Generator(nn.Module):
             get_w: Literal[True]) -> Tuple[torch.Tensor, torch.Tensor]:
         ...
 
-    def forward(self, z, mixing:bool=True, get_w:bool=False):
+    def forward(self, z, mixing:bool = True, get_w:bool = False):
         w = self.encode(z)
 
         if self.training:
