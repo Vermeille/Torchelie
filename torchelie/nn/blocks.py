@@ -15,7 +15,9 @@ from torchelie.nn.graph import ModuleGraph
 from typing import List, Tuple
 from .utils import edit_model, make_leaky
 from .utils import remove_weight_scale
-from .conv import Conv2dBNReLU, Conv2d, Conv1x1
+from .interpolate import InterpolateBilinear2d
+from .encdec import ConvDeconvBlock
+from .conv import ConvBlock, Conv2d, Conv3x3, Conv1x1
 
 
 @experimental
@@ -117,11 +119,11 @@ class AutoGANGenBlock(nn.Module):
 
         self.preact = CondSeq()
 
-        self.conv1 = Conv2dBNReLU(in_ch, out_ch, ks)
+        self.conv1 = ConvBlock(in_ch, out_ch, ks)
         self.conv1.to_preact().remove_batchnorm()
         self.conv1.leaky()
 
-        self.conv2 = Conv2dBNReLU(out_ch, out_ch, ks)
+        self.conv2 = ConvBlock(out_ch, out_ch, ks)
         self.conv2.to_preact().remove_batchnorm()
         self.conv2.leaky()
 

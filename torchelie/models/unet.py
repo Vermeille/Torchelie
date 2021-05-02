@@ -14,23 +14,23 @@ class UNet(nn.Module):
         self.out_channels = arch[-1]
 
         feats = tnn.CondSeq()
-        feats.input = tnn.Conv2dBNReLU(3, arch[0], 3)
+        feats.input = tnn.ConvBlock(3, arch[0], 3)
 
-        encdec: nn.Module = tnn.Conv2dBNReLU(arch[-1], arch[-1] * 2, 3)
+        encdec: nn.Module = tnn.ConvBlock(arch[-1], arch[-1] * 2, 3)
         for outer, inner in zip(arch[-2::-1], arch[:0:-1]):
             encdec = tnn.UBlock(outer, inner, encdec)
         feats.encoder_decoder = encdec
         self.features = feats
         self.classifier = tnn.CondSeq()
         assert isinstance(encdec.out_channels, int)
-        self.classifier.conv = tnn.Conv2dBNReLU(encdec.out_channels, 3,
+        self.classifier.conv = tnn.ConvBlock(encdec.out_channels, 3,
                                                 3).remove_batchnorm()
 
     def forward(self, x):
         return self.classifier(self.features(x))
 
     def set_input_specs(self, in_channels: int) -> 'UNet':
-        assert isinstance(self.features.input, tnn.Conv2dBNReLU)
+        assert isinstance(self.features.input, tnn.ConvBlock)
         c = self.features.input.conv
         self.features.input.conv = tu.kaiming(
             nn.Conv2d(in_channels,
@@ -41,13 +41,13 @@ class UNet(nn.Module):
         return self
 
     def remove_first_batchnorm(self) -> 'UNet':
-        assert isinstance(self.features.input, tnn.Conv2dBNReLU)
+        assert isinstance(self.features.input, tnn.ConvBlock)
         self.features.input.remove_batchnorm()
         return self
 
     def remove_batchnorm(self) -> 'UNet':
         for m in self.modules():
-            if isinstance(m, tnn.Conv2dBNReLU):
+            if isinstance(m, tnn.ConvBlock):
                 m.remove_batchnorm()
         return self
 

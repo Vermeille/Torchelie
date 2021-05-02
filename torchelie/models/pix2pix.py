@@ -22,7 +22,7 @@ class Pix2PixGenerator(UNet):
 
         self.features.input = tnn.CondSeq(
             tnn.SinePositionEncoding2d(15),
-            tnn.Conv2dBNReLU(33, int(arch[0]), 7),
+            tnn.ConvBlock(33, int(arch[0]), 7),
         )
 
         encdec = cast(nn.Module, self.features.encoder_decoder)
@@ -49,7 +49,7 @@ class Pix2PixGenerator(UNet):
                 m.out_conv.conv_0, 'norm',
                 tnn.Noise(m.out_conv.conv_0.out_channels, True), 'noise')
 
-    def to_equal_lr(self) -> 'Pix2PixHDGlobalGenerator':
+    def to_equal_lr(self) -> 'Pix2PixGenerator':
         return tnn.utils.net_to_equal_lr(self)
 
     def set_padding_mode(self, mode: str) -> 'Pix2PixGenerator':

@@ -32,7 +32,7 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
         self._modules.clear()
         arch = self.arch
         self.input = tnn.CondSeq(
-            tnn.Conv2dBNReLU(3, int(arch[0]), 7),
+            tnn.ConvBlock(3, int(arch[0]), 7),
         )
         ch, i = int(arch[0]), 1
 
@@ -41,7 +41,7 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
         while arch[i][0] == 'd':
             out_ch = int(arch[i][1:])
             self.encode.add_module(f'conv_{ii}',
-                                   tnn.Conv2dBNReLU(ch, out_ch, 3, stride=2))
+                                   tnn.ConvBlock(ch, out_ch, 3, stride=2))
             ch = out_ch
             i += 1
             ii += 1
@@ -62,11 +62,11 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
             out_ch = int(arch[i][1:])
             self.decode.add_module(
                 f'out_conv_{ii}',
-                tnn.Conv2dBNReLU(ch, out_ch, 3, stride=1).add_upsampling())
+                tnn.ConvBlock(ch, out_ch, 3, stride=1).add_upsampling())
             ch = out_ch
             i += 1
             ii += 1
-        self.to_rgb = tnn.Conv2dBNReLU(out_ch, 3, 7).remove_batchnorm()
+        self.to_rgb = tnn.ConvBlock(out_ch, 3, 7).remove_batchnorm()
         self.to_rgb.relu = nn.Sigmoid()
 
         def to_instance_norm(m):
@@ -94,7 +94,7 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
 
         self.input = tnn.CondSeq(
             tnn.SinePositionEncoding2d(15),
-            tnn.Conv2dBNReLU(33, int(arch[0]), 7),
+            tnn.ConvBlock(33, int(arch[0]), 7),
         )
 
         def _build(i, prev_ch):
@@ -120,7 +120,7 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
                 return u
 
         self.encdec = _build(1, ch)
-        self.to_rgb = tnn.Conv2dBNReLU(ch, 3, 3).remove_batchnorm()
+        self.to_rgb = tnn.ConvBlock(ch, 3, 3).remove_batchnorm()
         self.to_rgb.relu = nn.Sigmoid()
 
         def to_instance_norm(m):

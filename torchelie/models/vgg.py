@@ -25,7 +25,7 @@ class VGG(nn.Module):
                 ch = cast(int, l)
                 feats.add_module(
                     f'conv_{block_num}_{conv_num}',
-                    tnn.Conv2dBNReLU(in_ch, ch, 3).remove_batchnorm())
+                    tnn.ConvBlock(in_ch, ch, 3).remove_batchnorm())
                 in_ch = ch
                 conv_num += 1
         self.out_channels = ch
@@ -39,13 +39,13 @@ class VGG(nn.Module):
 
     def add_bn(self) -> 'VGG':
         for m in self.features:
-            if isinstance(m, tnn.Conv2dBNReLU):
+            if isinstance(m, tnn.ConvBlock):
                 m.restore_bn()
         return self
 
     def set_input_specs(self, in_channels: int) -> 'VGG':
         c1 = self.features.conv_1_1
-        assert isinstance(c1, tnn.Conv2dBNReLU)
+        assert isinstance(c1, tnn.ConvBlock)
         c1.conv = kaiming(tnn.Conv3x3(in_channels, c1.conv.out_channels, 3))
         return self
 

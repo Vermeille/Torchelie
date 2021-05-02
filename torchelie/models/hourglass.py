@@ -52,17 +52,17 @@ class Hourglass(nn.Module):
 
     def down(self, in_ch, out_ch, ks) -> nn.Sequential:
         return nn.Sequential(
-            tnn.Conv2dBNReLU(in_ch, out_ch, ks, stride=2),
-            tnn.Conv2dBNReLU(out_ch, out_ch, ks, stride=2),
+            tnn.ConvBlock(in_ch, out_ch, ks, stride=2),
+            tnn.ConvBlock(out_ch, out_ch, ks, stride=2),
         )
 
     def up(self, in_ch, out_ch, ks) -> nn.Sequential:
-        conv = tnn.Conv2dBNReLU(in_ch, out_ch, ks)
+        conv = tnn.ConvBlock(in_ch, out_ch, ks)
         tnn.utils.insert_before(conv, 'conv', nn.BatchNorm2d(in_ch), 'pre_bn')
         return conv
 
     def skip(self, in_ch, out_ch) -> nn.Sequential:
-        return tnn.Conv2dBNReLU(in_ch, out_ch, 1)
+        return tnn.ConvBlock(in_ch, out_ch, 1)
 
     def forward(self, x) -> torch.Tensor:
         acts = [x]

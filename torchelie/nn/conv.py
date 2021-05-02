@@ -38,10 +38,9 @@ def Conv1x1(in_ch: int,
     return Conv2d(in_ch, out_ch, 1, stride=stride, bias=bias)
 
 
-@experimental
-class Conv2dBNReLU(CondSeq):
+class ConvBlock(CondSeq):
     """
-    A packed block with Conv-BatchNorm-ReLU
+    A packed block with Conv-BatchNorm-ReLU and various operations to alter it.
 
     Args:
         in_channels (int): input channels
@@ -88,7 +87,7 @@ class Conv2dBNReLU(CondSeq):
         self.add_module('norm', nn.BatchNorm2d(self.out_channels))
         self.add_module('relu', nn.ReLU(inplace=True))
 
-    def to_input_specs(self, in_channels: int) -> 'Conv2dBNReLU':
+    def to_input_specs(self, in_channels: int) -> 'ConvBlock':
         """
         Recreate a convolution with :code:`in_channels` input channels
         """
@@ -104,7 +103,7 @@ class Conv2dBNReLU(CondSeq):
         return self
 
     @experimental
-    def to_transposed_conv(self) -> 'Conv2dBNReLU':
+    def to_transposed_conv(self) -> 'ConvBlock':
         """
         Transform the convolution into a hopefully equivalent transposed
         convolution
@@ -112,7 +111,7 @@ class Conv2dBNReLU(CondSeq):
         c = self.conv
         assert c.kernel_size[0] in [
             3, 4
-        ], (f'Conv2dBNReLU.to_transposed_conv()'
+        ], (f'ConvBlock.to_transposed_conv()'
             ' not supported with kernel_size other than 2 or 3 (please add the'
             ' support!')
         if c.kernel_size[0] == 4:
@@ -137,7 +136,7 @@ class Conv2dBNReLU(CondSeq):
                                    padding_mode=c.padding_mode))
         return self
 
-    def remove_batchnorm(self) -> 'Conv2dBNReLU':
+    def remove_batchnorm(self) -> 'ConvBlock':
         """
         Remove the BatchNorm, restores the bias term in conv.
 
@@ -150,7 +149,7 @@ class Conv2dBNReLU(CondSeq):
         self.norm = None
         return self
 
-    def add_upsampling(self) -> 'Conv2dBNReLU':
+    def add_upsampling(self) -> 'ConvBlock':
         """
         Add a bilinear upsampling layer before the conv that doubles the
         spatial size
@@ -159,7 +158,7 @@ class Conv2dBNReLU(CondSeq):
                       'upsample')
         return self
 
-    def restore_bn(self) -> 'Conv2dBNReLU':
+    def restore_batchnorm(self) -> 'ConvBlock':
         """
         Restore BatchNorm if deleted
         """
@@ -168,7 +167,7 @@ class Conv2dBNReLU(CondSeq):
         insert_after(self, 'conv', nn.BatchNorm2d(self.out_channels), 'norm')
         return self
 
-    def no_bias(self) -> 'Conv2dBNReLU':
+    def no_bias(self) -> 'ConvBlock':
         """
         Remove the bias term.
 
@@ -180,7 +179,7 @@ class Conv2dBNReLU(CondSeq):
         self.conv.bias = None
         return self
 
-    def leaky(self, leak: float = 0.2) -> 'Conv2dBNReLU':
+    def leaky(self, leak: float = 0.2) -> 'ConvBlock':
         """
         Change the ReLU to a LeakyReLU, also rescaling the weights in the conv
         to preserve the variance.
@@ -199,7 +198,7 @@ class Conv2dBNReLU(CondSeq):
         self.conv.weight.data *= new_gain / old_gain
         return self
 
-    def no_relu(self) -> 'Conv2dBNReLU':
+    def no_relu(self) -> 'ConvBlock':
         """
         Remove the ReLU
         """
@@ -207,7 +206,7 @@ class Conv2dBNReLU(CondSeq):
         self.relu = None
         return self
 
-    def to_preact(self) -> 'Conv2dBNReLU':
+    def to_preact(self) -> 'ConvBlock':
         """
         Place the normalization and ReLU before the convolution.
         """

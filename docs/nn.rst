@@ -67,6 +67,7 @@ Blocks
    :template: klass.rst
    :nosignatures:
 
+   ConvBlock
    MConvNormReLU
    MConvBNReLU
    SpadeResBlock

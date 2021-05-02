@@ -19,7 +19,7 @@ def get_dataset(dataset_specs: Tuple[str, str], img_size: int):
     ty, path = dataset_specs
     if ty == 'pix2pix':
         return Pix2PixDataset('~/.torch',
-                              opts.dataset,
+                              path,
                               split='train',
                               download=True,
                               transform=TF.Compose([
@@ -205,7 +205,7 @@ def train(rank, world_size):
         x, _ = batch
         G_polyak.train()
         out = G_polyak(x * 2 - 1)
-        return {'out': out}
+        return {'out': out.detach()}
 
     tag = f'pix2pix_{opts.dataset[0]}:{os.path.basename(opts.dataset[1])}'
     recipe = GANRecipe(G,

@@ -9,7 +9,7 @@ class PatchDiscriminator(nn.Module):
     def __init__(self, arch: List[int]) -> None:
         super().__init__()
         layers: List[nn.Module] = [
-            tnn.Conv2dBNReLU(3, arch[0], kernel_size=4,
+            tnn.ConvBlock(3, arch[0], kernel_size=4,
                              stride=2).remove_batchnorm().leaky()
         ]
 
@@ -17,10 +17,10 @@ class PatchDiscriminator(nn.Module):
         self.in_channels = in_ch
         for next_ch in arch[1:]:
             layers.append(
-                tnn.Conv2dBNReLU(in_ch, next_ch, kernel_size=4,
+                tnn.ConvBlock(in_ch, next_ch, kernel_size=4,
                                  stride=2).leaky())
             in_ch = next_ch
-        assert isinstance(layers[-1], tnn.Conv2dBNReLU)
+        assert isinstance(layers[-1], tnn.ConvBlock)
         layers[-1].conv.stride = (1, 1)
 
         self.features = tnn.CondSeq(*layers)
@@ -38,7 +38,7 @@ class PatchDiscriminator(nn.Module):
 
     def to_binomial_downsampling(self) -> 'PatchDiscriminator':
         for m in self.features.modules():
-            if isinstance(m, tnn.Conv2dBNReLU):
+            if isinstance(m, tnn.ConvBlock):
                 if m.conv.stride[0] != 2:
                     continue
                 tnn.utils.insert_before(m, 'conv', BinomialFilter2d(2), 'pool')
@@ -47,7 +47,7 @@ class PatchDiscriminator(nn.Module):
 
     def to_avg_pool(self) -> 'PatchDiscriminator':
         for m in self.features.modules():
-            if isinstance(m, tnn.Conv2dBNReLU):
+            if isinstance(m, tnn.ConvBlock):
                 if m.conv.stride[0] != 2:
                     continue
                 tnn.utils.insert_before(m, 'conv', nn.AvgPool2d(2), 'pool')

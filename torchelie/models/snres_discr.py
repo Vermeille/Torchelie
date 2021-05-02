@@ -63,7 +63,7 @@ class ResidualDiscriminator(nn.Module):
         assert isinstance(self.features.input, nn.Module)
         nn.utils.spectral_norm(self.features.input)
         if hasattr(self.features, 'mbconv'):
-            assert isinstance(self.features.mbconv, tnn.Conv2dBNReLU)
+            assert isinstance(self.features.mbconv, tnn.ConvBlock)
             assert isinstance(self.features.mbconv.conv, nn.Module)
             nn.utils.spectral_norm(self.features.mbconv.conv)
         if isinstance(self.classifier, ProjectionDiscr):
@@ -83,7 +83,7 @@ class ResidualDiscriminator(nn.Module):
         self.features.add_module('mbstd', tnn.MinibatchStddev())
         self.features.add_module(
             'mbconv',
-            tnn.Conv2dBNReLU(out_ch + 1, out_ch, 3).remove_batchnorm().leaky())
+            tnn.ConvBlock(out_ch + 1, out_ch, 3).remove_batchnorm().leaky())
         return self
 
     def to_projection_discr(self, num_classes: int) -> 'ResidualDiscriminator':

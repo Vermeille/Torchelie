@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from .condseq import CondSeq
-from .conv import Conv2dBNReLU, Conv3x3
+from .conv import ConvBlock, Conv3x3
 from .interpolate import InterpolateBilinear2d
 
 
@@ -21,7 +21,7 @@ class ConvDeconvBlock(nn.Module):
         self.downsample = CondSeq(
             OrderedDict([
                 ('conv_0',
-                 Conv2dBNReLU(self.in_channels,
+                 ConvBlock(self.in_channels,
                               self.hidden_channels,
                               4,
                               stride=2)),
@@ -31,7 +31,7 @@ class ConvDeconvBlock(nn.Module):
         self.upsample = CondSeq(
             OrderedDict([
                 ('conv_0',
-                 Conv2dBNReLU(inner.out_channels,
+                 ConvBlock(inner.out_channels,
                               self.in_channels,
                               4,
                               stride=2).to_transposed_conv()),
@@ -56,7 +56,7 @@ class ConvDeconvBlock(nn.Module):
     def leaky(self) -> 'ConvDeconvBlock':
         for block in [self.pre, self.downsample, self.upsample, self.post]:
             for m in block:
-                if isinstance(m, Conv2dBNReLU):
+                if isinstance(m, ConvBlock):
                     m.leaky()
         return self
 
@@ -111,7 +111,7 @@ class UBlock(nn.Module):
         for i in range(num_layers):
             layers.add_module(
                 f'conv_{i}',
-                Conv2dBNReLU(
+                ConvBlock(
                     self.in_channels if i == 0 else self.hidden_channels,
                     self.hidden_channels, 3))
         self.in_conv = layers
@@ -128,19 +128,19 @@ class UBlock(nn.Module):
             out_ch = (self.in_channels if i == (num_layers -
                                                 1) else self.hidden_channels)
 
-            layers.add_module(f'conv_{i}', Conv2dBNReLU(in_ch, out_ch, 3))
+            layers.add_module(f'conv_{i}', ConvBlock(in_ch, out_ch, 3))
         self.out_conv = layers
         return self
 
     def remove_batchnorm(self) -> 'UBlock':
         for m in self.modules():
-            if isinstance(m, Conv2dBNReLU):
+            if isinstance(m, ConvBlock):
                 m.remove_batchnorm()
         return self
 
     def leaky(self) -> 'UBlock':
         for m in self.modules():
-            if isinstance(m, Conv2dBNReLU):
+            if isinstance(m, ConvBlock):
                 m.leaky()
         return self
 
