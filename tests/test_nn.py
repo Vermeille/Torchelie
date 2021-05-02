@@ -49,10 +49,10 @@ def test_blocks():
     m = MConvBNReLU(4, 8, 3)
     m(torch.randn(1, 4, 8, 8))
 
-    m = Conv2dBNReLU(4, 8, 3)
+    m = ConvBlock(4, 8, 3)
     m(torch.randn(1, 4, 8, 8))
 
-    m = Conv2dBNReLU(4, 8, 3).remove_batchnorm().leaky()
+    m = ConvBlock(4, 8, 3).remove_batchnorm().leaky()
     m(torch.randn(1, 4, 8, 8))
 
     m = ResBlock(4, 8, 1)
