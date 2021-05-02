@@ -156,17 +156,3 @@ class TemperedCrossEntropyLoss(torch.nn.Module):
                                       self.t2,
                                       weight=self.weight,
                                       reduction=self.reduction)
-
-
-if __name__ == '__main__':
-    torch.manual_seed(0)
-    a = torch.randn(12, 100)
-    l = torch.arange(0, 12).long()
-    w = torch.randn(100).abs() * 10
-
-    print(tempered_softmax(a, 1))
-    print(torch.nn.functional.softmax(a, dim=1))
-
-    print(torch.nn.functional.cross_entropy(a, l, reduction='mean', weight=w))
-    print(torch.nn.functional.cross_entropy(a, l, reduction='sum', weight=w))
-    print(tempered_cross_entropy(a, l, 1, 1, weight=w, reduction='mean'))
