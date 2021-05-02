@@ -20,8 +20,8 @@ class PerceptualNet(WithSavedActivations):
             used (default: True)
     """
     def __init__(self, layers: List[str],
-                  use_avg_pool: bool = True,
-                  remove_unused_layers: bool = True) -> None:
+                 use_avg_pool: bool = True,
+                 remove_unused_layers: bool = True) -> None:
         # yapf: disable
         layer_names = [
             'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'maxpool1',

@@ -49,5 +49,5 @@ class PerceptualLoss(nn.Module):
         _, ref = self.m(self.norm(y), detach=True)
         _, acts = self.m(self.norm(x), detach=False)
         loss = cast(torch.Tensor,
-                sum(self.loss_fn(acts[k], ref[k]) for k in acts.keys()))
+                    sum(self.loss_fn(acts[k], ref[k]) for k in acts.keys()))
         return loss / len(acts)

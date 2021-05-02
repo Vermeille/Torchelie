@@ -221,8 +221,7 @@ class Const(nn.Module):
 class SinePositionEncoding2d(nn.Module):
     def __init__(self, n_fourier_freqs:int) -> None:
         super().__init__()
-        self.register_buffer('fourier_freqs', torch.randn(n_fourier_freqs, 2,
-            1, 1))
+        self.register_buffer('fourier_freqs', torch.randn(n_fourier_freqs, 2, 1, 1))
 
     def forward(self, x):
         h = torch.arange(0, x.shape[2] * 0.1, 0.1)

@@ -151,11 +151,11 @@ class ResNet(nn.Module):
         return self
 
     def set_input_specs(self,
-                    input_size: int = 224,
-                    in_channels: int = 3) -> 'ResNet':
+                        input_size: int = 224,
+                        in_channels: int = 3) -> 'ResNet':
         assert isinstance(self.features.input, ResNetInput)
         self.features.input.set_input_specs(input_size=input_size,
-                                        in_channels=in_channels)
+                                            in_channels=in_channels)
         return self
 
 

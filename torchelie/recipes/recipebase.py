@@ -137,10 +137,9 @@ class RecipeBase:
             val = self.__dict__[key]
             if hasattr(val, 'load_state_dict'):
                 if isinstance(val, torch.nn.Module):
-                    if isinstance(
-                            val,
-                        (torch.nn.parallel.DistributedDataParallel,
-                            torch.nn.parallel.DataParallel)):
+                    if isinstance(val,
+                                  (torch.nn.parallel.DistributedDataParallel,
+                                   torch.nn.parallel.DataParallel)):
                         print(val.module.load_state_dict(state, strict=False))
                     else:
                         print(val.load_state_dict(state, strict=False))
