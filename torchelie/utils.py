@@ -222,9 +222,9 @@ def layer_by_name(net: nn.Module, name: str) -> Optional[nn.Module]:
     Returns:
         The found layer or `None`
     """
-    for l in net.named_modules():
-        if l[0] == name:
-            return l[1]
+    for layer in net.named_modules():
+        if layer[0] == name:
+            return layer[1]
     return None
 
 
