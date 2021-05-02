@@ -42,14 +42,14 @@ class MS1M:
             assert magic == 0xced7230a, f"{hex(magic)}, {hex(lrec)}"
             cflag = lrec >> 29
             assert cflag == 0
-            l = lrec & ~(3 << 29)
+            length = lrec & ~(3 << 29)
             header_sz = struct.calcsize('IfQQ')
             flag, label, id1, id2 = struct.unpack('IfQQ',
                                                   rec_handle.read(header_sz))
             if flag > 0:
                 label = struct.unpack('f' * flag, rec_handle.read(4 * flag))
                 header_sz -= 4 * flag
-            img_bytes = rec_handle.read(l - header_sz)
+            img_bytes = rec_handle.read(length - header_sz)
             return img_bytes, label
 
     def __getitem__(self, i: int) -> Tuple[Any, int]:
