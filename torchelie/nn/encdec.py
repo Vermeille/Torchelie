@@ -22,9 +22,9 @@ class ConvDeconvBlock(nn.Module):
             OrderedDict([
                 ('conv_0',
                  ConvBlock(self.in_channels,
-                              self.hidden_channels,
-                              4,
-                              stride=2)),
+                           self.hidden_channels,
+                           4,
+                           stride=2)),
             ]))
         self.inner = inner
         assert isinstance(inner.out_channels, int)
@@ -32,9 +32,9 @@ class ConvDeconvBlock(nn.Module):
             OrderedDict([
                 ('conv_0',
                  ConvBlock(inner.out_channels,
-                              self.in_channels,
-                              4,
-                              stride=2).to_transposed_conv()),
+                           self.in_channels,
+                           4,
+                           stride=2).to_transposed_conv()),
             ]))
 
         self.post = CondSeq()
