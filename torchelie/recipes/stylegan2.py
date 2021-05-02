@@ -166,7 +166,7 @@ def StyleGAN2Recipe(G: nn.Module,
         with G.no_sync():
             pl = ppl(G, torch.randn(batch_size, noise_size, device=gpu_id))
         ##############
-        ### G pass ###
+        #   G pass   #
         ##############
         imgs = G(torch.randn(batch_size, noise_size, device=gpu_id))
         pred = D(diffTF(imgs) * 2 - 1)
@@ -179,7 +179,7 @@ def StyleGAN2Recipe(G: nn.Module,
 
     def D_train(batch):
         ###################
-        #### Fake pass ####
+        #    Fake pass    #
         ###################
         with D.no_sync():
             # Sync the gradient on the last backward
@@ -204,7 +204,7 @@ def StyleGAN2Recipe(G: nn.Module,
                                          fake.detach() * 2 - 1)
 
         ###################
-        #### Real pass ####
+        #    Real pass    #
         ###################
         real_out = D(tfmed)
         correct += (real_out > 0).detach().int().eq(1).float().sum()
