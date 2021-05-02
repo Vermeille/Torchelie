@@ -543,8 +543,8 @@ def train(rank, world_size):
             tch.optim.RAdamW(G.parameters(),
                              lr=1e-3,
                              betas=(0., 0.99),
-                             weight_decay=0)
-            , k=10)
+                             weight_decay=0),
+            k=10)
         ),
     ])
     recipe.callbacks.add_callbacks([
@@ -556,8 +556,8 @@ def train(rank, world_size):
             tch.optim.RAdamW(D.parameters(),
                              lr=1e-3,
                              betas=(0., 0.99),
-                             weight_decay=0)
-            , k=10)
+                             weight_decay=0),
+            k=10)
         ),
     ])
     recipe.test_loop.callbacks.add_callbacks([
