@@ -108,11 +108,18 @@ Activations
 torchelie.nn.utils
 ==================
 
+.. currentmodule:: torchelie.nn.utils
+
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
+
+   receptive_field_for
 
 Model edition
 ~~~~~~~~~~~~~
 
-.. currentmodule:: torchelie.nn.utils
 .. autosummary::
    :toctree: generated
    :template: klass.rst
@@ -148,4 +155,6 @@ Weight normalization / equalized learning rate
    remove_weight_norm_and_equal_lr
    remove_weight_scale
    weight_scale
+   net_to_equal_lr
+   net_remove_weight_norm_and_equal_lr
 

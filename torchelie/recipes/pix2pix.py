@@ -1,4 +1,5 @@
 from typing import Tuple
+import copy
 import os
 import torch
 import torchelie as tch
@@ -87,6 +88,7 @@ def get_dataset(dataset_specs: Tuple[str, str], img_size: int):
 
 class DecayVal(tu.AutoStateDict):
     def __init__(self, decay):
+        super().__init__([])
         self.decay = decay
         self.i = 0
 
@@ -109,6 +111,7 @@ def train(rank, world_size):
     opts = parser.parse_args()
 
     G = pix2pix_256().to_equal_lr()
+    G_polyak = copy.deepcopy(G)
     D = patch286()
     D.set_input_specs(6)
     D.to_equal_lr()
@@ -198,8 +201,11 @@ def train(rank, world_size):
             (fake_correct + real_correct) / (2 * prob_fake.numel())
         }
 
-    def test_fun(_):
-        return {}
+    def test_fun(batch):
+        x, _ = batch
+        G_polyak.train()
+        out = G_polyak(x * 2 - 1)
+        return {'out': out}
 
     tag = f'pix2pix_{opts.dataset[0]}:{os.path.basename(opts.dataset[1])}'
     recipe = GANRecipe(G,
@@ -210,6 +216,8 @@ def train(rank, world_size):
                        ds,
                        checkpoint=tag if rank == 0 else None,
                        visdom_env=tag if rank == 0 else None)
+
+    recipe.register('G_polyak', G_polyak)
 
     recipe.callbacks.add_callbacks([
         tch.callbacks.Optimizer(
@@ -233,7 +241,11 @@ def train(rank, world_size):
                              lr=2e-3,
                              betas=(0., 0.99),
                              weight_decay=0)),
+        tch.callbacks.Polyak(G.module, G_polyak),
         l1_decay,
+    ])
+    recipe.test_loop.callbacks.add_callbacks([
+        tch.callbacks.Log('out', 'polyak_out'),
     ])
     recipe.to(rank)
     if opts.from_ckpt is not None:

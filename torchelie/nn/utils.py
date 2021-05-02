@@ -129,6 +129,7 @@ def remove_weight_scale(module: Module, name: str = 'weight') -> Module:
     return remove_weight_lambda(module, 'scale', name)
 
 
+@torch.no_grad()
 def remove_batchnorm(m: nn.Sequential) -> None:
     """
     Remove BatchNorm in Sequentials / CondSeqs in a smart way, restoring biases
@@ -158,6 +159,7 @@ def remove_batchnorm(m: nn.Sequential) -> None:
 T_Module = TypeVar('T_Module', bound=nn.Module)
 
 
+@torch.no_grad()
 def edit_model(m: T_Module, f: Callable[[nn.Module], nn.Module]) -> nn.Module:
     """
     Allow to edit any part of a model by recursively editing its modules.
@@ -189,6 +191,7 @@ def edit_model(m: T_Module, f: Callable[[nn.Module], nn.Module]) -> nn.Module:
     return f(m)
 
 
+@torch.no_grad()
 def weight_norm_and_equal_lr(m: T_Module,
                              leak: float = 0.,
                              mode: str = 'fan_in',
@@ -221,6 +224,7 @@ def weight_norm_and_equal_lr(m: T_Module,
     return m
 
 
+@torch.no_grad()
 def remove_weight_norm_and_equal_lr(module: Module,
                                     name: str = 'weight') -> Module:
     """
@@ -230,6 +234,7 @@ def remove_weight_norm_and_equal_lr(module: Module,
     return remove_weight_lambda(module, 'norm_equal_lr', name)
 
 
+@torch.no_grad()
 def insert_after(base: nn.Sequential, key: str, new: nn.Module,
                  name: str) -> nn.Sequential:
     """
@@ -248,6 +253,7 @@ def insert_after(base: nn.Sequential, key: str, new: nn.Module,
     return base
 
 
+@torch.no_grad()
 def insert_before(base: nn.Sequential, key: str, new: nn.Module,
                   name: str) -> nn.Sequential:
     """
@@ -266,6 +272,7 @@ def insert_before(base: nn.Sequential, key: str, new: nn.Module,
     return base
 
 
+@torch.no_grad()
 def make_leaky(net: nn.Module) -> nn.Module:
     """
     Change all relus into leaky relus for modules and submodules of net.
@@ -278,6 +285,7 @@ def make_leaky(net: nn.Module) -> nn.Module:
     return edit_model(net, do_it)
 
 
+@torch.no_grad()
 def net_to_equal_lr(net: nn.Module,
                     leak: float = 0.,
                     mode: str = 'fan_in') -> T_Module:
@@ -295,6 +303,7 @@ def net_to_equal_lr(net: nn.Module,
     return net
 
 
+@torch.no_grad()
 def net_to_weight_norm_and_equal_lr(net: T_Module,
                                     leak: float = 0.,
                                     mode: str = 'fan_in',

@@ -595,7 +595,10 @@ class Polyak:
     def on_batch_end(self, state):
         d = self.copy.state_dict()
         for name, value in self.original.state_dict().items():
-            d[name].mul_(self.beta).add_(value, alpha=1 - self.beta)
+            if value.dtype in [torch.float16, torch.float32, torch.float64]:
+                d[name].mul_(self.beta).add_(value, alpha=1 - self.beta)
+            else:
+                d[name].copy_(value)
 
 
 class Counter(tu.AutoStateDict):

@@ -73,6 +73,16 @@ Pix2Pix
    residual_patch142
    residual_patch286
 
+Pix2PixHD
+~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated
+   :template: klass.rst
+   :nosignatures:
+
+   Pix2PixHDGlobalGenerator
+
 StyleGAN2
 ~~~~~~~~~
 
