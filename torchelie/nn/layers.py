@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torchelie.utils as tu
 import torchelie as tch
 from typing import Optional
+from torch.autograd import Function
 
 
 class AdaptiveConcatPool2d(nn.Module):
@@ -94,9 +95,6 @@ class SelfAttention2d(nn.Module):
         attention = F.softmax(affinity, dim=1)
         out = torch.einsum('bci,bih->bch', v, attention).view(*x.shape)
         return self.gamma * out + x
-
-
-from torch.autograd import Function
 
 
 class GaussianPriorFunc(Function):
