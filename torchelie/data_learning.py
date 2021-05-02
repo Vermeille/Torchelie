@@ -12,11 +12,13 @@ def _rfft2d_freqs(h, w):
 
 
 class LearnableImage(nn.Module):
+
     def init_img(self, init: torch.Tensor) -> None:
         raise NotImplementedError
 
 
 class ColorTransform(nn.Module):
+
     def __call__(self, img: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
 
@@ -108,8 +110,7 @@ class SpectralImage(LearnableImage):
     def init_img(self, init_img: torch.Tensor) -> None:
         assert init_img.dim() == 4 and init_img.shape == self.shape
 
-        fft = torch.fft.rfft2(init_img[0] * 4, s=(self.shape[2],
-            self.shape[3]))
+        fft = torch.fft.rfft2(init_img[0] * 4, s=(self.shape[2], self.shape[3]))
         with torch.no_grad():
             self.spectrum_var.copy_(fft / self.spertum_scale)
 
@@ -166,6 +167,7 @@ class CorrelateColors(ColorTransform):
 
 
 class RGB(ColorTransform):
+
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
         return x
 
@@ -226,7 +228,7 @@ class ParameterizedImg(nn.Module):
         Return the tensor
         """
         t = self.color(self.img())
-        return torch.sigmoid(t) + 0.01 * t
+        return torch.sigmoid(t)
 
     def render(self):
         """
