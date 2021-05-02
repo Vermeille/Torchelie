@@ -212,10 +212,10 @@ class AttenNorm2d(nn.BatchNorm2d):
                  momentum=0.8,
                  track_running_stats=True):
         super(AttenNorm2d, self).__init__(num_features,
-                                        eps=eps,
-                                        momentum=momentum,
-                                        affine=False,
-                                        track_running_stats=track_running_stats)
+                                          eps=eps,
+                                          momentum=momentum,
+                                          affine=False,
+                                          track_running_stats=track_running_stats)
         self.gamma = nn.Parameter(torch.ones(num_weights, num_features))
         self.beta = nn.Parameter(torch.zeros(num_weights, num_features))
 
