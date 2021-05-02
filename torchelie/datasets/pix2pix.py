@@ -124,4 +124,3 @@ class Pix2PixDataset(SideBySideImagePairsDataset):
                 f'http://efrosgans.eecs.berkeley.edu/pix2pix/datasets/{which}.tar.gz',
                 root)
         super().__init__(f'{root}/{which}/{split}', transform=transform)
-

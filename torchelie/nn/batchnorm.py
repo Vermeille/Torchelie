@@ -239,4 +239,5 @@ class AttenNorm2d(nn.BatchNorm2d):
         beta = beta.unsqueeze(-1).unsqueeze(-1).expand(size)
         return gamma * output + beta
 
+
 __all__.append('AttenNorm2d')

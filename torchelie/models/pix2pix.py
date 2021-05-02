@@ -72,4 +72,3 @@ def pix2pix_dev() -> Pix2PixGenerator:
     A version of pix2pix_256 with less filter to use less memory and compute.
     """
     return Pix2PixGenerator([32, 64, 128, 128, 256, 256, 512, 512])
-

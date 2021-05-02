@@ -292,7 +292,6 @@ class LRSched(tu.AutoStateDict):
             if self.metric is not None:
                 self.avg.log(state['metrics'][self.metric])
 
-
     def on_epoch_end(self, state):
         if not self.step_each_batch:
             if self.metric is None:
@@ -699,7 +698,6 @@ class SegmentationInspector:
 
     def on_epoch_end(self, state):
         state['metrics']['report'] = self.vis.show()
-
 
 
 class ConfusionMatrix:

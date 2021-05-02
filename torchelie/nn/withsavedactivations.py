@@ -18,7 +18,6 @@ class WithSavedActivations(nn.Module):
 
         self.set_keep_layers(types, names)
 
-
     def set_keep_layers(self, types=(nn.Conv2d, nn.Linear), names=None):
         for h in self.handles:
             h.remove()
@@ -35,7 +34,6 @@ class WithSavedActivations(nn.Module):
                 h = layer.register_forward_hook(functools.partial(
                     self._save, name))
                 self.handles.append(h)
-
 
     def _save(self, name, module, input, output):
         if self.detach:

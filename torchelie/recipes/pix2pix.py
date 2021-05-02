@@ -86,6 +86,7 @@ def get_dataset(dataset_specs: Tuple[str, str], img_size: int):
             ]))
     assert False, "dataset's type not understood"
 
+
 class DecayVal(tu.AutoStateDict):
     def __init__(self, decay):
         super().__init__([])

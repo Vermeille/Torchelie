@@ -43,6 +43,7 @@ class ContinuousCEWithLogits(nn.Module):
     def forward(self, pred, soft_targets):
         return continuous_cross_entropy(pred, soft_targets)
 
+
 def binary_hinge(x, y):
     p = y * torch.clamp(1 - x, min=0) + (1 - y) * torch.clamp(1 + x, min=0)
     return p.mean()

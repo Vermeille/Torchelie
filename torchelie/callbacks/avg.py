@@ -5,6 +5,7 @@ Those classes are different ways of averaging metrics.
 import torchelie.utils as tu
 from typing import List, Optional
 
+
 class RunningAvg(tu.AutoStateDict):
     """
     Average by keeping the whole sum and number of elements of the data logged.

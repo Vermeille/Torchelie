@@ -80,4 +80,3 @@ class GaussianMixture:
         return torch.logsumexp(self.logistics.log_prob(x.unsqueeze(1)) +
                                log_pis,
                                dim=1)
-
