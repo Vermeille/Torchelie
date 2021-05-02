@@ -3,4 +3,3 @@ crayons==0.2.0
 torch==1.8.1
 torchvision==0.9.1
 numpy==1.16.2
-Pillow==8.1.1
