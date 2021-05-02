@@ -30,8 +30,8 @@ class MS1M:
     def read_idx(idx_file: str) -> List[int]:
         indices = []
         with open(idx_file, 'r') as f:
-            for l in f.readlines():
-                n, offset = l.strip().split('\t')
+            for line in f.readlines():
+                n, offset = line.strip().split('\t')
                 indices.append(int(offset))
         return indices
 
