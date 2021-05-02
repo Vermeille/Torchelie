@@ -115,8 +115,8 @@ class Pix2PixDataset(SideBySideImagePairsDataset):
                  download: bool = False,
                  transform: Optional[Callable] = None) -> None:
         assert which in [
-            'cityscapes', 'edges2handbags', 'edges2shoes', 'facades', 'maps',
-            'night2day'
+                'cityscapes', 'edges2handbags', 'edges2shoes', 'facades', 'maps',
+                'night2day'
             ], f'{which} is not a valid dataset for pix2pix'
         root = root
         if download:
