@@ -276,3 +276,13 @@ marker](https://docs.pytest.org/en/stable/example/markers.html) like so:
 ```shell
 pytest -m "not require_opencv"
 ```
+
+# Contributing
+
+## Code format
+
+Code is formatted using [**YAPF**](https://github.com/google/yapf).
+
+For now, the CI doesn't check for code format, and the config files for yapf
+and linting aren't there, but do your best to format your code using YAPF (or
+at least comply with [**PEP8**](https://www.python.org/dev/peps/pep-0008/) 🙂)
