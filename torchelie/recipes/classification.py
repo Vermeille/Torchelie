@@ -97,7 +97,7 @@ def Classification(model,
     """
 
     key_best = (lambda state: -state['test_loop']['callbacks']['state']
-            ['metrics']['loss'])
+                ['metrics']['loss'])
 
     loop = TrainAndTest(model,
                         train_fun,
@@ -241,16 +241,16 @@ def CrossEntropyClassification(model,
 
 
 def MixupClassification(model,
-                               train_loader,
-                               test_loader,
-                               classes,
-                               *,
-                               lr=3e-3,
-                               beta1=0.9,
-                               wd=1e-2,
-                               visdom_env='main',
-                               test_every=1000,
-                               log_every=100):
+                        train_loader,
+                        test_loader,
+                        classes,
+                        *,
+                        lr=3e-3,
+                        beta1=0.9,
+                        wd=1e-2,
+                        visdom_env='main',
+                        test_every=1000,
+                        log_every=100):
     """
     A Classification recipe with a default froward training / testing pass
     using cross entropy and mixup, and extended with RAdamW and
@@ -403,15 +403,15 @@ if __name__ == '__main__':
 
     if args.mixup:
         clf_recipe = MixupClassification(model,
-                                                trainloader,
-                                                testloader,
-                                                testset.classes,
-                                                log_every=10,
-                                                test_every=50,
-                                                lr=args.lr,
-                                                beta1=args.beta1,
-                                                wd=args.wd,
-                                                visdom_env=args.visdom_env)
+                                         trainloader,
+                                         testloader,
+                                         testset.classes,
+                                         log_every=10,
+                                         test_every=50,
+                                         lr=args.lr,
+                                         beta1=args.beta1,
+                                         wd=args.wd,
+                                         visdom_env=args.visdom_env)
     else:
         clf_recipe = CrossEntropyClassification(model,
                                                 trainloader,
