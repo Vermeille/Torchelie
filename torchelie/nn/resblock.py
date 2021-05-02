@@ -35,7 +35,7 @@ class SEBlock(nn.Module):
 
 
 def _make_resnet_shortcut(in_channels: int, out_channels: int,
-                         stride: int) -> CondSeq:
+                          stride: int) -> CondSeq:
     shortcut = CondSeq()
     if stride != 1:
         shortcut.add_module(
@@ -146,8 +146,8 @@ class ResBlockBottleneck(nn.Module):
         assert isinstance(self.branch.conv2, nn.Conv2d)
         self.branch.conv2.stride = (1, 1)
         insert_before(self.branch, 'conv2',
-                     InterpolateBilinear2d(scale_factor=self.stride),
-                     'upsample')
+                      InterpolateBilinear2d(scale_factor=self.stride),
+                      'upsample')
 
         if hasattr(self.shortcut, 'pool'):
             self.shortcut.pool = InterpolateBilinear2d(

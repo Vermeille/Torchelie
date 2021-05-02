@@ -124,7 +124,7 @@ class Attention56Bone(tnn.CondSeq):
                      Block(2048, 2048),
                      Block(2048, 2048),
                  )),
-                 ('classifier', ClassificationHead(2048, num_classes))
+                ('classifier', ClassificationHead(2048, num_classes))
             ]))
 
 

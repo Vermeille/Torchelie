@@ -204,11 +204,10 @@ class PixelCNN(PixCNNBase):
         img = torch.cat([img, cond_rsz], dim=1)
         return self.sample_(img, temp)[:, cond.shape[1]:]
 
-    def sample_(
-        self,
-        img: torch.Tensor,
-        temp: float = 0,
-        start_coord: Tuple[int, int] = (0, 0)) -> torch.Tensor:
+    def sample_(self,
+                img: torch.Tensor,
+                temp: float = 0,
+                start_coord: Tuple[int, int] = (0, 0)) -> torch.Tensor:
 
         self.eval()
         with torch.no_grad():

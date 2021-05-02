@@ -127,7 +127,7 @@ class Canny:
             edges detected in `img` as PIL Image
         """
         assert HAS_CV, ("Can't import OpenCV. Some transforms will not "
-                "work properly")
+                        "work properly")
         img = np.array(img)
         img = cv2.Canny(img, self.thresh_low, self.thresh_high)
         return Image.fromarray(img)
@@ -145,7 +145,7 @@ class ResizedCrop(object):
     """
 
     def __init__(self, size, scale=0.54, ratio=1,
-            interpolation=Image.BILINEAR):
+                 interpolation=Image.BILINEAR):
         if isinstance(size, tuple):
             self.size = size
         else:

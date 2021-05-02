@@ -24,7 +24,7 @@ class UNet(nn.Module):
         self.classifier = tnn.CondSeq()
         assert isinstance(encdec.out_channels, int)
         self.classifier.conv = tnn.ConvBlock(encdec.out_channels, 3,
-                                                3).remove_batchnorm()
+                                             3).remove_batchnorm()
 
     def forward(self, x):
         return self.classifier(self.features(x))

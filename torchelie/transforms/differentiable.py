@@ -133,10 +133,10 @@ class BinomialFilter2d(torch.nn.Module):
     def forward(self, x):
         x = torch.nn.functional.pad(x, (1, 1, 1, 1), mode='replicate')
         return torch.nn.functional.conv2d(x,
-                                    self.weight.expand(x.shape[1], 1, -1, -1),
-                                    groups=x.shape[1],
-                                    stride=self.stride,
-                                    padding=0)
+                                          self.weight.expand(x.shape[1], 1, -1, -1),
+                                          groups=x.shape[1],
+                                          stride=self.stride,
+                                          padding=0)
 
 
 def mblur(input):

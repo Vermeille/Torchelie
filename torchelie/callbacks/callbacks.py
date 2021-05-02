@@ -346,7 +346,7 @@ class VisdomLogger:
     """
 
     def __init__(self, visdom_env='main', log_every=10, prefix='',
-            post_epoch_ends=True):
+                 post_epoch_ends=True):
         self.vis = None
         self.log_every = log_every
         self.prefix = prefix
@@ -523,7 +523,7 @@ class Checkpoint(tu.AutoStateDict):
 
     def __init__(self, filename_base, objects, max_saves=10, key_best=None):
         super(Checkpoint, self).__init__(except_names=['objects', 'key_best',
-            'max_saves', 'key_best'])
+                                         'max_saves', 'key_best'])
         self.filename_base = filename_base
         self.objects = objects
         self.saved_fnames = []

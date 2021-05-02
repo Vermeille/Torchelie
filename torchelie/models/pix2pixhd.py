@@ -52,7 +52,7 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
         while arch[i][0] == 'R':
             out_ch = int(arch[i][1:])
             self.transform.add_module(f'transform_{ii}',
-                                   tnn.PreactResBlock(ch, out_ch))
+                                      tnn.PreactResBlock(ch, out_ch))
             ch = out_ch
             i += 1
             ii += 1
