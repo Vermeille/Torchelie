@@ -24,8 +24,7 @@ class AdaptiveConcatPool2d(nn.Module):
         return torch.cat([
             nn.functional.adaptive_avg_pool2d(x, self.target_size),
             nn.functional.adaptive_max_pool2d(x, self.target_size),
-        ],
-                         dim=1)
+        ], dim=1)
 
 
 class ModulatedConv(nn.Conv2d):

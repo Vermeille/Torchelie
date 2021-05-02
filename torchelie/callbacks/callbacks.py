@@ -425,7 +425,7 @@ class VisdomLogger:
                     assert False, "incorrect tensor shape {} for {}".format(repr(x.shape), name)
             else:
                 assert False, "incorrect type {} for key {}".format(
-                        x.__class__.__name__, name)
+                    x.__class__.__name__, name)
 
 
 class StdoutLogger(tu.AutoStateDict):

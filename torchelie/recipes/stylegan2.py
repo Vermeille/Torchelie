@@ -266,8 +266,7 @@ def StyleGAN2Recipe(G: nn.Module,
         noise = noise.view(-1, noise_size)
         interp = torch.cat([
             G_polyak(n, mixing=False) for n in torch.split(noise, batch_size)
-        ],
-                           dim=0)
+        ], dim=0)
         return {
             'polyak_imgs': fake,
             'polyak_interp': interp,
