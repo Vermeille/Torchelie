@@ -136,10 +136,10 @@ if __name__ == '__main__':
     model = choice['ctor'](pretrained=True)
     print(model)
     fv = FeatureVis(model,
-                          args.layer,
-                          args.input_size or choice['sz'],
-                          lr=args.lr,
-                          device=args.device,
-                          visdom_env=args.visdom_env)
+                    args.layer,
+                    args.input_size or choice['sz'],
+                    lr=args.lr,
+                    device=args.device,
+                    visdom_env=args.visdom_env)
     out = fv.fit(args.iters, args.neuron)
     TF.ToPILImage()(out).save(args.out)
