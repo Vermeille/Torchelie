@@ -16,13 +16,13 @@ class VGG(nn.Module):
         feats = tnn.CondSeq()
         block_num = 1
         conv_num = 1
-        for l in arch:
-            if l == 'M':
+        for layer in arch:
+            if layer == 'M':
                 feats.add_module(f'pool_{block_num}', nn.MaxPool2d(2, 2))
                 block_num += 1
                 conv_num = 1
             else:
-                ch = cast(int, l)
+                ch = cast(int, layer)
                 feats.add_module(
                     f'conv_{block_num}_{conv_num}',
                     tnn.ConvBlock(in_ch, ch, 3).remove_batchnorm())
