@@ -24,7 +24,8 @@ def get_dataset(dataset_specs: Tuple[str, str], img_size: int):
                               download=True,
                               transform=TF.Compose([
                                   TF.Resize(img_size),
-                                  TF.RandomResizedCrop(img_size, scale=(0.9, 1)),
+                                  TF.RandomResizedCrop(img_size,
+                                                       scale=(0.9, 1)),
                                   TF.RandomHorizontalFlip(),
                               ]))
     if ty == 'colorize':
@@ -88,16 +89,18 @@ def get_dataset(dataset_specs: Tuple[str, str], img_size: int):
 
 
 class DecayVal(tu.AutoStateDict):
+
     def __init__(self, decay):
         super().__init__([])
         self.decay = decay
-        self.i = 0
+        self.val = 0
 
     def on_batch_end(self, state):
-        self.i += 1
+        self.val = self.decay**state['iters']
+        state['decay'] = self.val
 
     def get(self):
-        return self.decay ** self.i
+        return self.val
 
 
 @tu.experimental
@@ -106,14 +109,14 @@ def train(rank, world_size):
     parser = ArgumentParser()
     parser.add_argument('--dataset', required=True, type=lambda x: x.split(':'))
     parser.add_argument('--r0-gamma', default=0.0001, type=float)
-    parser.add_argument('--l1-gain', default=100, type=float)
+    parser.add_argument('--l1-gain', default=10, type=float)
     parser.add_argument('--batch-size', default=4, type=int)
     parser.add_argument('--from-ckpt')
     opts = parser.parse_args()
 
     G = pix2pix_256().to_equal_lr()
     G_polyak = copy.deepcopy(G)
-    D = patch286()
+    D = residual_patch286()
     D.set_input_specs(6)
     D.to_equal_lr()
 
@@ -146,6 +149,7 @@ def train(rank, world_size):
         return {'G_loss': loss.item()}
 
     class GradientPenalty:
+
         @tu.experimental
         def __init__(self, gamma):
             self.gamma = gamma
@@ -198,8 +202,7 @@ def train(rank, world_size):
             'prob_real': torch.sigmoid(prob_real).mean().item(),
             'real_loss': real_loss.item(),
             'g_norm': g_norm,
-            'D-correct':
-            (fake_correct + real_correct) / (2 * prob_fake.numel())
+            'D-correct': (fake_correct + real_correct) / (2 * prob_fake.numel())
         }
 
     def test_fun(batch):
@@ -244,6 +247,7 @@ def train(rank, world_size):
                              weight_decay=0)),
         tch.callbacks.Polyak(G.module, G_polyak),
         l1_decay,
+        tch.callbacks.Log('decay', 'l1_decay'),
     ])
     recipe.test_loop.callbacks.add_callbacks([
         tch.callbacks.Log('out', 'polyak_out'),
