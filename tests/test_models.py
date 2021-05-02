@@ -64,9 +64,11 @@ def test_attention():
     m = attention56(2)
     m(torch.randn(2, 3, 32, 32))
 
+
 def test_hourglass():
     m = Hourglass()
-    m(torch.randn(2, 32, 256, 256))
+    out = m(torch.randn(2, 32, 128, 128))
+    assert out.shape == (2, 3, 128, 128)
 
 
 def test_autogan():

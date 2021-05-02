@@ -9,6 +9,7 @@ class Hourglass(nn.Module):
     """
     Hourglass model from Deep Image Prior.
     """
+
     def __init__(self,
                  noise_dim=32,
                  down_channels=[128, 128, 128, 128, 128],
@@ -42,8 +43,8 @@ class Hourglass(nn.Module):
             self.skips = nn.ModuleList(
                 [self.skip(d, skip_channels) for d in down_channels])
 
-        self.to_rgb = nn.Sequential(
-            nn.Conv2d(down_channels[0], 3, up_kernel[-1]), nn.BatchNorm2d(3))
+        self.to_rgb = tnn.ConvBlock(down_channels[0], 3, up_kernel[-1])
+        self.to_rgb.no_relu()
 
         tnn.utils.make_leaky(self)
         for m in self.modules():
@@ -53,7 +54,7 @@ class Hourglass(nn.Module):
     def down(self, in_ch, out_ch, ks) -> nn.Sequential:
         return nn.Sequential(
             tnn.ConvBlock(in_ch, out_ch, ks, stride=2),
-            tnn.ConvBlock(out_ch, out_ch, ks, stride=2),
+            tnn.ConvBlock(out_ch, out_ch, ks, stride=1),
         )
 
     def up(self, in_ch, out_ch, ks) -> nn.Sequential:

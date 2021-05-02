@@ -150,7 +150,7 @@ class ProjectionDiscr(nn.Module):
         num_classes (int): the number of output classes
     """
     def __init__(self, in_channels: int, num_classes: int) -> None:
-        super(ProjectionDiscr, self).__init__()
+        super().__init__()
         self.head = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             tnn.Reshape(in_channels),
