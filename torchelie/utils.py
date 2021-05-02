@@ -4,8 +4,13 @@ import torch.distributed as dist
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import warnings
 from typing import Optional, Iterable, TypeVar, Any, overload
 from typing import List
+from functools import wraps
+from inspect import isfunction
+from textwrap import dedent
+
 
 T = TypeVar('T')
 T_Module = TypeVar('T_Module', bound=nn.Module)
@@ -605,12 +610,6 @@ def indent(text: str, amount: int = 4) -> str:
         indented text
     """
     return '\n'.join((' ' * amount + l) for l in text.splitlines())
-
-
-from functools import wraps
-import warnings
-from inspect import isfunction
-from textwrap import dedent
 
 
 def experimental(func):
