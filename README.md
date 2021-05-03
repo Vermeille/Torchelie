@@ -286,3 +286,15 @@ Code is formatted using [**YAPF**](https://github.com/google/yapf).
 For now, the CI doesn't check for code format, and the config files for yapf
 and linting aren't there, but do your best to format your code using YAPF (or
 at least comply with [**PEP8**](https://www.python.org/dev/peps/pep-0008/) 🙂)
+
+## Variable names
+
+Common widespread naming best practices apply.
+
+That being said, please specifically try to **avoid using `l` as a variable
+name**, even for iterators. First, because of
+[E741](https://www.flake8rules.com/rules/E741.html) (see [PEP8 "names to
+avoid"](https://www.python.org/dev/peps/pep-0008/#names-to-avoid), second
+because in the context of Torchélie it might mean `layer`, `label`, `loss`,
+`length`, `line`, or other words that are spread among the codebase. Therefore,
+using `l` would make it considerably harder to understand code when reading it.
