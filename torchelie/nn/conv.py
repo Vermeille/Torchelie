@@ -111,7 +111,7 @@ class ConvBlock(CondSeq):
         c = self.conv
         assert c.kernel_size[0] in [
             3, 4
-        ], (f'ConvBlock.to_transposed_conv()'
+        ], ('ConvBlock.to_transposed_conv()'
             ' not supported with kernel_size other than 2 or 3 (please add the'
             ' support!')
         if c.kernel_size[0] == 4:
