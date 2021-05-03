@@ -229,11 +229,11 @@ def patches(img, patch_size=128):
     """
     h, w = img.height, img.width
     padder = AdaptPad((patch_size, patch_size))
-    for l, h_off in enumerate(range(0, h, patch_size)):
+    for row, h_off in enumerate(range(0, h, patch_size)):
         for c, w_off in enumerate(range(0, w, patch_size)):
             p = img.crop(
                 (w_off, h_off, w_off + patch_size, h_off + patch_size))
-            yield (l, c), padder(p)
+            yield (row, c), padder(p)
 
 
 def paste_patches(patches):
