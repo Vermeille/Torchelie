@@ -209,10 +209,10 @@ class PixelCNN(PixCNNBase):
                 start_coord: Tuple[int, int] = (0, 0)) -> torch.Tensor:
         self.eval()
         with torch.no_grad():
-            for l in range(start_coord[0], self.sz[0]):
-                for c in range(start_coord[1] if l == start_coord[0] else 0,
+            for row in range(start_coord[0], self.sz[0]):
+                for c in range(start_coord[1] if row == start_coord[0] else 0,
                                self.sz[0]):
-                    x = self.sample_xy(img * 2 - 1, c, l, temp)
-                    img[:, :, l, c] = x
+                    x = self.sample_xy(img * 2 - 1, c, row, temp)
+                    img[:, :, row, c] = x
 
         return img
