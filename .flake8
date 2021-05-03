@@ -1,0 +1,16 @@
+[flake8]
+max-line-length = 80
+
+extend-ignore =
+    # W503 - because it's outdated and replaced by W504 while conflicting with it
+    W503,
+    # F401 - This is temporary, see https://github.com/Vermeille/Torchelie/issues/47
+    F401,
+    # E722 - This is temporary, see https://github.com/Vermeille/Torchelie/issues/48
+    E722,
+    # F405 - This is temporary, see https://github.com/Vermeille/Torchelie/issues/49
+    F405,
+    # F403 - This is temporary, see https://github.com/Vermeille/Torchelie/issues/49
+    F403,
+    # E501 - This is temporary, see https://github.com/Vermeille/Torchelie/issues/50
+    E501,
