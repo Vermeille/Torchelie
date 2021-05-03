@@ -48,7 +48,7 @@ def get_datasets():
     tfms, train_tfms = build_transforms()
     ds = CIFAR10('~/.cache/torch/cifar10', download=True, transform=train_tfms)
     dst = CIFAR10('~/.cache/torch/cifar10',
-            transform=tfms,
+                  transform=tfms,
                   download=True,
                   train=False)
     return ds, dst
