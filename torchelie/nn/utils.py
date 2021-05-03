@@ -346,7 +346,7 @@ def receptive_field_for(net: nn.Module,
         height and width receptive fields.
     """
     device = next(iter(net.parameters())).device
-    input = torch.randn(1, *input_size, requires_grad=True)
+    input = torch.randn(1, *input_size, requires_grad=True, device=device)
     net.eval()
     out = net(input)
     net.train()
