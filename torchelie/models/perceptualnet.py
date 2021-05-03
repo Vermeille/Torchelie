@@ -45,6 +45,6 @@ class PerceptualNet(WithSavedActivations):
                 setattr(m, nm, nn.AvgPool2d(2, 2))
 
         if remove_unused_layers:
-            m = m[:max([layer_names.index(l) for l in layers]) + 1]
+            m = m[:max([layer_names.index(layer) for layer in layers]) + 1]
 
         super().__init__(m, names=layers)
