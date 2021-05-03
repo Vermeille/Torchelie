@@ -37,7 +37,7 @@ def test_classification():
     model = nn.Sequential(tch.nn.Reshape(-1), nn.Linear(16, 2))
 
     clf_recipe = CrossEntropyClassification(model, trainloader, testloader,
-    ['foo', 'bar'])
+                                            ['foo', 'bar'])
     clf_recipe.run(1)
 
 
@@ -60,7 +60,7 @@ def test_neuralstyle():
     style_img = ToPILImage()(torch.randn(3, 64, 64))
 
     result = stylizer.fit(1, content, style_img, 1, second_scale_ratio=1,
-            content_layers=['conv1_1'])
+                          content_layers=['conv1_1'])
 
 
 def test_trainandcall():
