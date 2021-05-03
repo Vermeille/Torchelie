@@ -22,14 +22,14 @@ class PerceptualLoss(nn.Module):
             representations, like mse_loss or l1_loss
     """
     def __init__(self,
-                 l: List[str],
+                 layers: List[str],
                  rescale: bool = False,
                  loss_fn: Callable[[torch.Tensor, torch.Tensor],
                                    torch.Tensor] = F.mse_loss,
                  use_avg_pool: bool = True,
                  remove_unused_layers: bool = True):
         super(PerceptualLoss, self).__init__()
-        self.m = PerceptualNet(l,
+        self.m = PerceptualNet(layers,
                                use_avg_pool=use_avg_pool,
                                remove_unused_layers=remove_unused_layers)
         self.norm = ImageNetInputNorm()
