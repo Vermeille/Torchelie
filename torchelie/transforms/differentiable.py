@@ -69,7 +69,7 @@ def crop(img, warped=True, sub_img_factor=2):
         y = np.random.randint(sz[-2])
         x = np.random.randint(sz[-1])
         out = _rolly(_rollx(img, x), y)
-        return out [..., :h, :w]
+        return out[..., :h, :w]
     else:
         y = np.random.randint(sz[-2] - h)
         x = np.random.randint(sz[-1] - w)
