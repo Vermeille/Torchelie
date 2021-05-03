@@ -118,14 +118,14 @@ class NeuralStyleLoss(nn.Module):
                 grams[comb_name] = bgram(comb)
 
         content = {
-            l: (a - a.mean((2, 3), keepdim=True))
+            layer: (a - a.mean((2, 3), keepdim=True))
             / torch.sqrt(a.std((2, 3), keepdim=True) + 1e-8)
-            for l, a in activations.items() if l in self.content_layers
+            for layer, a in activations.items() if layer in self.content_layers
         }
 
         hists = {
-            l: a
-            for l, a in activations.items() if l in self.hists_layers
+            layer: a
+            for layer, a in activations.items() if layer in self.hists_layers
         }
         return {'grams': grams, 'content': content, 'hists': hists}
 
@@ -219,9 +219,9 @@ class NeuralStyleLoss(nn.Module):
         hists_loss = cast(torch.Tensor, 0.)
         losses['hists_loss'] = 0
         if random.randint(0, 20) > 18:
-            for l in hists.keys():
-                hists_loss = hists_loss + hist_loss(hists[l],
-                                                    self.style_hists[l])
+            for layer in hists.keys():
+                hists_loss = hists_loss + hist_loss(hists[layer],
+                                                    self.style_hists[layer])
             losses['hists_loss'] = hists_loss.mean().item()
         loss = (c_ratio * content_loss + s_ratio
                 * (style_loss + hists_loss)).mean()
