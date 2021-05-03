@@ -103,7 +103,7 @@ class NeuralStyleLoss(nn.Module):
         for i in range(len(act_names)):
             for j in range(i, len(act_names)):
                 comb_name = act_names[i] + ':' + act_names[j]
-                if not comb_name in self.style_layers:
+                if comb_name not in self.style_layers:
                     continue
                 small = activations[act_names[i]]
                 big = activations[act_names[j]]
