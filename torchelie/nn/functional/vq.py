@@ -64,4 +64,4 @@ try:
     quantize = VectorQuantization.apply
 except Exception as e:
     print(str(e))
-    quantize = lambda x:x
+    quantize = lambda x: x

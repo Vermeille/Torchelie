@@ -59,7 +59,7 @@ class Matcher(nn.Module):
         labels = torch.arange(N, device=out.device)
         labels = labels.view(N, 1, 1).expand(N, h, w)
         return {'matches': out,
-                'loss': F.cross_entropy(out,labels),
+                'loss': F.cross_entropy(out, labels),
                 'labels': labels}
 
 

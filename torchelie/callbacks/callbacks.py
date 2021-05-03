@@ -584,7 +584,7 @@ class Polyak:
     beta: float
 
     @torch.no_grad()
-    def __init__(self, original: nn.Module, copy: nn.Module, beta:float = 0.999):
+    def __init__(self, original: nn.Module, copy: nn.Module, beta: float = 0.999):
         self.original = original
         self.copy = copy
         self.beta = beta
