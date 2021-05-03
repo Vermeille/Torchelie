@@ -1,6 +1,6 @@
 name: "Torchélie tests"
 
-on: [push, pull_request]
+on: [push]
 
 jobs:
   install-dependencies:
