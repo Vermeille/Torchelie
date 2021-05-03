@@ -10,6 +10,7 @@ def test_curriculum():
     opt.step()
     sched.step()
 
+
 def test_onecycle():
     x = torch.randn(3, requires_grad=True)
     opt = SGD([x], 1)

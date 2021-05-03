@@ -20,6 +20,7 @@ class FakeData:
         cls = 0 if i < 5 else 1
         return torch.randn(10) + cls * 3, cls
 
+
 class FakeImg:
     def __len__(self):
         return 10
@@ -61,6 +62,7 @@ def test_neuralstyle():
     result = stylizer.fit(1, content, style_img, 1, second_scale_ratio=1,
             content_layers=['conv1_1'])
 
+
 def test_trainandcall():
     model = nn.Linear(10, 2)
 
@@ -82,6 +84,7 @@ def test_trainandcall():
     ])
 
     trainer.run(1)
+
 
 def test_callbacks():
     from torchelie.recipes import Recipe

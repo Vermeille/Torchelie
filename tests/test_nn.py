@@ -79,6 +79,7 @@ def test_blocks():
     m = ResidualDiscrBlock(6, 3)
     m(torch.randn(1, 6, 8, 8))
 
+
 def test_vq():
     m = VQ(8, 16, mode='nearest')
     m(torch.randn(10, 8))
@@ -114,6 +115,7 @@ def test_misc():
 
     m = torch.jit.script(Reshape(16))
     m(torch.randn(1, 4, 4))
+
 
 def test_laplacian():
     x = torch.randn(5, 3, 32, 32)
