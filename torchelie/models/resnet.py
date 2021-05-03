@@ -59,8 +59,8 @@ class ResNet(nn.Module):
     def __init__(self, arch: List[str], num_classes: int) -> None:
         super().__init__()
 
-        def parse(l: str) -> List[int]:
-            return [int(x) for x in l.split(':')]
+        def parse(layer: str) -> List[int]:
+            return [int(x) for x in layer.split(':')]
 
         self.arch = list(map(parse, arch))
 
