@@ -46,8 +46,8 @@ class ADATF:
         x = geom.apply(x)
         return x
 
-    def log_loss(self, l: float) -> None:
-        self.loss.log(l)
+    def log_loss(self, loss: float) -> None:
+        self.loss.log(loss)
         if self.loss.get() > self.target_loss:
             self.p -= self.growth
         else:
