@@ -101,7 +101,7 @@ class StyleGAN2Generator(nn.Module):
             ch = int(512 / (2**(math.log2(res) - 7)) * ch_mul)
             if res == 4:
                 render.add_operation(inputs=['N'],
-                                     outputs=[f'fmap_constxconst'],
+                                     outputs=['fmap_constxconst'],
                                      name='const',
                                      operation=tnn.Const(
                                          min(max_ch, ch), 4, 4))
