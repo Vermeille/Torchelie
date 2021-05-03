@@ -284,8 +284,19 @@ pytest -m "not require_opencv"
 Code is formatted using [**YAPF**](https://github.com/google/yapf).
 
 For now, the CI doesn't check for code format, and the config files for yapf
-and linting aren't there, but do your best to format your code using YAPF (or
-at least comply with [**PEP8**](https://www.python.org/dev/peps/pep-0008/) 🙂)
+isn't there, but do your best to format your code using YAPF (or at least
+comply with [**PEP8**](https://www.python.org/dev/peps/pep-0008/) 🙂)
+
+## Lint
+
+Code is linted using [**Flake8**](https://pypi.org/project/flake8/). Do your
+best to send code that don't make it scream too loud 😉
+
+You can run it like this:
+
+```shell
+flake8 torchelie
+```
 
 ## Variable names
 
