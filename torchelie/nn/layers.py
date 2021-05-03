@@ -216,7 +216,7 @@ class Const(nn.Module):
 
 @tu.experimental
 class SinePositionEncoding2d(nn.Module):
-    def __init__(self, n_fourier_freqs:int) -> None:
+    def __init__(self, n_fourier_freqs: int) -> None:
         super().__init__()
         self.register_buffer('fourier_freqs', torch.randn(n_fourier_freqs, 2, 1, 1))
 
