@@ -1,4 +1,4 @@
-"""
+r"""
 Standard, non saturating, GAN loss from the original GAN paper
 
 https://arxiv.org/abs/1406.2661
