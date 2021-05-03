@@ -1,4 +1,3 @@
-from typing import Tuple
 import math
 import torchelie.utils as tu
 from typing import List, Tuple
