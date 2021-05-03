@@ -648,7 +648,7 @@ def experimental(func):
             '__doc__': deprecate_doc(cls.__doc__),
             '__init__': cls.__init__,
             '__module__': cls.__module__,
-            #'__getstate__': __getstate__,
-            #'__setstate__': __setstate__
+            # '__getstate__': __getstate__,
+            # '__setstate__': __setstate__
         }
         return type(cls.__name__, (cls, ), d)
