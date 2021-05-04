@@ -16,6 +16,7 @@ jobs:
         env:
           LINTER_RULES_PATH: .  # Avoid having to create .github/linters/ dir
           VALIDATE_PYTHON_FLAKE8: true  # Code lint
+          VALIDATE_PYTHON_MYPY: true  # Static typing lint
           # GITHUB_TOKEN allows the GitHub Super Linter to mark the status of
           # each individual linter runs in the Checks sections of a pull request
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
