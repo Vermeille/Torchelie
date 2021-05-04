@@ -21,8 +21,8 @@ class Pix2PixGenerator(UNet):
         super().__init__(arch, 3)
         self.remove_first_batchnorm()
 
-        self.features.input = tnn.CondSeq(
-            tnn.ConvBlock(3, int(arch[0]), 7).remove_batchnorm())
+        self.features.input = tnn.ConvBlock(3, int(arch[0]), 7)
+        self.features.input.remove_batchnorm()
 
         encdec = cast(nn.Module, self.features.encoder_decoder)
         for m in encdec.modules():
@@ -55,6 +55,21 @@ class Pix2PixGenerator(UNet):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 m.padding_mode = mode
+        return self
+
+    @torch.no_grad()
+    def to_instance_norm(self, affine: bool = True) -> 'Pix2PixGenerator':
+        """
+        Pix2Pix sometimes uses batch size 1, similar to instance norm.
+        """
+
+        def to_instancenorm(m):
+            if isinstance(m, nn.BatchNorm2d):
+                return nn.InstanceNorm2d(m.num_features, affine=affine)
+            return m
+
+        tnn.utils.edit_model(self, to_instancenorm)
+
         return self
 
 

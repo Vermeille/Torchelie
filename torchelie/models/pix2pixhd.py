@@ -24,6 +24,7 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
     ```
 
     """
+
     def __init__(self, arch: List[str]) -> None:
         super().__init__()
         self.arch = arch
@@ -32,9 +33,7 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
     def to_standard_arch(self):
         self._modules.clear()
         arch = self.arch
-        self.input = tnn.CondSeq(
-            tnn.ConvBlock(3, int(arch[0]), 7),
-        )
+        self.input = tnn.ConvBlock(3, int(arch[0]), 7)
         ch, i = int(arch[0]), 1
 
         ii = 0
@@ -80,10 +79,12 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
         tnn.utils.edit_model(self, to_instance_norm)
 
     def leaky(self) -> 'Pix2PixHDGlobalGenerator':
+
         def to_leaky(m):
             if isinstance(m, nn.ReLU):
                 return nn.LeakyReLU(0.2, m.inplace)
             return m
+
         tnn.utils.edit_model(self, to_leaky)
         return self
 
@@ -93,10 +94,7 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
 
         ch = int(self.arch[0])
 
-        self.input = tnn.CondSeq(
-            tnn.SinePositionEncoding2d(15),
-            tnn.ConvBlock(33, int(arch[0]), 7),
-        )
+        self.input = tnn.ConvBlock(33, int(arch[0]), 7)
 
         def _build(i, prev_ch):
             ch = int(arch[i][1:])
@@ -141,12 +139,12 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
 
 @tu.experimental
 def pix2pix_res() -> Pix2PixHDGlobalGenerator:
-    return Pix2PixHDGlobalGenerator(['64', 'd128', 'd512', 'd1024']
-                                    + ['R1024'] * 10 + ['u1024', 'u512', 'u128'])
+    return Pix2PixHDGlobalGenerator(['64', 'd128', 'd512', 'd1024'] +
+                                    ['R1024'] * 10 + ['u1024', 'u512', 'u128'])
 
 
 @tu.experimental
 def pix2pix_res_dev() -> Pix2PixHDGlobalGenerator:
-    return Pix2PixHDGlobalGenerator(['8', 'd16', 'd32', 'd128', 'd256']
-                                    + ['R256'] * 10
-                                    + ['u256', 'u128', 'u32', 'u16'])
+    return Pix2PixHDGlobalGenerator(['8', 'd16', 'd32', 'd128', 'd256'] +
+                                    ['R256'] * 10 +
+                                    ['u256', 'u128', 'u32', 'u16'])

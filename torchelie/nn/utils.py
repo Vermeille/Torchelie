@@ -277,6 +277,7 @@ def make_leaky(net: nn.Module) -> nn.Module:
     """
     Change all relus into leaky relus for modules and submodules of net.
     """
+
     def do_it(m: nn.Module) -> nn.Module:
         if isinstance(m, nn.ReLU):
             return nn.LeakyReLU(0.2, m.inplace)

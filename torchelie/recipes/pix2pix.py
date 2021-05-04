@@ -100,7 +100,7 @@ def train(rank, world_size):
     parser.add_argument('--from-ckpt')
     opts = parser.parse_args()
 
-    G = pix2pix_256().to_equal_lr()
+    G = pix2pix_256().to_instance_norm().to_equal_lr()
     G_polyak = copy.deepcopy(G)
     if opts.D_type == 'patch':
         D = residual_patch286()

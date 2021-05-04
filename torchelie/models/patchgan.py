@@ -5,7 +5,8 @@ from typing import List
 from torchelie.transforms.differentiable import BinomialFilter2d
 
 
-class PatchDiscriminator(nn.Module):
+class PatchDiscriminator(tnn.CondSeq):
+
     def __init__(self, arch: List[int]) -> None:
         super().__init__()
         layers: List[nn.Module] = [
@@ -25,15 +26,24 @@ class PatchDiscriminator(nn.Module):
         self.features = tnn.CondSeq(*layers)
         self.classifier = tnn.Conv2d(in_ch, 1, 4)
 
-    def forward(self, x):
-        return self.classifier(self.features(x))
-
-    def to_equal_lr(self, leak=0.2) -> 'ResidualDiscriminator':
+    def to_equal_lr(self, leak=0.2) -> 'PatchDiscriminator':
         for m in self.modules():
             if isinstance(m, (nn.Linear, nn.Conv2d)):
                 kaiming(m, dynamic=True, a=leak)
 
         return self
+
+    def to_instance_norm(self, affine: bool = True) -> 'PatchDiscriminator':
+        """
+        Pix2PixHD uses instancenorm rather than batchnorm
+        """
+
+        def to_instancenorm(m):
+            if isinstance(m, nn.BatchNorm2d):
+                return nn.InstanceNorm2d(m.num_features, affine=affine)
+            return m
+
+        tnn.utils.edit_model(self, to_instancenorm)
 
     def to_binomial_downsampling(self) -> 'PatchDiscriminator':
         for m in self.features.modules():
@@ -66,6 +76,7 @@ class PatchDiscriminator(nn.Module):
         return self
 
     def set_kernel_size(self, kernel_size: int) -> 'PatchDiscriminator':
+
         def change_ks(m):
             if isinstance(m, nn.Conv2d) and m.kernel_size[0] != 1:
                 return kaiming(
