@@ -62,7 +62,7 @@ class EfficientNet(tnn.CondSeq):
         def ch(ch):
             return int(ch * 1.1**B) // 8 * 8
 
-        def l(d):  # noqa: E743
+        def n_layers(d):
             return int(math.ceil(d * 1.2**B))
 
         def r():
@@ -77,31 +77,34 @@ class EfficientNet(tnn.CondSeq):
 
             # Stage 2
             MBConv(ch(32), ch(16), 3, mul_factor=1),
-            *[MBConv(ch(16), ch(16), 3, mul_factor=1) for _ in range(l(1) - 1)],
+            *[
+                MBConv(ch(16), ch(16), 3, mul_factor=1)
+                for _ in range(n_layers(1) - 1)
+            ],
 
             # Stage 3
             MBConv(ch(16), ch(24), 3, stride=2),
-            *[MBConv(ch(24), ch(24), 3) for _ in range(l(2) - 1)],
+            *[MBConv(ch(24), ch(24), 3) for _ in range(n_layers(2) - 1)],
 
             # Stage 4
             MBConv(ch(24), ch(40), 5, stride=2),
-            *[MBConv(ch(40), ch(40), 5) for _ in range(l(2) - 1)],
+            *[MBConv(ch(40), ch(40), 5) for _ in range(n_layers(2) - 1)],
 
             # Stage 5
             MBConv(ch(40), ch(80), 3, stride=2),
-            *[MBConv(ch(80), ch(80), 3) for _ in range(l(3) - 1)],
+            *[MBConv(ch(80), ch(80), 3) for _ in range(n_layers(3) - 1)],
 
             # Stage 6
             MBConv(ch(80), ch(112), 5),
-            *[MBConv(ch(112), ch(112), 5) for _ in range(l(3) - 1)],
+            *[MBConv(ch(112), ch(112), 5) for _ in range(n_layers(3) - 1)],
 
             # Stage 7
             MBConv(ch(112), ch(192), 5, stride=2),
-            *[MBConv(ch(192), ch(192), 5) for _ in range(l(4) - 1)],
+            *[MBConv(ch(192), ch(192), 5) for _ in range(n_layers(4) - 1)],
 
             # Stage 8
             MBConv(ch(192), ch(320), 3),
-            *[MBConv(ch(320), ch(320), 3) for _ in range(l(1) - 1)],
+            *[MBConv(ch(320), ch(320), 3) for _ in range(n_layers(1) - 1)],
             tu.kaiming(tnn.Conv1x1(ch(320), ch(1280), bias=False)),
             nn.BatchNorm2d(ch(1280)),
             tnn.HardSwish(),
