@@ -51,7 +51,7 @@ def test_resnet():
 
 
 def test_unet():
-    m = UNet([3, 6, 12])
+    m = UNet([3, 6, 12], 1)
     m(torch.randn(1, 3, 128, 128))
 
 
