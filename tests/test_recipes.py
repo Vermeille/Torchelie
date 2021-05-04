@@ -13,6 +13,7 @@ import torchelie.callbacks as tcb
 
 
 class FakeData:
+
     def __len__(self):
         return 10
 
@@ -22,6 +23,7 @@ class FakeData:
 
 
 class FakeImg:
+
     def __len__(self):
         return 10
 
@@ -59,8 +61,12 @@ def test_neuralstyle():
     content = ToPILImage()(torch.randn(3, 64, 64))
     style_img = ToPILImage()(torch.randn(3, 64, 64))
 
-    result = stylizer.fit(1, content, style_img, 1, second_scale_ratio=1,
-                          content_layers=['conv1_1'])
+    stylizer.fit(1,
+                 content,
+                 style_img,
+                 1,
+                 second_scale_ratio=1,
+                 content_layers=['conv1_1'])
 
 
 def test_trainandcall():
@@ -79,9 +85,8 @@ def test_trainandcall():
 
     trainloader = DataLoader(FakeData(), 4, shuffle=True)
     trainer = TrainAndCall(model, train_step, after_train, trainloader)
-    trainer.callbacks.add_callbacks([
-        tcb.Optimizer(torch.optim.Adam(model.parameters(), lr=1e-3))
-    ])
+    trainer.callbacks.add_callbacks(
+        [tcb.Optimizer(torch.optim.Adam(model.parameters(), lr=1e-3))])
 
     trainer.run(1)
 

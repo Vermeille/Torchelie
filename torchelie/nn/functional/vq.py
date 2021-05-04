@@ -3,6 +3,7 @@ from torch.autograd import Function
 
 
 class VectorQuantization(Function):
+
     @staticmethod
     def compute_indices(inputs_orig, codebook):
         bi = []
@@ -59,9 +60,4 @@ class VectorQuantization(Function):
         return straight_through + commitment, code_disp, None, None
 
 
-try:
-    # Sphinx doesn't import Function, so apply ain't defined
-    quantize = VectorQuantization.apply
-except Exception as e:
-    print(str(e))
-    quantize = lambda x: x
+quantize = VectorQuantization.apply

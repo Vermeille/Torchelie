@@ -32,7 +32,7 @@ def test_bitempered():
 def test_deepdream():
     m = nn.Sequential(nn.Conv2d(1, 1, 3))
     dd = DeepDreamLoss(m, '0', max_reduction=1)
-    loss = dd(m(torch.randn(1, 1, 10, 10)))
+    dd(m(torch.randn(1, 1, 10, 10)))
 
 
 def test_focal():
@@ -41,17 +41,17 @@ def test_focal():
 
     foc = FocalLoss()
     fl = foc(x, y)
-    l = torch.nn.functional.binary_cross_entropy_with_logits(x, y)
-    assert torch.allclose(fl, l)
+    loss = torch.nn.functional.binary_cross_entropy_with_logits(x, y)
+    assert torch.allclose(fl, loss)
 
-    y = torch.randint(4, (10, ))
+    y = torch.randint(4, (10,))
     x = torch.randn(10, 5)
 
     fl = foc(x, y)
-    l = torch.nn.functional.cross_entropy(x, y)
-    assert torch.allclose(fl, l)
+    loss = torch.nn.functional.cross_entropy(x, y)
+    assert torch.allclose(fl, loss)
 
-    focal_loss(torch.randn(10, 5), torch.randint(4, (10, )))
+    focal_loss(torch.randn(10, 5), torch.randint(4, (10,)))
 
 
 def test_funcs():
@@ -64,8 +64,8 @@ def test_funcs():
     total_variation(torch.randn(1, 1, 10, 10))
 
     f = ContinuousCEWithLogits()
-    continuous_cross_entropy(
-        torch.randn(10, 5), torch.nn.functional.softmax(torch.randn(10, 5), 1))
+    continuous_cross_entropy(torch.randn(10, 5),
+                             torch.nn.functional.softmax(torch.randn(10, 5), 1))
     f(torch.randn(10, 5), torch.nn.functional.softmax(torch.randn(10, 5), 1))
 
 

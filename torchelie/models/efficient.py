@@ -6,6 +6,7 @@ import torchelie.utils as tu
 
 @tu.experimental
 class MBConv(nn.Module):
+
     def __init__(self,
                  in_ch: int,
                  out_ch: int,
@@ -21,8 +22,8 @@ class MBConv(nn.Module):
 
         hid = in_ch * mul_factor
         self.branch = tnn.CondSeq(
-            tu.xavier(tnn.Conv1x1(in_ch, hid, bias=False)),
-            nn.BatchNorm2d(hid), tnn.HardSwish(),
+            tu.xavier(tnn.Conv1x1(in_ch, hid, bias=False)), nn.BatchNorm2d(hid),
+            tnn.HardSwish(),
             tu.xavier(
                 nn.Conv2d(hid,
                           hid,
@@ -47,20 +48,21 @@ class MBConv(nn.Module):
 
     def __repr__(self):
         return "MBConv({}, {}, factor={}, k{}x{}s{}))".format(
-            self.in_ch, self.out_ch, self.factor, self.ks, self.ks,
-            self.stride)
+            self.in_ch, self.out_ch, self.factor, self.ks, self.ks, self.stride)
 
     def forward(self, x):
         return self.branch(x).add_(self.shortcut(x))
 
 
 class EfficientNet(tnn.CondSeq):
+
     @tu.experimental
     def __init__(self, in_ch, num_classes, B=0):
+
         def ch(ch):
             return int(ch * 1.1**B) // 8 * 8
 
-        def l(d):
+        def l(d):  # noqa: E743
             return int(math.ceil(d * 1.2**B))
 
         def r():
@@ -75,10 +77,7 @@ class EfficientNet(tnn.CondSeq):
 
             # Stage 2
             MBConv(ch(32), ch(16), 3, mul_factor=1),
-            *[
-                MBConv(ch(16), ch(16), 3, mul_factor=1)
-                for _ in range(l(1) - 1)
-            ],
+            *[MBConv(ch(16), ch(16), 3, mul_factor=1) for _ in range(l(1) - 1)],
 
             # Stage 3
             MBConv(ch(16), ch(24), 3, stride=2),
