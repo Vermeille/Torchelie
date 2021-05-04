@@ -177,8 +177,7 @@ class MetricsTable(tu.AutoStateDict):
 
         for k, v in state['metrics'].items():
             if isinstance(v, float):
-                html += '<tr><th>{}</th><td>{}</td></tr>'.format(
-                    k, round(v, 6))
+                html += '<tr><th>{}</th><td>{}</td></tr>'.format(k, round(v, 6))
             elif isinstance(v, torch.Tensor) and v.numel() == 1:
                 html += '<tr><th>{}</th><td>{}</td></tr>'.format(
                     k, round(v.item(), 6))
@@ -345,7 +344,10 @@ class VisdomLogger:
         prefix (str): prefix for all metrics name
     """
 
-    def __init__(self, visdom_env='main', log_every=10, prefix='',
+    def __init__(self,
+                 visdom_env='main',
+                 log_every=10,
+                 prefix='',
                  post_epoch_ends=True):
         self.vis = None
         self.log_every = log_every
@@ -357,8 +359,8 @@ class VisdomLogger:
 
     def on_batch_start(self, state):
         iters = state['iters']
-        state['visdom_will_log'] = (self.log_every != -1
-                                    and iters % self.log_every == 0)
+        state['visdom_will_log'] = (self.log_every != -1 and
+                                    iters % self.log_every == 0)
 
     @torch.no_grad()
     def on_batch_end(self, state):
@@ -398,15 +400,15 @@ class VisdomLogger:
                 elif x.dim() == 3:
                     self.vis.image(x,
                                    win=name,
-                                   opts=dict(
-                                       title=name,
-                                       store_history=name in store_history))
+                                   opts=dict(title=name,
+                                             store_history=name
+                                             in store_history))
                 elif x.dim() == 4:
                     m = x.min()
                     M = x.max()
-                    if m.item() < 0 or M.item() > 1:
+                    if x.shape[1] == 1 or (m.item() < 0 or M.item() > 1):
                         x = x - m
-                        x = x / (M + 1e-7)
+                        x = x / (M - m + 1e-7)
                     if x.shape[1] == 1:
                         B, _, H, W = x.shape
                         x_flat = x.view(B * H, W)
@@ -418,11 +420,12 @@ class VisdomLogger:
                         x = x_flat.transpose(0, 3, 1, 2)
                     self.vis.images(x,
                                     win=name,
-                                    opts=dict(
-                                        title=name,
-                                        store_history=name in store_history))
+                                    opts=dict(title=name,
+                                              store_history=name
+                                              in store_history))
                 else:
-                    assert False, "incorrect tensor shape {} for {}".format(repr(x.shape), name)
+                    assert False, "incorrect tensor shape {} for {}".format(
+                        repr(x.shape), name)
             else:
                 assert False, "incorrect type {} for key {}".format(
                     x.__class__.__name__, name)
@@ -493,8 +496,7 @@ class ImageGradientVis:
         grad_img = x.grad.abs().sum(1, keepdim=True)
         b, c, h, w = grad_img.shape
         gi_flat = grad_img.view(b, c, -1)
-        cl = torch.kthvalue(gi_flat, int(grad_img[0].numel() * 0.99),
-                            dim=-1)[0]
+        cl = torch.kthvalue(gi_flat, int(grad_img[0].numel() * 0.99), dim=-1)[0]
         cl = cl.unsqueeze(-1).unsqueeze(-1)
         grad_img = torch.min(grad_img, cl) / cl
         x = x.detach()
@@ -522,8 +524,8 @@ class Checkpoint(tu.AutoStateDict):
     """
 
     def __init__(self, filename_base, objects, max_saves=10, key_best=None):
-        super(Checkpoint, self).__init__(except_names=['objects', 'key_best',
-                                         'max_saves', 'key_best'])
+        super(Checkpoint, self).__init__(
+            except_names=['objects', 'key_best', 'max_saves', 'key_best'])
         self.filename_base = filename_base
         self.objects = objects
         self.saved_fnames = []
@@ -584,7 +586,10 @@ class Polyak:
     beta: float
 
     @torch.no_grad()
-    def __init__(self, original: nn.Module, copy: nn.Module, beta: float = 0.999):
+    def __init__(self,
+                 original: nn.Module,
+                 copy: nn.Module,
+                 beta: float = 0.999):
         self.original = original
         self.copy = copy
         self.beta = beta
@@ -741,8 +746,7 @@ class ConfusionMatrix:
             else:
                 row_str = ''.join([
                     ('<td style="background-color:rgb({0}, {0}, {0})">{1}'
-                     '</td>').format(int(255 - x / total * 255), x)
-                    for x in row
+                     '</td>').format(int(255 - x / total * 255), x) for x in row
                 ])
             s += "<tr><th>{}</th>{}</tr>".format(label, row_str)
 
@@ -802,6 +806,7 @@ class Throughput:
     - :code:`forward_throughput` imgs/s for the forward pass as
         :code:`batch_size / forward_time`
     """
+
     def __init__(self):
         self.b_start = None
         self.forward_avg = WindowAvg(10)
@@ -813,11 +818,13 @@ class Throughput:
             t = now - self.b_start
             self.it_avg.log(t)
             state['metrics']['iter_time'] = self.it_avg.get()
-            state['metrics']['iter_throughput'] = len(state['batch'][0]) / self.it_avg.get()
+            state['metrics']['iter_throughput'] = len(
+                state['batch'][0]) / self.it_avg.get()
         self.b_start = now
 
     def on_batch_end(self, state):
         t = time.time() - self.b_start
         self.forward_avg.log(t)
         state['metrics']['forward_time'] = self.forward_avg.get()
-        state['metrics']['forward_throughput'] = len(state['batch'][0]) / self.forward_avg.get()
+        state['metrics']['forward_throughput'] = len(
+            state['batch'][0]) / self.forward_avg.get()
