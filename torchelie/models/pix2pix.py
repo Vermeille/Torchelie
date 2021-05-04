@@ -16,14 +16,13 @@ class Pix2PixGenerator(UNet):
         arch (List[int]): the number of channel for each depth level of the
             UNet.
     """
+
     def __init__(self, arch: List[int]) -> None:
-        super().__init__(arch)
+        super().__init__(arch, 3)
         self.remove_first_batchnorm()
 
         self.features.input = tnn.CondSeq(
-            tnn.SinePositionEncoding2d(15),
-            tnn.ConvBlock(33, int(arch[0]), 7),
-        )
+            tnn.ConvBlock(3, int(arch[0]), 7).remove_batchnorm())
 
         encdec = cast(nn.Module, self.features.encoder_decoder)
         for m in encdec.modules():
@@ -33,7 +32,7 @@ class Pix2PixGenerator(UNet):
                 m.set_decoder_num_layers(1)
 
         tnn.utils.make_leaky(self)
-        self.classifier.conv.relu = nn.Sigmoid()
+        self.classifier.relu = nn.Sigmoid()
 
         self._add_noise()
 

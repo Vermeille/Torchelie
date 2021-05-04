@@ -88,37 +88,35 @@ def get_dataset(dataset_specs: Tuple[str, str], img_size: int):
     assert False, "dataset's type not understood"
 
 
-class DecayVal(tu.AutoStateDict):
-
-    def __init__(self, decay):
-        super().__init__([])
-        self.decay = decay
-        self.val = 0
-
-    def on_batch_end(self, state):
-        self.val = self.decay**state['iters']
-        state['decay'] = self.val
-
-    def get(self):
-        return self.val
-
-
 @tu.experimental
 def train(rank, world_size):
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument('--dataset', required=True, type=lambda x: x.split(':'))
-    parser.add_argument('--r0-gamma', default=0.0001, type=float)
-    parser.add_argument('--l1-gain', default=10, type=float)
+    parser.add_argument('--r0-gamma', type=float)
+    parser.add_argument('--D-type', choices=['patch', 'unet'], default='patch')
+    parser.add_argument('--l1-gain', default=0, type=float)
     parser.add_argument('--batch-size', default=4, type=int)
     parser.add_argument('--from-ckpt')
     opts = parser.parse_args()
 
     G = pix2pix_256().to_equal_lr()
     G_polyak = copy.deepcopy(G)
-    D = residual_patch286()
-    D.set_input_specs(6)
-    D.to_equal_lr()
+    if opts.D_type == 'patch':
+        D = residual_patch286()
+        D.set_input_specs(6)
+        D.to_equal_lr()
+        r0_gamma = 0.1
+    else:
+        D = UNet([32, 64, 128, 256, 512], 1)
+        D.set_decoder_num_layers(1)
+        D.set_encoder_num_layers(1)
+        D.set_input_specs(6)
+        D.to_bilinear_sampling()
+        D.leaky()
+        tnn.utils.net_to_equal_lr(D, leak=0.2)
+        r0_gamma = 0.00001
+    r0_gamma = opts.r0_gamma or r0_gamma
 
     if rank == 0:
         print(G)
@@ -135,8 +133,6 @@ def train(rank, world_size):
                                      pin_memory=True,
                                      drop_last=True)
 
-    l1_decay = DecayVal(0.9999)
-
     def G_fun(batch) -> dict:
         x, y = batch
         G.train()
@@ -144,7 +140,7 @@ def train(rank, world_size):
         out = G(x * 2 - 1)
         with D.no_sync():
             loss = gan_loss.generated(D(torch.cat([out, x], dim=1) * 2 - 1))
-        loss += opts.l1_gain * l1_decay.get() * F.l1_loss(out, y)
+        loss += opts.l1_gain * F.l1_loss(out, y)
         loss.backward()
         return {'G_loss': loss.item()}
 
@@ -170,7 +166,7 @@ def train(rank, world_size):
             self.iters += 1
             return self.last_norm
 
-    gradient_penalty = GradientPenalty(opts.r0_gamma)
+    gradient_penalty = GradientPenalty(r0_gamma)
 
     def D_fun(batch) -> dict:
         G.train()
@@ -199,6 +195,7 @@ def train(rank, world_size):
             'out': out.detach(),
             'fake_loss': fake_loss.item(),
             'prob_fake': torch.sigmoid(prob_fake).mean().item(),
+            'fake_heatmap': torch.sigmoid(prob_fake.detach()),
             'prob_real': torch.sigmoid(prob_real).mean().item(),
             'real_loss': real_loss.item(),
             'g_norm': g_norm,
@@ -232,6 +229,7 @@ def train(rank, world_size):
         tch.callbacks.Log('out', 'out'),
         tch.callbacks.Log('batch.0', 'x'),
         tch.callbacks.Log('batch.1', 'y'),
+        tch.callbacks.Log('fake_heatmap', 'fake_heatmap'),
         tch.callbacks.WindowedMetricAvg('fake_loss', 'fake_loss'),
         tch.callbacks.WindowedMetricAvg('real_loss', 'real_loss'),
         tch.callbacks.WindowedMetricAvg('prob_fake', 'prob_fake'),
@@ -246,8 +244,6 @@ def train(rank, world_size):
                              betas=(0., 0.99),
                              weight_decay=0)),
         tch.callbacks.Polyak(G.module, G_polyak),
-        l1_decay,
-        tch.callbacks.Log('decay', 'l1_decay'),
     ])
     recipe.test_loop.callbacks.add_callbacks([
         tch.callbacks.Log('out', 'polyak_out'),

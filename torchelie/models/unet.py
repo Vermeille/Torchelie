@@ -6,8 +6,19 @@ import torch.nn as nn
 
 
 @tu.experimental
-class UNet(nn.Module):
-    def __init__(self, arch: List[int]) -> None:
+class UNet(tnn.CondSeq):
+    """
+    U-Net from `U-Net: Convolutional Networks for Biomedical Image Segmentation
+    <https://arxiv.org/abs/1505.04597>`_. This net has architectural changes
+    operations for further customization.
+
+    Args:
+        arch (List[int]): a list of channels from the outermost to innermost
+            layers
+        num_classes (int): number of output channels
+    """
+
+    def __init__(self, arch: List[int], num_classes: int) -> None:
         super().__init__()
         self.arch = arch
         self.in_channels = 3
@@ -21,13 +32,21 @@ class UNet(nn.Module):
             encdec = tnn.UBlock(outer, inner, encdec)
         feats.encoder_decoder = encdec
         self.features = feats
-        self.classifier = tnn.CondSeq()
         assert isinstance(encdec.out_channels, int)
-        self.classifier.conv = tnn.ConvBlock(encdec.out_channels, 3,
-                                             3).remove_batchnorm()
+        self.classifier = tnn.ConvBlock(encdec.out_channels, num_classes,
+                                        3).remove_batchnorm().no_relu()
 
-    def forward(self, x):
-        return self.classifier(self.features(x))
+    def leaky(self, leak: float = 0.2) -> 'UNet':
+        for m in self.modules():
+            if isinstance(m, tnn.ConvBlock):
+                m.leaky(leak)
+        return self
+
+    def set_padding_mode(self, mode: str) -> 'UNet':
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                m.padding_mode = mode
+        return self
 
     def set_input_specs(self, in_channels: int) -> 'UNet':
         assert isinstance(self.features.input, tnn.ConvBlock)
@@ -38,6 +57,24 @@ class UNet(nn.Module):
                       cast(Tuple[int, int], c.kernel_size),
                       bias=c.bias is not None,
                       padding=cast(Tuple[int, int], c.padding)))
+        return self
+
+    def set_encoder_num_layers(self, num: int) -> 'UNet':
+        for m in self.modules():
+            if isinstance(m, tnn.UBlock):
+                m.set_encoder_num_layers(num)
+        return self
+
+    def set_decoder_num_layers(self, num: int) -> 'UNet':
+        for m in self.modules():
+            if isinstance(m, tnn.UBlock):
+                m.set_decoder_num_layers(num)
+        return self
+
+    def to_bilinear_sampling(self) -> 'UNet':
+        for m in self.modules():
+            if isinstance(m, tnn.UBlock):
+                m.to_bilinear_sampling()
         return self
 
     def remove_first_batchnorm(self) -> 'UNet':

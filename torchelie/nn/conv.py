@@ -187,6 +187,9 @@ class ConvBlock(CondSeq):
         Returns:
             self
         """
+        if not hasattr(self, 'relu') or self.relu is None:
+            return self
+
         new_gain = nn.init.calculate_gain('leaky_relu', param=leak)
         if isinstance(self.relu, nn.LeakyReLU):
             old_gain = nn.init.calculate_gain('leaky_relu',
