@@ -1,5 +1,7 @@
 # Torchélie
 
+![Tests status](https://img.shields.io/github/workflow/status/Vermeille/Torchelie/Torch%C3%A9lie%20tests?label=Tests&logo=GitHub)
+
 <img src="https://github.com/Vermeille/Torchelie/blob/master/logo.png" height="200"/>
 
 Torchélie is a set of tools for pyTorch. It includes losses, optimizers,
