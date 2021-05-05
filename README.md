@@ -2,11 +2,11 @@
 
 <img src="https://github.com/Vermeille/Torchelie/blob/master/logo.png" height="200"/>
 
-![License from GitHub](https://img.shields.io/github/license/Vermeille/Torchelie?color=informational&label=License)
+[![License from GitHub](https://img.shields.io/github/license/Vermeille/Torchelie?color=informational&label=License)](https://github.com/Vermeille/Torchelie/blob/master/LICENSE)
 
-![GitHub Actions - Tests status](https://img.shields.io/github/workflow/status/Vermeille/Torchelie/Torch%C3%A9lie%20tests?label=Tests&logo=GitHub)
-![GitHub last commit](https://img.shields.io/github/last-commit/Vermeille/Torchelie?label=Last%20commit)
-![Read the Docs build status](https://img.shields.io/readthedocs/torchelie?label=Read%20the%20Docs%20build%20status)
+[![GitHub Actions - Tests status](https://img.shields.io/github/workflow/status/Vermeille/Torchelie/Torch%C3%A9lie%20tests?label=Tests&logo=GitHub)](https://github.com/Vermeille/Torchelie/actions/workflows/tests.yml?query=branch%3Amaster)
+[![GitHub last commit](https://img.shields.io/github/last-commit/Vermeille/Torchelie?label=Last%20commit)](https://github.com/Vermeille/Torchelie/commits/master)
+[![Read the Docs build status](https://img.shields.io/readthedocs/torchelie?label=Read%20the%20Docs%20build%20status)](https://torchelie.readthedocs.io)
 
 Torchélie is a set of tools for pyTorch. It includes losses, optimizers,
 algorithms, utils, layers, models and training loops.
