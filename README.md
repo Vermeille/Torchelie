@@ -3,6 +3,7 @@
 ![License](https://img.shields.io/github/license/Vermeille/Torchelie?color=informational&label=License)
 
 ![Tests status](https://img.shields.io/github/workflow/status/Vermeille/Torchelie/Torch%C3%A9lie%20tests?label=Tests&logo=GitHub)
+![GitHub last commit](https://img.shields.io/github/last-commit/Vermeille/Torchelie?label=Last%20commit)
 
 <img src="https://github.com/Vermeille/Torchelie/blob/master/logo.png" height="200"/>
 
