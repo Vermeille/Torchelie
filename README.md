@@ -8,8 +8,8 @@
 [![GitHub last commit](https://img.shields.io/github/last-commit/Vermeille/Torchelie?label=Last%20commit)](https://github.com/Vermeille/Torchelie/commits/master)
 [![Read the Docs build status](https://img.shields.io/readthedocs/torchelie?label=Read%20the%20Docs%20build%20status)](https://torchelie.readthedocs.io)
 
-Torchélie is a set of tools for PyTorch. It includes losses, optimizers,
-algorithms, utils, layers, models and training loops.
+Torchélie is a set of tools for [PyTorch](https://pytorch.org/). It includes
+losses, optimizers, algorithms, utils, layers, models and training loops.
 
 Feedback is absolutely welcome.
 
