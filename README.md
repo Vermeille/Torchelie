@@ -6,6 +6,7 @@
 
 ![GitHub Actions - Tests status](https://img.shields.io/github/workflow/status/Vermeille/Torchelie/Torch%C3%A9lie%20tests?label=Tests&logo=GitHub)
 ![GitHub last commit](https://img.shields.io/github/last-commit/Vermeille/Torchelie?label=Last%20commit)
+![Read the Docs build status](https://img.shields.io/readthedocs/torchelie?label=Read%20the%20Docs%20build%20status)
 
 Torchélie is a set of tools for pyTorch. It includes losses, optimizers,
 algorithms, utils, layers, models and training loops.
