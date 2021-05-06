@@ -21,7 +21,7 @@ class Pix2PixGenerator(UNet):
         super().__init__(arch, 3)
         self.remove_first_batchnorm()
 
-        self.features.input = tnn.ConvBlock(3, int(arch[0]), 7)
+        self.features.input = tnn.ConvBlock(3, int(arch[0]), 3)
         self.features.input.remove_batchnorm()
 
         encdec = cast(nn.Module, self.features.encoder_decoder)
