@@ -108,14 +108,15 @@ def train(rank, world_size):
         D.to_equal_lr()
         r0_gamma = 0.1
     else:
-        D = UNet([32, 64, 128, 256, 512], 1)
+        D = UNet([32, 64, 128, 256, 512, 512], 1)
         D.set_decoder_num_layers(1)
         D.set_encoder_num_layers(1)
         D.set_input_specs(6)
         D.to_bilinear_sampling()
+        D.remove_batchnorm()
         D.leaky()
         tnn.utils.net_to_equal_lr(D, leak=0.2)
-        r0_gamma = 0.00001
+        r0_gamma = 0.000001
     r0_gamma = opts.r0_gamma or r0_gamma
 
     if rank == 0:
