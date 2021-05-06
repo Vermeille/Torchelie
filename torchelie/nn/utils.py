@@ -1,10 +1,13 @@
+import warnings
+from collections import OrderedDict
+from typing import Any, TypeVar, Callable, Tuple
+
 import torch
 import torch.nn as nn
-from torchelie.utils import kaiming_gain, kaiming, fast_zero_grad
 from torch.nn import Module
-from collections import OrderedDict
+
+from torchelie.utils import kaiming_gain, kaiming, fast_zero_grad
 from torch.nn.parameter import Parameter
-from typing import Any, TypeVar, Callable, Tuple
 
 
 class WeightLambda:
@@ -101,8 +104,8 @@ def remove_weight_lambda(module: Module,
             Default: 'weight'.
     """
     for k, hook in module._forward_pre_hooks.items():
-        if (isinstance(hook, WeightLambda) and hook.name == name
-                and hook.hook_name == hook_name):
+        if (isinstance(hook, WeightLambda) and hook.name == name and
+                hook.hook_name == hook_name):
             hook.remove(module)
             del module._forward_pre_hooks[k]
             return module

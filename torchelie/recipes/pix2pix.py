@@ -25,7 +25,8 @@ def get_dataset(dataset_specs: Tuple[str, str], img_size: int):
                               transform=TF.Compose([
                                   TF.Resize(img_size),
                                   TF.RandomResizedCrop(img_size,
-                                                       scale=(0.9, 1)),
+                                                       scale=(0.8, 1),
+                                                       ratio=(1., 1.)),
                                   TF.RandomHorizontalFlip(),
                               ]))
     if ty == 'colorize':
@@ -41,7 +42,7 @@ def get_dataset(dataset_specs: Tuple[str, str], img_size: int):
                         TF.ToTensor(),
                     ]),
                     TF.ToTensor(),
-                ])
+                ]),
             ]))
     if ty == 'inpainting':
         return UnlabeledImages(
@@ -56,7 +57,7 @@ def get_dataset(dataset_specs: Tuple[str, str], img_size: int):
                         TF.RandomErasing(p=1, value=(1., 1., 0)),
                     ]),
                     TF.Compose([])
-                ])
+                ]),
             ]))
     if ty == 'edges':
         return UnlabeledImages(
@@ -74,7 +75,7 @@ def get_dataset(dataset_specs: Tuple[str, str], img_size: int):
                     TF.Compose([
                         TF.ToTensor(),
                     ])
-                ])
+                ]),
             ]))
     if ty == 'pairs':
         return SideBySideImagePairsDataset(
