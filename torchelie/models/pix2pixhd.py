@@ -33,7 +33,7 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
     def to_standard_arch(self):
         self._modules.clear()
         arch = self.arch
-        self.input = tnn.ConvBlock(3, int(arch[0]), 7)
+        self.input = tnn.ConvBlock(3, int(arch[0]), 3)
         ch, i = int(arch[0]), 1
 
         ii = 0
@@ -66,7 +66,7 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
             ch = out_ch
             i += 1
             ii += 1
-        self.to_rgb = tnn.ConvBlock(out_ch, 3, 7).remove_batchnorm()
+        self.to_rgb = tnn.ConvBlock(out_ch, 3, 3).remove_batchnorm()
         self.to_rgb.relu = nn.Sigmoid()
 
         def to_instance_norm(m):
