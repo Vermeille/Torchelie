@@ -1,8 +1,10 @@
 from typing import List, Tuple, cast
 
+import torch
+import torch.nn as nn
+
 import torchelie.nn as tnn
 import torchelie.utils as tu
-import torch.nn as nn
 
 
 @tu.experimental
@@ -36,6 +38,21 @@ class UNet(tnn.CondSeq):
         self.classifier = tnn.ConvBlock(encdec.out_channels, num_classes,
                                         3).remove_batchnorm().no_relu()
 
+    @torch.no_grad()
+    def to_instance_norm(self, affine: bool = True) -> 'UNet':
+        """
+        Replace BatchNorm with InstanceNorm.
+        """
+
+        def to_instancenorm(m):
+            if isinstance(m, nn.BatchNorm2d):
+                return nn.InstanceNorm2d(m.num_features, affine=affine)
+            return m
+
+        tnn.utils.edit_model(self, to_instancenorm)
+
+        return self
+
     def leaky(self, leak: float = 0.2) -> 'UNet':
         for m in self.modules():
             if isinstance(m, tnn.ConvBlock):
@@ -63,6 +80,12 @@ class UNet(tnn.CondSeq):
         for m in self.modules():
             if isinstance(m, tnn.UBlock):
                 m.set_encoder_num_layers(num)
+        return self
+
+    def remove_upsampling_conv(self, num: int) -> 'UNet':
+        for m in self.modules():
+            if isinstance(m, tnn.UBlock):
+                m.remove_upsampling_conv()
         return self
 
     def set_decoder_num_layers(self, num: int) -> 'UNet':
