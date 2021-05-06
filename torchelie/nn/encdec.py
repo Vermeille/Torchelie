@@ -5,9 +5,11 @@ import torch.nn as nn
 from .condseq import CondSeq
 from .conv import ConvBlock, Conv3x3
 from .interpolate import InterpolateBilinear2d
+from .utils import insert_before
 
 
 class ConvDeconvBlock(nn.Module):
+
     def __init__(self, in_channels: int, hidden_channels: int,
                  inner: nn.Module) -> None:
         super().__init__()
@@ -21,9 +23,7 @@ class ConvDeconvBlock(nn.Module):
         self.downsample = CondSeq(
             OrderedDict([
                 ('conv_0',
-                 ConvBlock(self.in_channels,
-                           self.hidden_channels,
-                           4,
+                 ConvBlock(self.in_channels, self.hidden_channels, 4,
                            stride=2)),
             ]))
         self.inner = inner
@@ -31,9 +31,7 @@ class ConvDeconvBlock(nn.Module):
         self.upsample = CondSeq(
             OrderedDict([
                 ('conv_0',
-                 ConvBlock(inner.out_channels,
-                           self.in_channels,
-                           4,
+                 ConvBlock(inner.out_channels, self.in_channels, 4,
                            stride=2).to_transposed_conv()),
             ]))
 
@@ -79,11 +77,10 @@ class UBlock(nn.Module):
         assert isinstance(inner.in_channels, int)
         assert isinstance(inner.out_channels, int)
 
-        self.upsample = CondSeq(
-            nn.ConvTranspose2d(inner.out_channels,
-                               inner.out_channels // 2,
-                               kernel_size=2,
-                               stride=2))
+        self.upsample = nn.ConvTranspose2d(inner.out_channels,
+                                           inner.out_channels // 2,
+                                           kernel_size=2,
+                                           stride=2)
 
         self.set_decoder_num_layers(2)
 
@@ -92,10 +89,10 @@ class UBlock(nn.Module):
         self.downsample = BinomialFilter2d(2)
         assert isinstance(self.inner.in_channels, int)
         assert isinstance(self.inner.out_channels, int)
-        self.upsample = CondSeq(
-            InterpolateBilinear2d(scale_factor=2),
-            Conv3x3(self.inner.out_channels, self.inner.out_channels // 2),
-            nn.ReLU(True))
+        self.upsample = ConvBlock(self.inner.out_channels,
+                                  self.inner.out_channels // 2, 3)
+        insert_before(self.upsample, 'conv',
+                      InterpolateBilinear2d(scale_factor=2), 'upsample')
         return self
 
     def forward(self, x_orig: torch.Tensor) -> torch.Tensor:
@@ -111,9 +108,8 @@ class UBlock(nn.Module):
         for i in range(num_layers):
             layers.add_module(
                 f'conv_{i}',
-                ConvBlock(
-                    self.in_channels if i == 0 else self.hidden_channels,
-                    self.hidden_channels, 3))
+                ConvBlock(self.in_channels if i == 0 else self.hidden_channels,
+                          self.hidden_channels, 3))
         self.in_conv = layers
         return self
 
@@ -121,15 +117,22 @@ class UBlock(nn.Module):
         assert isinstance(self.inner.in_channels, int)
         assert isinstance(self.inner.out_channels, int)
 
+        inner_out_ch = getattr(self.upsample, 'out_channels',
+                               self.inner.out_channels)
         layers = CondSeq()
         for i in range(num_layers):
-            in_ch = (self.inner.out_channels // 2
-                     + self.hidden_channels if i == 0 else self.hidden_channels)
-            out_ch = (self.in_channels if i == (num_layers
-                                                - 1) else self.hidden_channels)
+            in_ch = (inner_out_ch +
+                     self.hidden_channels if i == 0 else self.hidden_channels)
+            out_ch = (self.in_channels if i == (num_layers -
+                                                1) else self.hidden_channels)
 
             layers.add_module(f'conv_{i}', ConvBlock(in_ch, out_ch, 3))
         self.out_conv = layers
+        return self
+
+    def remove_upsampling_conv(self) -> 'UBlock':
+        self.upsample = InterpolateBilinear2d(scale_factor=2)
+        self.set_decoder_num_layers(len(self.out_conv))
         return self
 
     def remove_batchnorm(self) -> 'UBlock':
