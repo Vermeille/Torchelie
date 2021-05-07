@@ -95,13 +95,18 @@ def train(rank, world_size):
     parser = ArgumentParser()
     parser.add_argument('--dataset', required=True, type=lambda x: x.split(':'))
     parser.add_argument('--r0-gamma', type=float)
+    parser.add_argument('--G-type', choices=['hd', 'unet'], default='patch')
     parser.add_argument('--D-type', choices=['patch', 'unet'], default='patch')
     parser.add_argument('--l1-gain', default=0, type=float)
     parser.add_argument('--batch-size', default=4, type=int)
     parser.add_argument('--from-ckpt')
     opts = parser.parse_args()
 
-    G = pix2pix_256().to_instance_norm().to_equal_lr()
+    if opts.G_type == 'unet':
+        G = pix2pix_256().to_instance_norm().to_equal_lr()
+    else:
+        G = pix2pixhd_dev().leaky().to_equal_lr()
+
     G_polyak = copy.deepcopy(G)
     if opts.D_type == 'patch':
         D = residual_patch286()
@@ -117,7 +122,7 @@ def train(rank, world_size):
         D.remove_batchnorm()
         D.leaky()
         tnn.utils.net_to_equal_lr(D, leak=0.2)
-        r0_gamma = 0.000001
+        r0_gamma = 0.00001
     r0_gamma = opts.r0_gamma or r0_gamma
 
     if rank == 0:

@@ -50,19 +50,25 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
         self.transform = tnn.CondSeq()
         while arch[i][0] == 'R':
             out_ch = int(arch[i][1:])
-            self.transform.add_module(f'transform_{ii}',
-                                      tnn.PreactResBlock(ch, out_ch))
+            resblock = tnn.PreactResBlock(ch, out_ch)
+            tnn.utils.insert_after(resblock.branch, 'bn1',
+                                   tnn.Noise(1, inplace=False), 'noise')
+            self.transform.add_module(f'transform_{ii}', resblock)
             ch = out_ch
             i += 1
             ii += 1
+        self.transform.add_module('norm', nn.InstanceNorm2d(ch))
+        self.transform.add_module('relu', nn.ReLU(True))
+        self.transform[0].preact_skip()
 
         ii = 0
         self.decode = tnn.CondSeq()
         while i < len(arch) and arch[i][0] == 'u':
             out_ch = int(arch[i][1:])
-            self.decode.add_module(
-                f'out_conv_{ii}',
-                tnn.ConvBlock(ch, out_ch, 3, stride=1).add_upsampling())
+            convblock = tnn.ConvBlock(ch, out_ch, 3, stride=1).add_upsampling()
+            self.decode.add_module(f'out_conv_{ii}', convblock)
+            tnn.utils.insert_after(convblock, 'norm',
+                                   tnn.Noise(1, inplace=True), 'noise')
             ch = out_ch
             i += 1
             ii += 1
@@ -79,13 +85,7 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
         tnn.utils.edit_model(self, to_instance_norm)
 
     def leaky(self) -> 'Pix2PixHDGlobalGenerator':
-
-        def to_leaky(m):
-            if isinstance(m, nn.ReLU):
-                return nn.LeakyReLU(0.2, m.inplace)
-            return m
-
-        tnn.utils.edit_model(self, to_leaky)
+        tnn.utils.make_leaky(self)
         return self
 
     def to_unet(self) -> 'Pix2PixHDGlobalGenerator':
@@ -111,6 +111,10 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
                     i += 1
                     ii += 1
                 transforms.out_channels = ch
+
+                transform.add_module('norm', nn.InstanceNorm2d(ch))
+                transform.add_module('relu', nn.ReLU(True))
+                transform[0].preact_skip()
                 return transforms
             if arch[i][0] == 'd':
                 u = tnn.encdec.UBlock(prev_ch, ch, _build(i + 1, ch))
@@ -134,17 +138,28 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
         return self
 
     def to_equal_lr(self, leak=0.) -> 'Pix2PixHDGlobalGenerator':
-        return tnn.utils.net_to_equal_lr(self, leak=leak, mode='fan_in')
+        tnn.utils.net_to_equal_lr(self, leak=leak)
+        for m in self.modules():
+            if isinstance(m, tnn.PreactResBlock):
+                pass
+        return self
 
 
 @tu.experimental
-def pix2pix_res() -> Pix2PixHDGlobalGenerator:
-    return Pix2PixHDGlobalGenerator(['64', 'd128', 'd512', 'd1024'] +
-                                    ['R1024'] * 10 + ['u1024', 'u512', 'u128'])
+def pix2pixhd() -> Pix2PixHDGlobalGenerator:
+    return Pix2PixHDGlobalGenerator(['64', 'd128', 'd256', 'd512', 'd1024'] +
+                                    ['R1024'] * 10 +
+                                    ['u1024', 'u512', 'u256', 'u128'])
+
+
+def pix2pixhd_dev() -> Pix2PixHDGlobalGenerator:
+    return Pix2PixHDGlobalGenerator(['64', 'd128', 'd256', 'd512'] +
+                                    ['R512'] * 10 + ['u512', 'u256', 'u128'])
 
 
 @tu.experimental
-def pix2pix_res_dev() -> Pix2PixHDGlobalGenerator:
-    return Pix2PixHDGlobalGenerator(['8', 'd16', 'd32', 'd128', 'd256'] +
+def pix2pixhd_res_dev() -> Pix2PixHDGlobalGenerator:
+    return Pix2PixHDGlobalGenerator(['8', 'd16', 'd32', 'd64', 'd128', 'd256'] +
                                     ['R256'] * 10 +
-                                    ['u256', 'u128', 'u32', 'u16'])
+                                    ['u256', 'u128', 'u64', 'u32', 'u16'])
+
