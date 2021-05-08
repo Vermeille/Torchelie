@@ -306,7 +306,7 @@ class LRSched(tu.AutoStateDict):
                 self.avg = RunningAvg()
 
 
-class Log(tu.AutoStateDict):
+class Log:
     """
     Move a value from the state to the metrics.
 
@@ -592,8 +592,9 @@ class Checkpoint(tu.AutoStateDict):
     """
 
     def __init__(self, filename_base, objects, max_saves=10, key_best=None):
-        super(Checkpoint, self).__init__(
-            except_names=['objects', 'key_best', 'max_saves', 'key_best'])
+        super(Checkpoint, self).__init__(except_names=[
+            'filename_base', 'objects', 'key_best', 'max_saves', 'key_best'
+        ])
         self.filename_base = filename_base
         self.objects = objects
         self.saved_fnames = []
