@@ -14,11 +14,13 @@ def GANRecipe(G: nn.Module,
               test_fun,
               loader: Iterable[Any],
               *,
+              test_loader: Optional[Iterable[Any]] = None,
               visdom_env: Optional[str] = 'main',
               checkpoint: Optional[str] = 'model',
               test_every: int = 1000,
               log_every: int = 10,
               g_every: int = 1) -> Recipe:
+
     def D_wrap(batch):
         tu.freeze(G)
         tu.unfreeze(D)
@@ -45,8 +47,10 @@ def GANRecipe(G: nn.Module,
         return out
 
     class NoLim:
-        def __init__(self):
-            self.i = iter(loader)
+
+        def __init__(self, data):
+            self.data = data
+            self.i = iter(data)
             self.did_send = False
 
         def __iter__(self):
@@ -60,17 +64,17 @@ def GANRecipe(G: nn.Module,
             try:
                 return next(self.i)
             except:
-                self.i = iter(loader)
+                self.i = iter(self.data)
                 return next(self.i)
 
     D_loop = Recipe(D_wrap, loader)
     D_loop.register('G', G)
     D_loop.register('D', D)
-    G_loop = Recipe(G_wrap, NoLim())
+    G_loop = Recipe(G_wrap, NoLim(loader))
     D_loop.G_loop = G_loop
     D_loop.register('G_loop', G_loop)
 
-    test_loop = Recipe(test_wrap, NoLim())
+    test_loop = Recipe(test_wrap, NoLim(test_loader or loader))
     D_loop.test_loop = test_loop
     D_loop.register('test_loop', test_loop)
 
