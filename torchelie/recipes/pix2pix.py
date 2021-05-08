@@ -15,12 +15,12 @@ from torchelie.models import *
 import torch.nn as nn
 
 
-def get_dataset(dataset_specs: Tuple[str, str], img_size: int):
+def get_dataset(dataset_specs: Tuple[str, str], img_size: int, train: bool):
     ty, path = dataset_specs
     if ty == 'pix2pix':
         return Pix2PixDataset('~/.torch',
                               path,
-                              split='train',
+                              split='train' if train else 'val',
                               download=True,
                               transform=TF.Compose([
                                   TF.Resize(img_size),
@@ -94,6 +94,9 @@ def train(rank, world_size):
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument('--dataset', required=True, type=lambda x: x.split(':'))
+    parser.add_argument('--test-dataset',
+                        required=True,
+                        type=lambda x: x.split(':'))
     parser.add_argument('--r0-gamma', type=float)
     parser.add_argument('--G-type', choices=['hd', 'unet'], default='patch')
     parser.add_argument('--D-type', choices=['patch', 'unet'], default='patch')
@@ -132,13 +135,21 @@ def train(rank, world_size):
     G = torch.nn.parallel.DistributedDataParallel(G.to(rank), [rank], rank)
     D = torch.nn.parallel.DistributedDataParallel(D.to(rank), [rank], rank)
 
-    ds = get_dataset(opts.dataset, 256)
+    ds = get_dataset(opts.dataset, 256, train=True)
     ds = torch.utils.data.DataLoader(ds,
                                      opts.batch_size,
                                      num_workers=4,
                                      shuffle=True,
                                      pin_memory=True,
                                      drop_last=True)
+
+    test_ds = get_dataset(opts.test_dataset, 256, train=False)
+    test_ds = torch.utils.data.DataLoader(test_ds,
+                                          opts.batch_size * 2,
+                                          num_workers=4,
+                                          shuffle=True,
+                                          pin_memory=True,
+                                          drop_last=True)
 
     def G_fun(batch) -> dict:
         x, y = batch
@@ -212,8 +223,8 @@ def train(rank, world_size):
     def test_fun(batch):
         x, _ = batch
         G_polyak.train()
-        out = G_polyak(x * 2 - 1)
-        return {'out': out.detach()}
+        out = G_polyak(x * 2 - 1).detach()
+        return {'polyak_out': out, 'test_out': G(x * 2 - 1).detach()}
 
     tag = f'pix2pix_{opts.dataset[0]}:{os.path.basename(opts.dataset[1])}'
     recipe = GANRecipe(G,
@@ -222,6 +233,8 @@ def train(rank, world_size):
                        D_fun,
                        test_fun,
                        ds,
+                       test_every=1000,
+                       test_loader=test_ds,
                        checkpoint=tag if rank == 0 else None,
                        visdom_env=tag if rank == 0 else None)
 
@@ -253,7 +266,9 @@ def train(rank, world_size):
         tch.callbacks.Polyak(G.module, G_polyak),
     ])
     recipe.test_loop.callbacks.add_callbacks([
-        tch.callbacks.Log('out', 'polyak_out'),
+        tch.callbacks.Log('polyak_out', 'polyak_out'),
+        tch.callbacks.Log('test_out', 'test_out'),
+        tch.callbacks.Log('batch.0', 'test_x'),
     ])
     recipe.to(rank)
     if opts.from_ckpt is not None:
