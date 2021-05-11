@@ -33,6 +33,12 @@ class PatchDiscriminator(tnn.CondSeq):
 
         return self
 
+    def remove_batchnorm(self) -> 'PatchDiscriminator':
+        for m in self.features.modules():
+            if isinstance(m, tnn.ConvBlock):
+                m.remove_batchnorm()
+        return self
+
     def to_instance_norm(self, affine: bool = True) -> 'PatchDiscriminator':
         """
         Pix2PixHD uses instancenorm rather than batchnorm
