@@ -114,83 +114,13 @@ class GradientPenalty:
         return self.last_norm
 
 
-from collections import OrderedDict
-
-
 @tu.experimental
-class Algorithm:
-    """
-    Define a customizable sequence of code blocks.
-    """
-
-    def __init__(self) -> None:
-        self.passes = OrderedDict()
-
-    def add_step(self, name: str, f=None):
-        if f is not None:
-            self.passes[name] = f
-            return
-
-        def _f(func):
-            self.passes[name] = func
-            return func
-
-        return _f
-
-    def __call__(self, *args, **kwargs):
-        env = {}
-        output = {}
-        for pass_ in self.passes.values():
-            out = pass_(env, *args, **kwargs)
-            output.update(out)
-        return output
-
-    def remove_step(self, name: str):
-        if name in self.passes:
-            del self.passes[name]
-
-    def insert_before(self, key: str, name: str, func=None):
-
-        def _f(f):
-            funs = list(self.passes.items())
-            idx = [i for i, (k, v) in enumerate(funs) if k == key][0]
-            funs[idx:idx] = [(name, f)]
-            self.passes = OrderedDict(funs)
-            return f
-
-        if func is None:
-            return _f
-        else:
-            _f(func)
-
-    def insert_after(self, key: str, name: str, func=None):
-
-        def _f(f):
-            funs = list(self.passes.items())
-            idx = [i for i, (k, v) in enumerate(funs) if k == key][0]
-            funs[idx + 1:idx + 1] = [(name, func)]
-            self.passes = OrderedDict(funs)
-            return f
-
-        if func is None:
-            return _f
-        else:
-            _f(func)
-
-    def __repr__(self) -> str:
-        return (self.__class__.__name__ + '\n' +
-                tu.indent('\n'.join(list(self.passes.keys()))) + "\n")
-
-
-@tu.experimental
-class Pix2PixLoss:
+class ConcatConditionalGANLoss:
 
     def __init__(self, G: nn.Module, D: nn.Module) -> None:
-        super().__init__()
         self.G = G
         self.D = D
-        self.l1_gain = 10
-        self.reverse = False
+        self.gan_loss = tch.loss.gan.standard
 
         G_alg = Algorithm()
 
@@ -198,17 +128,11 @@ class Pix2PixLoss:
         def G_adv_pass(env, src, dst):
             out = self.G(src * 2 - 1)
             with self.D.no_sync():
-                loss = gan_loss.generated(
+                loss = self.gan_loss.generated(
                     self.D(torch.cat([out, src], dim=1) * 2 - 1))
             env['loss'] = loss
             env['out'] = out
             return {'G_adv_loss': loss.item()}
-
-        @G_alg.add_step('l1')
-        def G_l1_pass(env, src, dst):
-            loss = self.l1_gain * F.l1_loss(env['out'], dst)
-            env['loss'] += loss
-            return {'l1_loss': loss.item()}
 
         @G_alg.add_step('backward')
         def backward(env, src, dst):
@@ -233,11 +157,11 @@ class Pix2PixLoss:
         def D_fake(env, src, dst):
             with D.no_sync():
                 prob_fake = self.D(env['fake_pair'] * 2 - 1)
-                fake_loss = gan_loss.fake(prob_fake)
+                fake_loss = self.gan_loss.fake(prob_fake)
                 fake_loss.backward()
 
             prob_real = self.D(env['real_pair'] * 2 - 1)
-            real_loss = gan_loss.real(prob_real)
+            real_loss = self.gan_loss.real(prob_real)
             real_loss.backward()
 
             fake_correct = prob_fake.detach().lt(0).int().eq(1).sum().item()
@@ -261,9 +185,6 @@ class Pix2PixLoss:
 
         self.D_alg = D_alg
 
-    def set_l1_gain(self, l1_gain: float) -> None:
-        self.l1_gain = l1_gain
-
     def G_step(self, src: torch.Tensor, dst: torch.Tensor) -> dict:
         return self.G_alg(src, dst)
 
@@ -276,15 +197,8 @@ class Pix2PixLoss:
             tu.indent('G_steps:\n' + tu.indent(repr(self.G_alg)) +
                       "\n\nD_steps:\n" + tu.indent(repr(self.D_alg)) + "\n"))
 
-
-@tu.experimental
-class ImprovedPix2PixLoss(Pix2PixLoss):
-
-    def __init__(self, G, D, r0_gamma):
-        super().__init__(G, D)
-
-        self.G_alg.remove_step('l1')
-
+    def use_r0(self, r0_gamma):
+        self.gan_loss = tch.loss.gan.standard
         gradient_penalty = GradientPenalty(r0_gamma)
 
         @self.D_alg.insert_before('adversarial', 'D_r0')
@@ -293,6 +207,61 @@ class ImprovedPix2PixLoss(Pix2PixLoss):
                 g_norm = gradient_penalty(self.D, env['real_pair'] * 2 - 1,
                                           env['fake_pair'] * 2 - 1)
             return {'g_norm': g_norm}
+
+
+@tu.experimental
+class Pix2PixLoss(ConcatConditionalGANLoss):
+
+    def __init__(self, G: nn.Module, D: nn.Module, l1_gain: float) -> None:
+        super().__init__(G, D)
+        self.l1_gain = l1_gain
+
+        @self.G_alg.insert_after('adversarial', 'l1')
+        def G_l1_pass(env, src, dst):
+            loss = self.l1_gain * F.l1_loss(env['out'], dst)
+            env['loss'] += loss
+            return {'l1_loss': loss.item()}
+
+
+@tu.experimental
+class Pix2PixHDLoss(ConcatConditionalGANLoss):
+
+    def __init__(self, G: nn.Module, D: nn.Module, l1_gain: float):
+        super().__init__(G, D)
+        self.gan_loss = tch.loss.gan.ls
+        self.l1_gain = l1_gain
+
+        D_with_acts = tnn.WithSavedActivations(D.module)
+
+        @self.G_alg.insert_before('adversarial', 'extract_features')
+        def G_features(env, src, dst):
+            real_pair = torch.cat([dst, src], dim=1) * 2 - 1
+            _, activations = D_with_acts(real_pair, detach=True)
+            env['real_activations'] = activations
+
+            fake = G(src * 2 - 1)
+            fake_pair = torch.cat([fake, src], dim=1) * 2 - 1
+            prob, activations = D_with_acts(fake_pair, detach=False)
+            env['fake_activations'] = activations
+            env['D_prob'] = prob
+            env['fake'] = fake
+            return {}
+
+        @self.G_alg.insert_after('extract_features', 'feature_matching')
+        def G_featmatch(env, src, dst):
+            loss = 0.
+            for key in env['real_activations'].keys():
+                loss += F.l1_loss(env['fake_activations'][key],
+                                  env['real_activations'][key])
+            env['loss'] = self.l1_gain * loss / len(env['fake_activations'])
+            return {'fm_loss': loss.item()}
+
+        def G_adv(env, src, dst):
+            loss = self.gan_loss.generated(env['D_prob'])
+            env['loss'] += loss
+            return {'G_adv_loss': loss.item()}
+
+        self.G_alg['adversarial'] = G_adv
 
 
 @tu.experimental
@@ -305,9 +274,12 @@ def train(rank, world_size):
                         type=lambda x: x.split(':'))
     parser.add_argument('--r0-gamma', type=float)
     parser.add_argument('--G-type', choices=['hd', 'unet'], default='patch')
-    parser.add_argument('--D-type', choices=['patch', 'unet'], default='patch')
+    parser.add_argument('--D-type',
+                        choices=['patch', 'unet', 'multi'],
+                        default='patch')
     parser.add_argument('--l1-gain', default=0, type=float)
     parser.add_argument('--batch-size', default=4, type=int)
+    parser.add_argument('--img-size', default=256, type=int)
     parser.add_argument('--reverse', action='store_true')
     parser.add_argument('--from-ckpt')
     opts = parser.parse_args()
@@ -323,7 +295,7 @@ def train(rank, world_size):
         D.set_input_specs(6)
         D.to_equal_lr()
         r0_gamma = 0.1
-    else:
+    elif opts.D_type == 'unet':
         D = UNet([32, 64, 128, 256, 512, 512], 1)
         D.set_decoder_num_layers(1)
         D.set_encoder_num_layers(1)
@@ -333,6 +305,17 @@ def train(rank, world_size):
         D.leaky()
         tnn.utils.net_to_equal_lr(D, leak=0.2)
         r0_gamma = 0.00001
+    else:
+        D = multiscale_patch_discriminator()
+        D.scale_1.set_input_specs(6)
+        D.scale_2.set_input_specs(6)
+        D.scale_4.set_input_specs(6)
+        D.scale_1.remove_batchnorm()
+        D.scale_2.remove_batchnorm()
+        D.scale_4.remove_batchnorm()
+        D.scale_1.to_equal_lr()
+        D.scale_2.to_equal_lr()
+        D.scale_4.to_equal_lr()
     r0_gamma = opts.r0_gamma or r0_gamma
 
     if rank == 0:
@@ -342,7 +325,7 @@ def train(rank, world_size):
     G = torch.nn.parallel.DistributedDataParallel(G.to(rank), [rank], rank)
     D = torch.nn.parallel.DistributedDataParallel(D.to(rank), [rank], rank)
 
-    ds = get_dataset(opts.dataset, 256, train=True)
+    ds = get_dataset(opts.dataset, opts.img_size, train=True)
     ds = torch.utils.data.DataLoader(ds,
                                      opts.batch_size,
                                      num_workers=4,
@@ -350,7 +333,7 @@ def train(rank, world_size):
                                      pin_memory=True,
                                      drop_last=True)
 
-    test_ds = get_dataset(opts.test_dataset, 256, train=False)
+    test_ds = get_dataset(opts.test_dataset, opts.img_size, train=False)
     test_ds = torch.utils.data.DataLoader(test_ds,
                                           opts.batch_size * 2,
                                           num_workers=4,
@@ -358,11 +341,8 @@ def train(rank, world_size):
                                           pin_memory=True,
                                           drop_last=True)
 
-    if opts.l1_gain != 0:
-        pix2pix = Pix2PixLoss(G, D)
-        pix2pix.set_l1_gain(opts.l1_gain)
-    else:
-        pix2pix = ImprovedPix2PixLoss(G, D, opts.r0_gamma)
+    pix2pix = Pix2PixHDLoss(G, D, opts.l1_gain)
+    pix2pix.use_r0(opts.r0_gamma)
     print(pix2pix)
 
     def G_fun(batch) -> dict:
