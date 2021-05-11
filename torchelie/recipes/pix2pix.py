@@ -1,18 +1,20 @@
 from typing import Tuple
 import copy
 import os
+
 import torch
+import torch.nn as nn
+import torchvision.transforms as TF
+
 import torchelie as tch
 import torchelie.utils as tu
 from torchelie.recipes.gan import GANRecipe
 from torchelie.transforms import MultiBranch
-import torchvision.transforms as TF
-import torchelie.loss.gan.standard as gan_loss
 from torchelie.loss.gan.penalty import zero_gp
 from torchelie.datasets import UnlabeledImages, Pix2PixDataset
 from torchelie.datasets import SideBySideImagePairsDataset
 from torchelie.models import *
-import torch.nn as nn
+from torchelie.recipes.algorithm import Algorithm
 
 
 def get_dataset(dataset_specs: Tuple[str, str], img_size: int, train: bool):
