@@ -1,5 +1,7 @@
-import torch
 from typing import List
+import copy
+
+import torch
 
 import torchelie.nn as tnn
 import torchelie.utils as tu
@@ -163,3 +165,29 @@ def pix2pixhd_res_dev() -> Pix2PixHDGlobalGenerator:
                                     ['R256'] * 10 +
                                     ['u256', 'u128', 'u64', 'u32', 'u16'])
 
+
+class MultiScaleDiscriminator(nn.Module):
+
+    def __init__(self, base_model: nn.Module):
+        super().__init__()
+        self.scale_1 = base_model
+        self.scale_2 = copy.deepcopy(base_model)
+        self.scale_4 = copy.deepcopy(base_model)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        N = x.shape[0]
+        return torch.cat([
+            self.scale_1(x).view(N, -1),
+            self.scale_2(
+                nn.functional.interpolate(x, scale_factor=0.5,
+                                          mode='bilinear')).view(N, -1),
+            self.scale_4(
+                nn.functional.interpolate(x, scale_factor=0.25,
+                                          mode='bilinear')).view(N, -1),
+        ],
+                         dim=1)
+
+
+def multiscale_patch_discriminator():
+    from .patchgan import patch70
+    return MultiScaleDiscriminator(patch70())
