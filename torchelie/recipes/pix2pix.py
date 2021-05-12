@@ -306,16 +306,12 @@ def train(rank, world_size):
         tnn.utils.net_to_equal_lr(D, leak=0.2)
         r0_gamma = 0.00001
     else:
-        D = multiscale_patch_discriminator()
-        D.scale_1.set_input_specs(6)
-        D.scale_2.set_input_specs(6)
-        D.scale_4.set_input_specs(6)
-        D.scale_1.remove_batchnorm()
-        D.scale_2.remove_batchnorm()
-        D.scale_4.remove_batchnorm()
-        D.scale_1.to_equal_lr()
-        D.scale_2.to_equal_lr()
-        D.scale_4.to_equal_lr()
+        patch_D = patch70()
+        patch_D.set_input_specs(6)
+        patch_D.remove_batchnorm()
+        tnn.utils.net_to_equal_lr(patch_DD)
+        D = MultiScaleDiscriminator(patch_D)
+        r0_gamma = 0.00001
     r0_gamma = opts.r0_gamma or r0_gamma
 
     if rank == 0:
