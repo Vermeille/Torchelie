@@ -12,6 +12,23 @@ class Algorithm:
         self.passes = OrderedDict()
 
     def add_step(self, name: str, f=None):
+        if name in self.passes:
+            raise KeyError(f'{name} is already in the algorithm')
+
+        if f is not None:
+            self.passes[name] = f
+            return
+
+        def _f(func):
+            self.passes[name] = func
+            return func
+
+        return _f
+
+    def override_step(self, name: str, f=None):
+        if name not in self.passes:
+            raise KeyError(f'{name} was not present in the algorithm')
+
         if f is not None:
             self.passes[name] = f
             return
