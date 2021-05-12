@@ -256,12 +256,11 @@ class Pix2PixHDLoss(ConcatConditionalGANLoss):
             env['loss'] = self.l1_gain * loss / len(env['fake_activations'])
             return {'fm_loss': loss.item()}
 
+        @self.G_alg.override_step('adversarial')
         def G_adv(env, src, dst):
             loss = self.gan_loss.generated(env['D_prob'])
             env['loss'] += loss
             return {'G_adv_loss': loss.item()}
-
-        self.G_alg['adversarial'] = G_adv
 
 
 @tu.experimental
