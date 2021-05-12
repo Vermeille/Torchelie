@@ -186,8 +186,3 @@ class MultiScaleDiscriminator(nn.Module):
                                           mode='bilinear')).view(N, -1),
         ],
                          dim=1)
-
-
-def multiscale_patch_discriminator():
-    from .patchgan import patch70
-    return MultiScaleDiscriminator(patch70())
