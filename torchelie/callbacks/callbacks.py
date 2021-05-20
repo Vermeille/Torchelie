@@ -837,6 +837,7 @@ class KID:
     def __init__(self, real_key='batch.0', fake_key='fake', device='cpu'):
         from pytorch_fid.inception import InceptionV3
         self.model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]])
+        self.model.eval()
         self.model.to(device)
         self.device = device
         self.real_key = real_key
