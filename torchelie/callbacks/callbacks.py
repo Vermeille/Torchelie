@@ -12,6 +12,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 from visdom import Visdom
+import numpy as np
 
 from torchelie.utils import dict_by_key, recursive_state_dict
 from torchelie.callbacks.inspector import ClassificationInspector as CIVis
@@ -897,3 +898,65 @@ class Throughput:
         state['metrics']['forward_time'] = self.forward_avg.get()
         state['metrics']['forward_throughput'] = len(
             state['batch'][0]) / self.forward_avg.get()
+
+
+class KID:
+
+    def __init__(self, real_key='batch.0', fake_key='fake', device='cpu'):
+        from pytorch_fid.inception import InceptionV3
+        self.model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]])
+        self.model.to(device)
+        self.device = device
+        self.real_key = real_key
+        self.fake_key = fake_key
+
+    @torch.no_grad()
+    def on_batch_end(self, state):
+        real = tu.dict_by_key(state, self.real_key).to(self.device)
+        fake = tu.dict_by_key(state, self.fake_key).to(self.device)
+
+        real_feats = self.model(real)[0]
+        fake_feats = self.model(fake)[0]
+
+        if torch.distributed.is_initialized() and self.device != 'cpu':
+            all_real = [
+                torch.empty_like(real_feats)
+                for i in range(torch.distributed.get_world_size())
+            ]
+
+            all_fake = [
+                torch.empty_like(fake_feats)
+                for i in range(torch.distributed.get_world_size())
+            ]
+
+            torch.distributed.all_gather(all_real, real_feats)
+            torch.distributed.all_gather(all_fake, fake_feats)
+            all_real = torch.cat(all_real, dim=0).cpu()
+            all_fake = torch.cat(all_fake, dim=0).cpu()
+        else:
+            all_real = real_feats.cpu()
+            all_fake = real_fake.cpu()
+
+        all_real = all_real.squeeze(2).squeeze(2).numpy()
+        all_fake = all_fake.squeeze(2).squeeze(2).numpy()
+
+        state['kid'] = self.compute_kid(all_real, all_fake)
+
+    @torch.no_grad()
+    def compute_kid(self,
+                    feat_real,
+                    feat_fake,
+                    num_subsets=100,
+                    max_subset_size=1000):
+        n = feat_real.shape[1]
+        m = min(min(feat_real.shape[0], feat_fake.shape[0]), max_subset_size)
+        t = 0
+        for _subset_idx in range(num_subsets):
+            x = feat_fake[np.random.choice(feat_fake.shape[0], m,
+                                           replace=False)]
+            y = feat_real[np.random.choice(feat_real.shape[0], m,
+                                           replace=False)]
+            a = (x @ x.T / n + 1)**3 + (y @ y.T / n + 1)**3
+            b = (x @ y.T / n + 1)**3
+            t += (a.sum() - np.diag(a).sum()) / (m - 1) - b.sum() * 2 / m
+        return t / num_subsets / m
