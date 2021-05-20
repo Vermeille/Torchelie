@@ -168,21 +168,19 @@ def pix2pixhd_res_dev() -> Pix2PixHDGlobalGenerator:
 
 class MultiScaleDiscriminator(nn.Module):
 
-    def __init__(self, base_model: nn.Module):
+    def __init__(self, base_model: nn.Module, n_scales=3):
         super().__init__()
-        self.scale_1 = base_model
-        self.scale_2 = copy.deepcopy(base_model)
-        self.scale_4 = copy.deepcopy(base_model)
+        self.scales = nn.ModuleList()
+        self.scales.append(base_model)
+        for i in range(n_scales - 1):
+            self.scales.append(copy.deepcopy(base_model))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         N = x.shape[0]
-        return torch.cat([
-            self.scale_1(x).view(N, -1),
-            self.scale_2(
-                nn.functional.interpolate(x, scale_factor=0.5,
-                                          mode='bilinear')).view(N, -1),
-            self.scale_4(
-                nn.functional.interpolate(x, scale_factor=0.25,
-                                          mode='bilinear')).view(N, -1),
-        ],
-                         dim=1)
+        outs = []
+        for i in range(len(self.scales)):
+            scale = 2**i
+            out = self.scales[i](nn.functional.interpolate(
+                x, scale_factor=1 / scale, mode='bilinear')).view(N, -1)
+            outs.append(out.view(N, -1))
+        return torch.cat(outs, dim=1)
