@@ -88,6 +88,7 @@ $ python3 -m torchelie.recipes.classification --trainset mnist_png/training --te
  | Ep. 0 It 31 | {'lr_0': '0.0100', 'acc': '0.3831', 'loss': '1.8387'}
  | Ep. 0 It 41 | {'lr_0': '0.0100', 'acc': '0.4451', 'loss': '1.6513'}
 [...]
+Test | Ep. 1 It 526 | [...] 'acc': '0.9799', 'loss': '0.0797' [...]
  | Ep. 1 It 556 | {'lr_0': '0.0100', 'acc': '0.9588', 'loss': '0.1362'}
  | Ep. 1 It 566 | {'lr_0': '0.0100', 'acc': '0.9606', 'loss': '0.1341'}
 ```
