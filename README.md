@@ -33,8 +33,87 @@ experiments.
 **Torchelie API is beta and can be a bit unstable**. Minor breaking changes can
 happen.
 
-- Code, README, docs and tests might be out of sync in general. Please tell me
-  if you notice anything wrong.
+Code, README, docs and tests might be out of sync in general. Please tell me if
+you notice anything wrong.
+
+# Torchelie Hello World
+
+Let's say you want to do the hello-world of deep learning:
+[MNIST](https://en.wikipedia.org/wiki/MNIST_database) handwritten digits
+classification. Let's also assume that you already have your training and
+testing datasets organised properly, e.g. coming from the
+[Kaggle](https://www.kaggle.com/jidhumohan/mnist-png) archive:
+
+```
+$ tree mnist_png
+
+mnist_png
+├── testing
+│   ├── 0
+│   ├── 1
+│   ├── 2
+│   ├── 3
+│   ├── 4
+│   ├── 5
+│   ├── 6
+│   ├── 7
+│   ├── 8
+│   └── 9
+└── training
+    ├── 0
+    ├── 1
+    ├── 2
+    │   ├── 10009.png
+    │   ├── 10016.png
+    │   └── [...]
+    ├── 3
+    ├── 4
+    ├── 5
+    ├── 6
+    ├── 7
+    ├── 8
+    └── 9
+```
+
+Torchelie comes with a `classification` "recipe" out-of-the-box, which can be
+used directly to train your a model **straight from the command line**:
+
+```
+$ python3 -m torchelie.recipes.classification --trainset mnist_png/training --testset mnist_png/testing
+
+[...]
+ | Ep. 0 It 1 | {'lr_0': '0.0100', 'acc': '0.0938', 'loss': '3.1385'}
+ | Ep. 0 It 11 | {'lr_0': '0.0100', 'acc': '0.2017', 'loss': '2.4109'}
+ | Ep. 0 It 21 | {'lr_0': '0.0100', 'acc': '0.3185', 'loss': '2.0410'}
+ | Ep. 0 It 31 | {'lr_0': '0.0100', 'acc': '0.3831', 'loss': '1.8387'}
+ | Ep. 0 It 41 | {'lr_0': '0.0100', 'acc': '0.4451', 'loss': '1.6513'}
+[...]
+ | Ep. 1 It 556 | {'lr_0': '0.0100', 'acc': '0.9588', 'loss': '0.1362'}
+ | Ep. 1 It 566 | {'lr_0': '0.0100', 'acc': '0.9606', 'loss': '0.1341'}
+```
+
+Want to run it on your laptop which doesnt have a GPU? Simply add the `--device
+cpu` option!
+
+With a simple use case and a properly organized dataset, we already saw how
+Torchelie can help experiment quickly. But what just happened?
+
+The `classification` **recipe** is a whole **ready-to-use training loop**
+which:
+
+- handles all the image loading
+- uses the ResNet18 model from [PyTorch's
+  Torchvision](https://pytorch.org/vision/stable/index.html) to classify images
+  from the training dataset
+- computes a cross entropy loss on the predicted outputs
+- uses RAdamW to optimize the model along the way
+- periodically (default every 1k iterations) assess the accuracy of the trained
+  model using the test dataset
+- gives as much insights as possible during the training through:
+    - stdout (as shown above)
+    - visdom (TODO)
+
+The cool thing is that all these building blocks are available!
 
 ## `torchelie.recipes`
 
