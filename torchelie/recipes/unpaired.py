@@ -226,7 +226,9 @@ def train(rank, world_size, opts):
     ds_A = get_dataset(opts.data_A[0], opts.data_A[1], True, SIZE)
     ds_B = get_dataset(opts.data_B[0], opts.data_B[1], True, SIZE)
 
-    ds_test = get_dataset(opts.data_test[0], opts.data_test[1], False, SIZE)
+    ds_test_A = get_dataset(opts.data_test[0], opts.data_test[1], False, SIZE)
+    ds_test_B = get_dataset(opts.data_B[0], opts.data_B[1], False, SIZE)
+    ds_test = tch.datasets.RandomPairsDataset(ds_test_A, ds_test_B)
 
     print('ds', len(ds_A), len(ds_B))
     ds = tch.datasets.RandomPairsDataset(ds_A, ds_B)
@@ -239,7 +241,7 @@ def train(rank, world_size, opts):
                                      pin_memory=True)
 
     ds_test = torch.utils.data.DataLoader(ds_test,
-                                          16,
+                                          8 * 16,
                                           num_workers=4,
                                           drop_last=True,
                                           shuffle=True,
@@ -348,7 +350,9 @@ def train(rank, world_size, opts):
     def test_fun(x):
         G.train()
         with torch.no_grad():
-            return {'out': G(x * 2 - 1).detach()}
+            out = torch.cat([G(xx * 2 - 1) for xx in torch.split(x[0], 32)],
+                            dim=0)
+            return {'out': out}
 
     recipe = GANRecipe(G,
                        D,
@@ -363,15 +367,17 @@ def train(rank, world_size, opts):
 
     recipe.callbacks.add_callbacks([
         tch.callbacks.Optimizer(
-            tch.optim.RAdamW(D.parameters(),
-                             lr=2e-3,
-                             betas=(0., 0.99),
-                             weight_decay=0)),
+            tch.optim.Lookahead(
+                tch.optim.RAdamW(D.parameters(),
+                                 lr=2e-3,
+                                 betas=(0., 0.99),
+                                 weight_decay=0))),
         tch.callbacks.Optimizer(
-            tch.optim.RAdamW(M.parameters(),
-                             lr=2e-3,
-                             betas=(0.9, 0.99),
-                             weight_decay=0)),
+            tch.optim.Lookahead(
+                tch.optim.RAdamW(M.parameters(),
+                                 lr=2e-3,
+                                 betas=(0.9, 0.99),
+                                 weight_decay=0))),
         tch.callbacks.Log('out', 'out'),
         tch.callbacks.Log('batch.0', 'x'),
         tch.callbacks.Log('batch.1', 'y'),
@@ -387,14 +393,18 @@ def train(rank, world_size, opts):
     ])
     recipe.G_loop.callbacks.add_callbacks([
         tch.callbacks.Optimizer(
-            tch.optim.RAdamW(G.parameters(),
-                             lr=2e-3,
-                             betas=(0., 0.99),
-                             weight_decay=0)),
+            tch.optim.Lookahead(
+                tch.optim.RAdamW(G.parameters(),
+                                 lr=2e-3,
+                                 betas=(0., 0.99),
+                                 weight_decay=0))),
     ])
     recipe.test_loop.callbacks.add_callbacks([
+        tch.callbacks.GANMetrics('batch.1', 'out', device=rank),
+        tch.callbacks.Log('kid', 'kid'),
+        tch.callbacks.Log('fid', 'fid'),
         tch.callbacks.Log('out', 'test_out'),
-        tch.callbacks.Log('batch', 'test_x'),
+        tch.callbacks.Log('batch.0', 'test_x'),
     ])
     recipe.to(rank)
     if opts.from_ckpt is not None:
@@ -421,6 +431,10 @@ def run(opts):
     TF.functional.to_pil_image(G(img)[0]).save(opts.dst)
 
 
+def para_run(opts):
+    return tu.parallel_run(train, opts=opts)
+
+
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
@@ -440,7 +454,8 @@ if __name__ == '__main__':
     train_parser.add_argument('--r0-M', default=0.0001, type=float)
     train_parser.add_argument('--consistency', default=0.01, type=float)
     train_parser.add_argument('--from-ckpt')
-    train_parser.set_defaults(func=lambda opts: tu.parallel_run(train, opts))
+
+    train_parser.set_defaults(func=para_run)
 
     run_parser = subparsers.add_parser('run')
     run_parser.add_argument('--from-ckpt', required=True)
