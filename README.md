@@ -28,10 +28,10 @@ with `python -m visdom.server`, direct your browser to `http://localhost:8097`.
 Now you're ready to use VisdomLogger and enjoy realtime tracking of your
 experiments.
 
-# WARNINGS
+# ⚠ WARNINGS ⚠
 
-- Torchelie API is beta and can be a bit unstable. Minor breaking changes can
-  happen.
+**Torchelie API is beta and can be a bit unstable**. Minor breaking changes can
+happen.
 
 - Code, README, docs and tests might be out of sync in general. Please tell me
   if you notice anything wrong.
