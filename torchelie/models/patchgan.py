@@ -49,7 +49,7 @@ class PatchDiscriminator(tnn.CondSeq):
                 return nn.InstanceNorm2d(m.num_features, affine=affine)
             return m
 
-        tnn.utils.edit_model(self, to_instancenorm)
+        return tnn.utils.edit_model(self, to_instancenorm)
 
     def to_binomial_downsampling(self) -> 'PatchDiscriminator':
         for m in self.features.modules():

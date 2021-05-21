@@ -114,9 +114,9 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
                     ii += 1
                 transforms.out_channels = ch
 
-                transform.add_module('norm', nn.InstanceNorm2d(ch))
-                transform.add_module('relu', nn.ReLU(True))
-                transform[0].preact_skip()
+                transforms.add_module('norm', nn.InstanceNorm2d(ch))
+                transforms.add_module('relu', nn.ReLU(True))
+                transforms[0].preact_skip()
                 return transforms
             if arch[i][0] == 'd':
                 u = tnn.encdec.UBlock(prev_ch, ch, _build(i + 1, ch))
