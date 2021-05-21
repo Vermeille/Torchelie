@@ -43,6 +43,9 @@ Visualization
 .. autoclass:: torchelie.callbacks.ImageGradientVis
    :members:
 
+.. autoclass:: torchelie.callbacks.GANMetrics
+   :members:
+
 .. autoclass:: torchelie.callbacks.SegmentationInspector
    :members:
 

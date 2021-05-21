@@ -1,9 +1,3 @@
-"""
-Those are callbacks that can be attached to a recipe. They read a write from a
-shared state.
-
-WARNING: this might move to torchelie.recipes.callbacks
-"""
 import time
 import copy
 import os
@@ -901,12 +895,49 @@ class Throughput:
 
 
 class GANMetrics:
+    """
+    `Kernel Inception Distance <https://arxiv.org/abs/1801.01401>`_ and
+    'Fréchet Inception Distance <https://arxiv.org/abs/1706.08500>`_ on batches.
+
+    Args:
+        real_key (str): name of the batch of real images in the state
+        fake_key (str): name of the batch of generated images in the state
+        device: a torch device on which to compute the InceptionV3 activations.
+        metrics (List[str]): which metrics to use 'kid', 'fid' or both.
+
+    .. warning::
+        The FID is *heavily* biased but stable. This means the scale of the FID
+        will heavily vary according to your batch size. If you want to compare
+        your FID with papers, do it on 50k samples to match the scale. However,
+        you can use the FID on much smaller batches to track your training and
+        relative improvements.
+
+        tl;dr: FID values can only be compared for a similar number of samples,
+        papers use 50k, but for your own experiments any number work as long as
+        it stays the same.
+
+        See `page 8 Fig. 1 a <https://arxiv.org/abs/1801.01401>`_ for more
+        details.
+
+    .. warning::
+        The KID is not biased but slightly unstable with less than 500 samples.
+        With more than 500 samples, the FID can be compared between papers.
+        With less than that, you can expect some variance of about +/- 1e-3.
+
+        See `page 8 Fig. 1 a <https://arxiv.org/abs/1801.01401>`_ for more
+        details.
+
+    .. note::
+        When doing distributed training, the computation is ran on all gathered
+        batches.
+
+    """
 
     def __init__(self,
-                 real_key='batch.0',
-                 fake_key='fake',
+                 real_key: str = 'batch.0',
+                 fake_key: str = 'fake',
                  device='cpu',
-                 metrics=['fid', 'kid']):
+                 metrics: List[str] = ['fid', 'kid']) -> None:
         from pytorch_fid.inception import InceptionV3
         self.model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]])
         self.model.eval()
@@ -917,7 +948,7 @@ class GANMetrics:
         self.metrics = metrics
 
     @torch.no_grad()
-    def on_batch_end(self, state):
+    def on_batch_end(self, state: dict):
         real = tu.dict_by_key(state, self.real_key).to(self.device)
         fake = tu.dict_by_key(state, self.fake_key).to(self.device)
 
@@ -925,23 +956,23 @@ class GANMetrics:
         fake_feats = self.model(fake)[0]
 
         if torch.distributed.is_initialized() and self.device != 'cpu':
-            all_real = [
+            all_real_list = [
                 torch.empty_like(real_feats)
                 for i in range(torch.distributed.get_world_size())
             ]
 
-            all_fake = [
+            all_fake_list = [
                 torch.empty_like(fake_feats)
                 for i in range(torch.distributed.get_world_size())
             ]
 
-            torch.distributed.all_gather(all_real, real_feats)
-            torch.distributed.all_gather(all_fake, fake_feats)
-            all_real = torch.cat(all_real, dim=0).cpu()
-            all_fake = torch.cat(all_fake, dim=0).cpu()
+            torch.distributed.all_gather(all_real_list, real_feats)
+            torch.distributed.all_gather(all_fake_list, fake_feats)
+            all_real = torch.cat(all_real_list, dim=0).cpu()
+            all_fake = torch.cat(all_fake_list, dim=0).cpu()
         else:
             all_real = real_feats.cpu()
-            all_fake = real_fake.cpu()
+            all_fake = real_feats.cpu()
 
         all_real = all_real.squeeze(2).squeeze(2).numpy()
         all_fake = all_fake.squeeze(2).squeeze(2).numpy()
@@ -953,7 +984,10 @@ class GANMetrics:
             state['fid'] = self.compute_fid(all_real, all_fake)
 
     @torch.no_grad()
-    def compute_fid(self, feat_real, feat_fake, num_subsets=100):
+    def compute_fid(self,
+                    feat_real: np.ndarray,
+                    feat_fake: np.ndarray,
+                    num_subsets: int = 100):
         mu_real = np.mean(feat_real, axis=0)
         sigma_real = np.cov(feat_real, rowvar=False)
 
@@ -966,10 +1000,10 @@ class GANMetrics:
 
     @torch.no_grad()
     def compute_kid(self,
-                    feat_real,
-                    feat_fake,
-                    num_subsets=100,
-                    max_subset_size=1000):
+                    feat_real: np.ndarray,
+                    feat_fake: np.ndarray,
+                    num_subsets: int = 100,
+                    max_subset_size: int = 1000):
         n = feat_real.shape[1]
         m = min(min(feat_real.shape[0], feat_fake.shape[0]), max_subset_size)
         t = 0
