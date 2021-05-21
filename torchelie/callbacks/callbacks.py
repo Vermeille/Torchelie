@@ -832,9 +832,13 @@ class Throughput:
             state['batch'][0]) / self.forward_avg.get()
 
 
-class KID:
+class GANMetrics:
 
-    def __init__(self, real_key='batch.0', fake_key='fake', device='cpu'):
+    def __init__(self,
+                 real_key='batch.0',
+                 fake_key='fake',
+                 device='cpu',
+                 metrics=['fid', 'kid']):
         from pytorch_fid.inception import InceptionV3
         self.model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]])
         self.model.eval()
@@ -842,6 +846,7 @@ class KID:
         self.device = device
         self.real_key = real_key
         self.fake_key = fake_key
+        self.metrics = metrics
 
     @torch.no_grad()
     def on_batch_end(self, state):
@@ -873,7 +878,23 @@ class KID:
         all_real = all_real.squeeze(2).squeeze(2).numpy()
         all_fake = all_fake.squeeze(2).squeeze(2).numpy()
 
-        state['kid'] = self.compute_kid(all_real, all_fake)
+        if 'kid' in self.metrics:
+            state['kid'] = self.compute_kid(all_real, all_fake)
+
+        if 'fid' in self.metrics:
+            state['fid'] = self.compute_fid(all_real, all_fake)
+
+    @torch.no_grad()
+    def compute_fid(self, feat_real, feat_fake, num_subsets=100):
+        mu_real = np.mean(feat_real, axis=0)
+        sigma_real = np.cov(feat_real, rowvar=False)
+
+        mu_fake = np.mean(feat_fake, axis=0)
+        sigma_fake = np.cov(feat_fake, rowvar=False)
+
+        from pytorch_fid.fid_score import calculate_frechet_distance
+        return calculate_frechet_distance(mu_fake, sigma_fake, mu_real,
+                                          sigma_real)
 
     @torch.no_grad()
     def compute_kid(self,
