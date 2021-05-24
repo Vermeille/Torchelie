@@ -384,6 +384,20 @@ You can run it like this:
 flake8 torchelie
 ```
 
+## Type checking
+
+Despite typing being optional in Python, type hints can save a lot of time on a
+project such as Torchélie. This project is type-checked using
+[**mypy**](http://mypy-lang.org/). Make sure it passes successfully, and
+consider adding type hints where it makes sense to do so when contributing
+code!
+
+You can run it like this:
+
+```shell
+mypy torchelie
+```
+
 ## Variable names
 
 Common widespread naming best practices apply.
