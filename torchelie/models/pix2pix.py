@@ -81,6 +81,14 @@ def pix2pix_256() -> Pix2PixGenerator:
     return Pix2PixGenerator([32, 64, 128, 256, 512, 512, 512, 512])
 
 
+def pix2pix_128() -> Pix2PixGenerator:
+    """
+    The architecture used in `Pix2Pix <https://arxiv.org/abs/1611.07004>`_,
+    able to train on 128x128 or 512x512 images.
+    """
+    return Pix2PixGenerator([32, 64, 128, 256, 512, 512, 512])
+
+
 def pix2pix_dev() -> Pix2PixGenerator:
     """
     A version of pix2pix_256 with less filter to use less memory and compute.
