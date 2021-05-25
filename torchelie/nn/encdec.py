@@ -1,3 +1,4 @@
+from typing import Optional
 from collections import OrderedDict
 import torch
 import torch.nn as nn
@@ -95,7 +96,24 @@ class UBlock(nn.Module):
                       InterpolateBilinear2d(scale_factor=2), 'upsample')
         return self
 
-    def forward(self, x_orig: torch.Tensor) -> torch.Tensor:
+    def condition(self, z: torch.Tensor) -> None:
+
+        def condition_if(m):
+            if hasattr(m, 'condition'):
+                m.condition(z)
+
+        condition_if(self.in_conv)
+        condition_if(self.downsample)
+        condition_if(self.inner)
+        condition_if(self.upsample)
+        condition_if(self.out_conv)
+
+    def forward(self,
+                x_orig: torch.Tensor,
+                z: Optional[torch.Tensor] = None) -> torch.Tensor:
+        if z is not None:
+            self.condition(z)
+
         x_skip = self.in_conv(x_orig)
 
         x = self.upsample(self.inner(self.downsample(x_skip)))
