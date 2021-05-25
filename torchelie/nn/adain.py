@@ -7,23 +7,24 @@ from typing import Optional
 
 class AdaIN2d(nn.Module):
     """
-    Adaptive InstanceNormalization from *Arbitrary Style Transfer in Real-time
+    Adaptive InstanceNormalization from `*Arbitrary Style Transfer in Real-time
     with Adaptive Instance Normalization* (Huang et al, 2017)
+    <https://arxiv.org/abs/1703.06868>`_
 
     Args:
         channels (int): number of input channels
         cond_channels (int): number of conditioning channels from which bias
             and scale will be derived
     """
-    weight: torch.Tensor
-    bias: torch.Tensor
+    weight: Optional[torch.Tensor]
+    bias: Optional[torch.Tensor]
 
     def __init__(self, channels: int, cond_channels: int) -> None:
         super(AdaIN2d, self).__init__()
         self.make_weight = nn.Linear(cond_channels, channels)
         self.make_bias = nn.Linear(cond_channels, channels)
-        self.register_buffer('weight', torch.zeros(0))
-        self.register_buffer('bias', torch.zeros(0))
+        self.weight = None
+        self.bias = None
 
     def forward(self,
                 x: torch.Tensor,
@@ -45,8 +46,12 @@ class AdaIN2d(nn.Module):
         m = x.mean(dim=(2, 3), keepdim=True)
         s = torch.sqrt(x.var(dim=(2, 3), keepdim=True) + 1e-8)
 
-        weight = self.weight / (s + 1e-5)
-        bias = -m * weight + self.bias
+        z_w = self.weight
+        z_b = self.bias
+        assert z_w is not None and z_b is not None, (
+            'AdaIN did not receive a conditioning vector yet')
+        weight = z_w / (s + 1e-5)
+        bias = -m * weight + z_b
         out = weight * x + bias
         return out
 
