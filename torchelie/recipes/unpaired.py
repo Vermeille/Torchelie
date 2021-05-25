@@ -66,36 +66,24 @@ class Matcher(nn.Module):
     @tu.experimental
     def __init__(self, n_scales=2):
         super().__init__()
-        proj_size = 256
+        proj_size = 512
 
         self.n_scales = n_scales
         self.nets = nn.ModuleDict()
         self.proj_As = nn.ModuleDict()
         self.proj_Bs = nn.ModuleDict()
         for i in range(n_scales):
-            net = residual_patch70()
+            net = patch70_dev().remove_batchnorm()
             net.classifier = nn.Sequential()
             net.to_equal_lr()
             proj_A = nn.Sequential(
                 nn.LeakyReLU(0.2, False),
-                tu.kaiming(tnn.Conv1x1(256, proj_size), dynamic=True))
+                tu.kaiming(tnn.Conv1x1(proj_size, proj_size), dynamic=True))
             proj_B = nn.Identity()
 
             self.nets[str(i)] = net
             self.proj_As[str(i)] = proj_A
             self.proj_Bs[str(i)] = proj_B
-
-    def cross_entropy(self, f1, f2):
-        n, c, h, w = f1.shape
-        out = torch.bmm(
-            f1.permute(2, 3, 0, 1).reshape(-1, n, c),
-            f2.permute(2, 3, 0, 1).reshape(-1, n, c).permute(0, 2, 1))
-        out = out.view(h, w, n, n).permute(2, 3, 0, 1)
-
-        N = len(out)
-        labels = torch.arange(N, device=out.device)
-        labels = labels.view(N, 1, 1).expand(N, h, w)
-        return F.cross_entropy(out, labels)
 
     def barlow(self, f1, f2):
         f1 = F.normalize(f1, dim=1)
@@ -108,20 +96,7 @@ class Matcher(nn.Module):
 
         labels = torch.eye(n, device=out.device)
         labels = labels.view(n, n, 1, 1).expand(n, n, h, w)
-        return out, F.smooth_l1_loss(out, labels, beta=0.1, reduction='sum')
-
-    def bce(self, f1, f2):
-        f1 = F.normalize(f1, dim=1)
-        f2 = F.normalize(f2, dim=1)
-        n, c, h, w = f1.shape
-        out = torch.bmm(
-            f1.permute(2, 3, 0, 1).reshape(-1, n, c),
-            f2.permute(2, 3, 0, 1).reshape(-1, n, c).permute(0, 2, 1))
-        out = out.view(h, w, n, n).permute(2, 3, 0, 1)
-
-        labels = torch.eye(n, device=out.device)
-        labels = labels.view(n, n, 1, 1).expand(n, n, h, w)
-        return out, F.binary_cross_entropy_with_logits(out, labels)
+        return out, F.smooth_l1_loss(out, labels, beta=0.1)
 
     def forward(self, fake, ins):
         total_loss = 0
@@ -151,7 +126,7 @@ class Matcher(nn.Module):
         outs = torch.cat(outs, dim=2)
         return {
             'matches': outs,
-            'loss': total_loss / outs.numel(),
+            'loss': total_loss,
             'labels': torch.cat(all_labels, dim=1)
         }
 
@@ -201,13 +176,35 @@ def celeba(path, train: bool, tfm=None):
     return tch.datasets.pix2pix.ImagesPaths(files, tfm)
 
 
+def pix2pix_128_dev() -> Pix2PixGenerator:
+    """
+    The architecture used in `Pix2Pix <https://arxiv.org/abs/1611.07004>`_,
+    able to train on 128x128 or 512x512 images.
+    """
+    return Pix2PixGenerator([16, 32, 64, 128, 256, 512, 512])
+
+
+def patch70_dev() -> PatchDiscriminator:
+    """
+    Patch Discriminator from pix2pix
+    """
+    return PatchDiscriminator([64, 128, 256, 512])
+
+
 @tu.experimental
 def train(rank, world_size, opts):
-    G = pix2pix_256()
+    G = pix2pix_128_dev()
     G.to_instance_norm()
+
+    def to_adain(m):
+        if isinstance(m, nn.InstanceNorm2d):
+            return tnn.AdaIN2d(m.num_features, 256)
+        return m
+
+    tnn.edit_model(G, to_adain)
     tnn.utils.net_to_equal_lr(G, leak=0.2)
 
-    D = residual_patch70()
+    D = patch70_dev().remove_batchnorm()
     tnn.utils.net_to_equal_lr(D, leak=0.2)
     D = MultiScaleDiscriminator(D)
 
@@ -247,13 +244,11 @@ def train(rank, world_size, opts):
                                           shuffle=True,
                                           pin_memory=True)
 
-    fake_out = [None]
-
     def G_fun(batch) -> dict:
         x, y = batch
         D.train()
         M.eval()
-        out = G(x * 2 - 1)
+        out = G(x * 2 - 1, torch.randn(x.shape[0], 256, device=x.device))
         out_d = out.detach()
         out_d.requires_grad_()
         with D.no_sync():
@@ -265,7 +260,6 @@ def train(rank, world_size, opts):
 
         clf_loss.backward()
         out.backward(out_d.grad)
-        fake_out[0] = out.detach()
         return {'G_loss': loss.item()}
 
     class GradientPenalty:
@@ -298,7 +292,8 @@ def train(rank, world_size, opts):
         M.train()
         with G.no_sync():
             with torch.no_grad():
-                out = G(x * 2 - 1)
+                out = G(x * 2 - 1, torch.randn(x.shape[0], 256,
+                                               device=x.device))
         fake = out * 2 - 1
         real = y * 2 - 1
         with D.no_sync():
@@ -350,7 +345,13 @@ def train(rank, world_size, opts):
     def test_fun(x):
         G.train()
         with torch.no_grad():
-            out = torch.cat([G(xx * 2 - 1) for xx in torch.split(x[0], 32)],
+            out = torch.cat([
+                G(
+                    xx * 2 - 1,
+                    tch.distributions.sample_truncated_normal(
+                        (xx.shape[0], 256)).to(xx.device))
+                for xx in torch.split(x[0], 32)
+            ],
                             dim=0)
             return {'out': out}
 
@@ -361,8 +362,9 @@ def train(rank, world_size, opts):
                        test_fun,
                        ds,
                        test_loader=ds_test,
-                       checkpoint='main' if rank == 0 else None,
-                       visdom_env='main' if rank == 0 else None)
+                       test_every=2000,
+                       checkpoint='main_adain' if rank == 0 else None,
+                       visdom_env='main_adain' if rank == 0 else None)
     recipe.register('M', M)
 
     recipe.callbacks.add_callbacks([
@@ -413,7 +415,7 @@ def train(rank, world_size, opts):
 
 
 def run(opts):
-    G = pix2pix_256()
+    G = pix2pix_128()
     G.to_instance_norm()
     tnn.utils.net_to_equal_lr(G, leak=0.2)
     G.load_state_dict(torch.load(opts.from_ckpt, map_location='cpu')['G'])
@@ -428,7 +430,7 @@ def run(opts):
     ])
     img = tfm(Image.open(opts.src).convert('RGB'))
     img = torch.stack([img, img], dim=0)
-    TF.functional.to_pil_image(G(img)[0]).save(opts.dst)
+    TF.functional.to_pil_image(G(img, torch.randn(2, 256))[0]).save(opts.dst)
 
 
 def para_run(opts):
