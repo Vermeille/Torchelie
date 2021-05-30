@@ -1,9 +1,12 @@
+import os
+from typing import Optional, Callable, Tuple, List
+
 import torch
 from torchvision.transforms.functional import to_tensor
-from PIL import Image
 from torchvision.datasets.utils import download_and_extract_archive
-from typing import Optional, Callable, Tuple, List
-import os
+from PIL import Image
+
+from torchelie.utils import indent
 
 
 class UnlabeledImages:
@@ -18,6 +21,7 @@ class UnlabeledImages:
 
     def __init__(self, root: str, transform: Optional[Callable] = None) -> None:
         root = os.path.expanduser(root)
+        self.root = root
         self.samples = list(
             root + '/' + name
             for root, _, files in os.walk(root)
@@ -33,6 +37,13 @@ class UnlabeledImages:
         if self.transform is not None:
             img = self.transform(img)
         return img
+
+    def __repr__(self) -> str:
+        return (f'{self.__class__.__name__}:\n'
+                f'    num_samples: {len(self)}\n'
+                f'    root: {self.root}\n'
+                f'    transform:\n'
+                f'{indent(repr(self.transform), 8)}\n')
 
 
 class ImagesPaths:
@@ -58,6 +69,12 @@ class ImagesPaths:
         if self.transform is not None:
             img = self.transform(img)
         return img
+
+    def __repr__(self) -> str:
+        return (f'{self.__class__.__name__}:\n'
+                f'    num_samples: {len(self)}\n'
+                f'    transform:\n'
+                f'{indent(repr(self.transform), 8)}')
 
 
 class SideBySideImagePairsDataset(UnlabeledImages):
