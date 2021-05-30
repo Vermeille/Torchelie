@@ -81,13 +81,15 @@ class FiLM2d(nn.Module):
     """
     weight: Optional[torch.Tensor]
     bias: Optional[torch.Tensor]
+    make_bias: Optional[nn.Module]
 
-    def __init__(self, channels: int, cond_channels: int) -> None:
+    def __init__(self, channels: int, cond_channels: int, bias=True) -> None:
         super(FiLM2d, self).__init__()
         self.make_weight = nn.Linear(cond_channels, channels)
-        tu.normal_init(self.make_weight, 0.01)
-        self.make_bias = nn.Linear(cond_channels, channels)
-        tu.normal_init(self.make_bias, 0.01)
+        if bias:
+            self.make_bias = nn.Linear(cond_channels, channels)
+        else:
+            self.make_bias = None
 
         self.weight = None
         self.bias = None
@@ -108,9 +110,13 @@ class FiLM2d(nn.Module):
             self.condition(z)
 
         w = self.weight
-        b = self.bias
-        assert w is not None and b is not None
-        return w * x + b
+        assert w is not None
+        x = w * x
+
+        if self.bias is not None:
+            b = self.bias
+            x = x + b
+        return x
 
     def condition(self, z: torch.Tensor) -> None:
         """
@@ -120,5 +126,6 @@ class FiLM2d(nn.Module):
         Args:
             z (2D tensor, optional): conditioning vector
         """
-        self.weight = self.make_weight(z)[:, :, None, None].add_(1)
-        self.bias = self.make_bias(z)[:, :, None, None]
+        self.weight = self.make_weight(z)[:, :, None, None].mul_(0.1).add_(1)
+        if self.make_bias is not None:
+            self.bias = self.make_bias(z)[:, :, None, None].mul_(0.01)
