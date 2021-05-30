@@ -64,16 +64,16 @@ class GradientPenaltyM:
 class Matcher(nn.Module):
 
     @tu.experimental
-    def __init__(self, n_scales=2):
+    def __init__(self, n_scales=3):
         super().__init__()
-        proj_size = 512
+        proj_size = 256
 
         self.n_scales = n_scales
         self.nets = nn.ModuleDict()
         self.proj_As = nn.ModuleDict()
         self.proj_Bs = nn.ModuleDict()
         for i in range(n_scales):
-            net = patch70_dev().remove_batchnorm()
+            net = patch34().remove_batchnorm()
             net.classifier = nn.Sequential()
             net.to_equal_lr()
             proj_A = nn.Sequential(
@@ -131,15 +131,11 @@ class Matcher(nn.Module):
         }
 
 
-def Crop(x):
-    return x.crop((20, 0, 220, 220))
-
-
 def get_dataset(typ: str, path: str, train: bool, size: int):
     if typ == 'images':
         return UnlabeledImages(
             path,
-            TF.Compose(([Crop] if 'trainA' in path else []) + [
+            TF.Compose([
                 TF.Resize(size),
                 TF.CenterCrop(size),
                 TF.RandomHorizontalFlip(),
@@ -176,21 +172,6 @@ def celeba(path, train: bool, tfm=None):
     return tch.datasets.pix2pix.ImagesPaths(files, tfm)
 
 
-def pix2pix_128_dev() -> Pix2PixGenerator:
-    """
-    The architecture used in `Pix2Pix <https://arxiv.org/abs/1611.07004>`_,
-    able to train on 128x128 or 512x512 images.
-    """
-    return Pix2PixGenerator([16, 32, 64, 128, 256, 512, 512])
-
-
-def patch70_dev() -> PatchDiscriminator:
-    """
-    Patch Discriminator from pix2pix
-    """
-    return PatchDiscriminator([64, 128, 256, 512])
-
-
 @tu.experimental
 def train(rank, world_size, opts):
     G = pix2pix_128_dev()
@@ -198,13 +179,14 @@ def train(rank, world_size, opts):
 
     def to_adain(m):
         if isinstance(m, nn.InstanceNorm2d):
-            return tnn.AdaIN2d(m.num_features, 256)
+            #return tnn.AdaIN2d(m.num_features, 256)
+            return tnn.FiLM2d(m.num_features, 256)
         return m
 
     tnn.edit_model(G, to_adain)
     tnn.utils.net_to_equal_lr(G, leak=0.2)
 
-    D = patch70_dev().remove_batchnorm()
+    D = patch34().remove_batchnorm()
     tnn.utils.net_to_equal_lr(D, leak=0.2)
     D = MultiScaleDiscriminator(D)
 
@@ -223,12 +205,15 @@ def train(rank, world_size, opts):
     ds_A = get_dataset(opts.data_A[0], opts.data_A[1], True, SIZE)
     ds_B = get_dataset(opts.data_B[0], opts.data_B[1], True, SIZE)
 
+    ds = tch.datasets.RandomPairsDataset(ds_A, ds_B)
+
     ds_test_A = get_dataset(opts.data_test[0], opts.data_test[1], False, SIZE)
     ds_test_B = get_dataset(opts.data_B[0], opts.data_B[1], False, SIZE)
     ds_test = tch.datasets.RandomPairsDataset(ds_test_A, ds_test_B)
 
-    print('ds', len(ds_A), len(ds_B))
-    ds = tch.datasets.RandomPairsDataset(ds_A, ds_B)
+    if rank == 0:
+        print(ds)
+        print(ds_test)
 
     ds = torch.utils.data.DataLoader(ds,
                                      8,
@@ -238,7 +223,7 @@ def train(rank, world_size, opts):
                                      pin_memory=True)
 
     ds_test = torch.utils.data.DataLoader(ds_test,
-                                          8 * 16,
+                                          128,
                                           num_workers=4,
                                           drop_last=True,
                                           shuffle=True,
@@ -255,10 +240,12 @@ def train(rank, world_size, opts):
             loss = gan_loss.generated(D(out_d * 2 - 1))
         loss.backward()
 
-        with M.no_sync():
-            clf_loss = opts.consistency * M(out_d * 2 - 1, x * 2 - 1)['loss']
+        if opts.consistency != 0:
+            with M.no_sync():
+                clf_loss = opts.consistency * M(out_d * 2 - 1,
+                                                x * 2 - 1)['loss']
 
-        clf_loss.backward()
+            clf_loss.backward()
         out.backward(out_d.grad)
         return {'G_loss': loss.item()}
 
@@ -287,9 +274,7 @@ def train(rank, world_size, opts):
     gradient_penalty_M = GradientPenaltyM(opts.r0_M)
 
     def D_fun(batch) -> dict:
-        G.train()
         x, y = batch
-        M.train()
         with G.no_sync():
             with torch.no_grad():
                 out = G(x * 2 - 1, torch.randn(x.shape[0], 256,
@@ -310,8 +295,11 @@ def train(rank, world_size, opts):
         real_loss = gan_loss.real(prob_real)
         real_loss.backward()
 
-        with M.no_sync():
-            match_g_norm = gradient_penalty_M(M, fake, x * 2 - 1, real)
+        if opts.consistency != 0:
+            with M.no_sync():
+                match_g_norm = gradient_penalty_M(M, fake, x * 2 - 1, real)
+        else:
+            match_g_norm = 0
 
         M_out = M(fake, x * 2 - 1)
         matches = M_out['matches']
@@ -342,15 +330,16 @@ def train(rank, world_size, opts):
                 match_g_norm,
         }
 
-    def test_fun(x):
+    def test_fun(batch):
+        x, y = batch
         G.train()
-        with torch.no_grad():
+        with G.no_sync():
             out = torch.cat([
                 G(
                     xx * 2 - 1,
                     tch.distributions.sample_truncated_normal(
-                        (xx.shape[0], 256)).to(xx.device))
-                for xx in torch.split(x[0], 32)
+                        xx.shape[0], 256).to(xx.device))
+                for xx in torch.split(x, 32)
             ],
                             dim=0)
             return {'out': out}
@@ -362,7 +351,8 @@ def train(rank, world_size, opts):
                        test_fun,
                        ds,
                        test_loader=ds_test,
-                       test_every=2000,
+                       test_every=5000,
+                       log_every=100,
                        checkpoint='main_adain' if rank == 0 else None,
                        visdom_env='main_adain' if rank == 0 else None)
     recipe.register('M', M)
@@ -382,16 +372,16 @@ def train(rank, world_size, opts):
                                  weight_decay=0))),
         tch.callbacks.Log('out', 'out'),
         tch.callbacks.Log('batch.0', 'x'),
-        tch.callbacks.Log('batch.1', 'y'),
+        #tch.callbacks.Log('batch.1', 'y'),
         # tch.callbacks.Log('batch.0.1', 'y'),
-        tch.callbacks.WindowedMetricAvg('fake_loss', 'fake_loss'),
-        tch.callbacks.WindowedMetricAvg('real_loss', 'real_loss'),
-        tch.callbacks.WindowedMetricAvg('prob_fake', 'prob_fake'),
-        tch.callbacks.WindowedMetricAvg('prob_real', 'prob_real'),
+        #tch.callbacks.WindowedMetricAvg('fake_loss', 'fake_loss'),
+        #tch.callbacks.WindowedMetricAvg('real_loss', 'real_loss'),
+        #tch.callbacks.WindowedMetricAvg('prob_fake', 'prob_fake'),
+        #tch.callbacks.WindowedMetricAvg('prob_real', 'prob_real'),
         tch.callbacks.WindowedMetricAvg('D-correct', 'D-correct'),
         tch.callbacks.WindowedMetricAvg('match_correct', 'match_correct'),
         tch.callbacks.Log('g_norm', 'g_norm'),
-        tch.callbacks.Log('match_g_norm', 'match_g_norm'),
+        #tch.callbacks.Log('match_g_norm', 'match_g_norm'),
     ])
     recipe.G_loop.callbacks.add_callbacks([
         tch.callbacks.Optimizer(
@@ -405,6 +395,8 @@ def train(rank, world_size, opts):
         tch.callbacks.GANMetrics('batch.1', 'out', device=rank),
         tch.callbacks.Log('kid', 'kid'),
         tch.callbacks.Log('fid', 'fid'),
+        tch.callbacks.Log('precision', 'precision'),
+        tch.callbacks.Log('recall', 'recall'),
         tch.callbacks.Log('out', 'test_out'),
         tch.callbacks.Log('batch.0', 'test_x'),
     ])
