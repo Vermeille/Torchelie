@@ -933,11 +933,12 @@ class GANMetrics:
 
     """
 
-    def __init__(self,
-                 real_key: str = 'batch.0',
-                 fake_key: str = 'fake',
-                 device='cpu',
-                 metrics: List[str] = ['fid', 'kid']) -> None:
+    def __init__(
+            self,
+            real_key: str = 'batch.0',
+            fake_key: str = 'fake',
+            device='cpu',
+            metrics: List[str] = ['fid', 'kid', 'precision', 'recall']) -> None:
         from pytorch_fid.inception import InceptionV3
         self.model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]])
         self.model.eval()
@@ -983,6 +984,12 @@ class GANMetrics:
         if 'fid' in self.metrics:
             state['fid'] = self.compute_fid(all_real, all_fake)
 
+        if 'precision' in self.metrics:
+            state['precision'] = self.manifold_estimate(all_real, all_fake)
+
+        if 'recall' in self.metrics:
+            state['recall'] = self.manifold_estimate(all_fake, all_real)
+
     @torch.no_grad()
     def compute_fid(self,
                     feat_real: np.ndarray,
@@ -1016,3 +1023,15 @@ class GANMetrics:
             b = (x @ y.T / n + 1)**3
             t += (a.sum() - np.diag(a).sum()) / (m - 1) - b.sum() * 2 / m
         return t / num_subsets / m
+
+    @torch.no_grad()
+    def manifold_estimate(self,
+                          base: np.ndarray,
+                          query: np.ndarray,
+                          k: int = 3):
+        base_ = torch.from_numpy(base)
+        query_ = torch.from_numpy(query)
+        knn_radius = torch.kthvalue(torch.cdist(base_, base_), k + 1).values
+        closest = torch.cdist(query_, base_).min(dim=1)
+        is_included = (knn_radius[closest.indices] > closest.values).float()
+        return torch.mean(is_included).item()
