@@ -111,10 +111,10 @@ def parameterized_truncated_normal(uniform: torch.Tensor, mu: float,
 
 
 @experimental
-def truncated_normal(uniform: torch.Tensor) -> torch.Tensor:
-    return parameterized_truncated_normal(uniform, mu=0.0, sigma=1.0, a=-2, b=2)
+def truncated_normal(uniform: torch.Tensor, a: float, b: float) -> torch.Tensor:
+    return parameterized_truncated_normal(uniform, mu=0.0, sigma=1.0, a=a, b=b)
 
 
 @experimental
-def sample_truncated_normal(*shape):
-    return truncated_normal(torch.rand(shape))
+def sample_truncated_normal(*shape, cutoff: float = 2):
+    return truncated_normal(torch.rand(shape), a=-cutoff, b=cutoff)
