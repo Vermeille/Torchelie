@@ -11,7 +11,6 @@ from functools import wraps
 from inspect import isfunction
 from textwrap import dedent
 
-
 T = TypeVar('T')
 T_Module = TypeVar('T_Module', bound=nn.Module)
 Numeric = TypeVar('Numeric', torch.Tensor, float)
@@ -74,9 +73,14 @@ def kaiming_gain(m: T_Module,
     """
     Return the std needed to initialize a weight matrix with given parameters.
     """
-    fan = nn.init._calculate_correct_fan(m.weight, mode)
+    if mode == 'fan_inout':
+        fan = (
+            math.sqrt(nn.init._calculate_correct_fan(m.weight, 'fan_in')) +
+            math.sqrt(nn.init._calculate_correct_fan(m.weight, 'fan_out'))) / 2
+    else:
+        fan = math.sqrt(nn.init._calculate_correct_fan(m.weight, mode))
     gain = nn.init.calculate_gain(nonlinearity, param=a)
-    return gain / math.sqrt(fan)
+    return gain / fan
 
 
 def kaiming(m: T_Module,

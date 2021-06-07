@@ -146,28 +146,26 @@ def train(rank, world_size, opts):
         tnn.utils.net_to_equal_lr(G, leak=0.2)
         return G
 
-    Gx = make_G()
     Gy = make_G()
 
-    def make_D():
+    def make_D(inputs):
         D = patch34()
-        D.set_input_specs(3 + 3)
+        D.set_input_specs(inputs)
         D.remove_batchnorm()
         tnn.utils.net_to_equal_lr(D, leak=0.2)
         #D.features[0].conv.weight_g.data.normal_(0, 0.02)
         D = MultiScaleDiscriminator(D)
         return D
 
-    Dx = make_D()
-    Dy = make_D()
+    Dyx = make_D(6)
+    Dy = make_D(3)
 
     if rank == 0:
-        print(Gx)
-        print(Dx)
+        print(Gy)
+        print(Dy)
 
-    Gx = torch.nn.parallel.DistributedDataParallel(Gx.to(rank), [rank], rank)
     Gy = torch.nn.parallel.DistributedDataParallel(Gy.to(rank), [rank], rank)
-    Dx = torch.nn.parallel.DistributedDataParallel(Dx.to(rank), [rank], rank)
+    Dyx = torch.nn.parallel.DistributedDataParallel(Dyx.to(rank), [rank], rank)
     Dy = torch.nn.parallel.DistributedDataParallel(Dy.to(rank), [rank], rank)
 
     SIZE = 128
@@ -208,20 +206,11 @@ def train(rank, world_size, opts):
         x, y = batch
         out = Gy(x * 2 - 1, torch.randn(x.shape[0], 256, device=x.device))
         with Dy.no_sync():
-            loss = gan_loss.generated(
-                Dy(torch.cat([out * 2 - 1, x * 2 - 1], dim=1)))
-        with Dx.no_sync():
-            pass
-            #loss += gan_loss.fake(Dx(torch.cat([x * 2 - 1, out * 2 - 1], dim=1)))
-        loss.backward()
+            loss = gan_loss.generated(Dy(out * 2 - 1))
 
-        out = Gx(y * 2 - 1, torch.randn(x.shape[0], 256, device=x.device))
-        with Dx.no_sync():
-            loss = gan_loss.generated(
-                Dx(torch.cat([out * 2 - 1, y * 2 - 1], dim=1)))
-        with Dy.no_sync():
-            pass
-            #loss += gan_loss.fake(Dy(torch.cat([y * 2 - 1, out * 2 - 1], dim=1)))
+        with Dyx.no_sync():
+            loss += opts.consistency * gan_loss.generated(
+                Dyx(torch.cat([out * 2 - 1, x * 2 - 1], dim=1)))
         loss.backward()
 
         return {'G_loss': loss.item()}
@@ -248,7 +237,7 @@ def train(rank, world_size, opts):
             return self.last_norm
 
     gradient_penalty_x = GradientPenalty(opts.r0_D)
-    gradient_penalty_y = GradientPenalty(opts.r0_D)
+    gradient_penalty_yx = GradientPenalty(opts.r0_D)
 
     def D_fun(batch) -> dict:
         x, y = batch
@@ -259,58 +248,46 @@ def train(rank, world_size, opts):
             with Gy.no_sync():
                 out = Gy(x, torch.randn(x.shape[0], 256, device=x.device))
             y_ = out * 2 - 1
-            with Gx.no_sync():
-                out = Gx(y, torch.randn(x.shape[0], 256, device=x.device))
-            x_ = out * 2 - 1
 
-        neg = [x_, y]
-
-        with Dx.no_sync():
-            prob_fake = Dx(torch.cat(neg, dim=1))
-            fake_correct = prob_fake.detach().lt(0).int().eq(1).sum()
+        neg = torch.cat([y_, x[(torch.arange(len(x)) + 1) % len(x)]], dim=1)
+        pos = torch.cat([y_, x], dim=1)[torch.randperm(len(x))]
+        with Dyx.no_sync():
+            prob_fake = Dyx(neg, flatten=False)
+            #fake_correct = prob_fake.detach().lt(0).int().eq(1).sum()
             fake_loss = gan_loss.fake(prob_fake)
             fake_loss.backward()
 
-        with Dx.no_sync():
-            g_norm = gradient_penalty_x(Dx, torch.cat([x, dpo(y_)], dim=1),
-                                        torch.cat(neg, dim=1))
-        prob_real = Dx(torch.cat([x, dpo(y_)], dim=1))
-        real_correct = prob_real.detach().gt(0).int().eq(1).sum()
+        with Dyx.no_sync():
+            g_norm = gradient_penalty_x(Dyx, pos, neg)
+        prob_real = Dyx(pos, flatten=False)
+        #real_correct = prob_real.detach().gt(0).int().eq(1).sum()
         real_loss = gan_loss.real(prob_real)
         real_loss.backward()
 
-        neg = [y_, x]
-
+        neg = y_
+        pos = y
         with Dy.no_sync():
-            prob_fake = Dy(torch.cat(neg, dim=1))
-            fake_correct = prob_fake.detach().lt(0).int().eq(1).sum()
+            prob_fake = Dy(neg, flatten=False)
+            #fake_correct = prob_fake.detach().lt(0).int().eq(1).sum()
             fake_loss = gan_loss.fake(prob_fake)
             fake_loss.backward()
 
         with Dy.no_sync():
-            g_norm = gradient_penalty_y(Dy, torch.cat([y, dpo(x_)], dim=1),
-                                        torch.cat(neg, dim=1))
+            g_norm = gradient_penalty_yx(Dy, pos, neg)
 
-        prob_real = Dy(torch.cat([y, dpo(x_)], dim=1))
-        real_correct = prob_real.detach().gt(0).int().eq(1).sum()
+        prob_real = Dy(pos, flatten=False)
+        #real_correct = prob_real.detach().gt(0).int().eq(1).sum()
         real_loss = gan_loss.real(prob_real)
         real_loss.backward()
 
         return {
-            'out':
-                torch.cat([x_, y_], dim=0),
-            'fake_loss':
-                fake_loss.item(),
-            'prob_fake':
-                torch.sigmoid(prob_fake).mean().item(),
-            'prob_real':
-                torch.sigmoid(prob_real).mean().item(),
-            'real_loss':
-                real_loss.item(),
-            'g_norm':
-                g_norm,
-            'D-correct':
-                (fake_correct + real_correct) / (2 * prob_fake.numel()),
+            'out': y_,
+            'fake_loss': fake_loss.item(),
+            #'prob_fake': torch.sigmoid(prob_fake).mean().item(),
+            #'prob_real': torch.sigmoid(prob_real).mean().item(),
+            'real_loss': real_loss.item(),
+            'g_norm': g_norm,
+            #'D-correct': (fake_correct + real_correct) / (2 * prob_fake.numel()),
         }
 
     def test_fun(batch):
@@ -324,19 +301,10 @@ def train(rank, world_size, opts):
                 for xx in torch.split(x, 32)
             ],
                               dim=0)
-        with Gx.no_sync():
-            out_x = torch.cat([
-                Gx(
-                    yy * 2 - 1,
-                    tch.distributions.sample_truncated_normal(
-                        yy.shape[0], 256).to(yy.device))
-                for yy in torch.split(y, 32)
-            ],
-                              dim=0)
-            return {'out': torch.cat([out_x, out_y])}
+            return {'out': out_y}
 
-    recipe = GANRecipe(nn.ModuleList([Gx, Gy]),
-                       nn.ModuleList([Dx, Dy]),
+    recipe = GANRecipe(Gy,
+                       nn.ModuleList([Dyx, Dy]),
                        G_fun,
                        D_fun,
                        test_fun,
@@ -350,7 +318,7 @@ def train(rank, world_size, opts):
     recipe.callbacks.add_callbacks([
         tch.callbacks.Optimizer(
             tch.optim.Lookahead(
-                tch.optim.RAdamW(Dx.parameters(),
+                tch.optim.RAdamW(Dyx.parameters(),
                                  lr=2e-3,
                                  betas=(0., 0.99),
                                  weight_decay=0))),
@@ -373,12 +341,6 @@ def train(rank, world_size, opts):
         tch.callbacks.Log('g_norm', 'g_norm'),
     ])
     recipe.G_loop.callbacks.add_callbacks([
-        tch.callbacks.Optimizer(
-            tch.optim.Lookahead(
-                tch.optim.RAdamW(Gx.parameters(),
-                                 lr=2e-3,
-                                 betas=(0., 0.99),
-                                 weight_decay=0))),
         tch.callbacks.Optimizer(
             tch.optim.Lookahead(
                 tch.optim.RAdamW(Gy.parameters(),
