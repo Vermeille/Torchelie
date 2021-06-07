@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 import copy
 
 import torch
@@ -175,7 +175,7 @@ class MultiScaleDiscriminator(nn.Module):
         for i in range(n_scales - 1):
             self.scales.append(copy.deepcopy(base_model))
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, flatten=True) -> List[torch.Tensor]:
         N = x.shape[0]
         outs = []
         for i in range(len(self.scales)):
@@ -183,4 +183,8 @@ class MultiScaleDiscriminator(nn.Module):
             out = self.scales[i](nn.functional.interpolate(
                 x, scale_factor=1 / scale, mode='bilinear')).view(N, -1)
             outs.append(out.view(N, -1))
-        return torch.cat(outs, dim=1)
+
+        if flatten:
+            return torch.cat(outs, dim=1)
+        else:
+            return outs

@@ -13,6 +13,8 @@ import torch.nn.functional as F
 
 
 def real(x: torch.Tensor, reduce: str = 'mean') -> torch.Tensor:
+    if isinstance(x, (tuple, list)):
+        return sum(real(xx) for xx in x)
     out = F.softplus(-x)
     if reduce == 'none':
         return out
@@ -24,6 +26,8 @@ def real(x: torch.Tensor, reduce: str = 'mean') -> torch.Tensor:
 
 
 def fake(x: torch.Tensor, reduce: str = 'mean') -> torch.Tensor:
+    if isinstance(x, (tuple, list)):
+        return sum(fake(xx) for xx in x)
     out = F.softplus(x)
     if reduce == 'none':
         return out
@@ -35,6 +39,8 @@ def fake(x: torch.Tensor, reduce: str = 'mean') -> torch.Tensor:
 
 
 def generated(x: torch.Tensor, reduce: str = 'mean') -> torch.Tensor:
+    if isinstance(x, (tuple, list)):
+        return sum(generated(xx) for xx in x)
     out = F.softplus(-x)
     if reduce == 'none':
         return out

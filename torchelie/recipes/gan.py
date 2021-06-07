@@ -74,7 +74,8 @@ def GANRecipe(G: nn.Module,
     D_loop.G_loop = G_loop
     D_loop.register('G_loop', G_loop)
 
-    test_loop = Recipe(test_wrap, NoLim(test_loader or loader))
+    test_loop = Recipe(test_wrap,
+                       NoLim(loader if test_loader is None else test_loader))
     D_loop.test_loop = test_loop
     D_loop.register('test_loop', test_loop)
 
