@@ -24,7 +24,7 @@ try:
     from torch.utils.tensorboard import SummaryWriter
     HAS_TS = True
 except Exception:
-    Pass
+    pass
 
 
 class WindowedMetricAvg(tu.AutoStateDict):
