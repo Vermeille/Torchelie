@@ -429,8 +429,8 @@ class VisdomLogger:
             else:
                 assert False, "incorrect type {} for key {}".format(
                     x.__class__.__name__, name)
-              
-            
+
+
 class TensorboardLogger:
     """
     Log metrics to Visdom. It logs scalars and scalar tensors as plots, 3D and
@@ -451,7 +451,6 @@ class TensorboardLogger:
         self.log_every = log_every
         self.prefix = prefix
         self.post_epoch_ends = post_epoch_ends
-
 
     def on_batch_start(self, state):
         iters = state['iters']
@@ -490,7 +489,6 @@ class TensorboardLogger:
             else:
                 assert False, "incorrect type {} for key {}".format(
                     x.__class__.__name__, name)
-
 
 
 class StdoutLogger(tu.AutoStateDict):
