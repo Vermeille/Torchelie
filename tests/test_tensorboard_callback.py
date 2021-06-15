@@ -5,6 +5,7 @@ from torchvision.datasets import FashionMNIST
 from torchvision.transforms import PILToTensor
 
 
+@pytest.mark.require_tensorboard
 def test_tesorboard():
     from torchelie.recipes import Recipe
 
