@@ -20,6 +20,12 @@ import torchelie.utils as tu
 
 from .avg import *
 
+try:
+    from torch.utils.tensorboard import SummaryWriter
+    HAS_TS = True
+except Exeption as e:
+    Pass
+
 
 class WindowedMetricAvg(tu.AutoStateDict):
     """
@@ -447,6 +453,8 @@ class TensorboardLogger:
                  log_every=10,
                  prefix='',
                  post_epoch_ends=True):
+        assert HAS_TS, ("Can't import Tensorboard. Some callbacks will not "
+                        "work properly")
         self.writer = SummaryWriter(log_dir=log_dir)
         self.log_every = log_every
         self.prefix = prefix
