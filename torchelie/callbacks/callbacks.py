@@ -429,6 +429,68 @@ class VisdomLogger:
             else:
                 assert False, "incorrect type {} for key {}".format(
                     x.__class__.__name__, name)
+              
+            
+class TensorboardLogger:
+    """
+    Log metrics to Visdom. It logs scalars and scalar tensors as plots, 3D and
+    4D tensors as images, and strings as HTML.
+
+    Args:
+        log_dir (str): path of the loging directory. Default to runs/CURRENT_DATETIME_HOSTNAME
+        log_every (int): batch logging freq. -1 logs on epoch ends only.
+        prefix (str): prefix for all metrics name
+    """
+
+    def __init__(self,
+                 log_dir=None,
+                 log_every=10,
+                 prefix='',
+                 post_epoch_ends=True):
+        self.writer = SummaryWriter(log_dir=log_dir)
+        self.log_every = log_every
+        self.prefix = prefix
+        self.post_epoch_ends = post_epoch_ends
+
+
+    def on_batch_start(self, state):
+        iters = state['iters']
+        state['visdom_will_log'] = (self.log_every != -1 and
+                                    iters % self.log_every == 0)
+
+    @torch.no_grad()
+    def on_batch_end(self, state):
+        iters = state['iters']
+        if self.log_every != -1 and iters % self.log_every == 0:
+            self.log(iters, state['metrics'])
+
+    def on_epoch_end(self, state):
+        if self.post_epoch_ends:
+            self.log(state['iters'], state['metrics'])
+
+    def log(self, iters, xs, store_history=[]):
+        for name, x in xs.items():
+            name = self.prefix + name
+            if isinstance(x, (float, int)):
+                self.writer.add_scalar(name, x, iters)
+            elif isinstance(x, str):
+                self.writer.add_text(name, x, iters)
+            elif isinstance(x, torch.Tensor):
+                if x.numel() == 1:
+                    self.writer.add_scalar(name, x, iters)
+                elif x.dim() == 2:
+                    self.writer.add_image(name, x, iters, dataformats='HW')
+                elif x.dim() == 3:
+                    self.writer.add_image(name, x, iters, dataformats='CHW')
+                elif x.dim() == 4:
+                    self.writer.add_images(name, x, iters, dataformats='NCHW')
+                else:
+                    assert False, "incorrect tensor shape {} for {}".format(
+                        repr(x.shape), name)
+            else:
+                assert False, "incorrect type {} for key {}".format(
+                    x.__class__.__name__, name)
+
 
 
 class StdoutLogger(tu.AutoStateDict):
