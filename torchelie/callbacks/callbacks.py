@@ -23,7 +23,7 @@ from .avg import *
 try:
     from torch.utils.tensorboard import SummaryWriter
     HAS_TS = True
-except Exeption as e:
+except Exception:
     Pass
 
 
