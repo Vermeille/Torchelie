@@ -32,4 +32,4 @@ jobs:
           pip install -r requirements.txt
       - name: "Run tests with pytest (without OpenCV)"
         run: |
-          python -m pytest -m "not require_opencv"
+          python -m pytest -m "not require_opencv" -m "not require_tensorboard"
