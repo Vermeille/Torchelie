@@ -11,7 +11,7 @@ def test_tesorboard():
     from torchelie.recipes import Recipe
 
     batch_size = 4
-    
+
     class Dataset:
         def __init__(self, batch_size):
             self.batch_size = batch_size
