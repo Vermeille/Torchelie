@@ -1,3 +1,4 @@
+import pytest
 import torch
 import torchelie.callbacks as tcb
 from torch.utils.data import DataLoader
