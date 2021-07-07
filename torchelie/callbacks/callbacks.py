@@ -21,6 +21,7 @@ try:
 except Exception:
     HAS_TS = False
     pass
+MISSING = object()
 
 
 class WindowedMetricAvg(tu.AutoStateDict):
@@ -492,13 +493,18 @@ class TensorboardLogger:
     """
 
     def __init__(self,
-                 log_dir=None,
+                 log_dir=MISSING,
                  log_every=10,
                  prefix='',
                  post_epoch_ends=True):
-        assert HAS_TS, ("Can't import Tensorboard. Some callbacks will not "
-                        "work properly")
-        self.writer = SummaryWriter(log_dir=log_dir)
+        self.log_dir = log_dir
+        if log_dir is not None:
+            assert HAS_TS, ("Can't import Tensorboard. Some callbacks will not "
+                            "work properly")
+            if log_dir is MISSING:
+                self.writer = SummaryWriter(log_dir=None)
+            else:
+                self.writer = SummaryWriter(log_dir=log_dir)
         self.log_every = log_every
         self.prefix = prefix
         self.post_epoch_ends = post_epoch_ends
@@ -520,6 +526,8 @@ class TensorboardLogger:
             self.log(state['iters'], state['metrics'])
 
     def log(self, iters, xs, store_history=[]):
+        if self.log_dir is None:
+            return
         for name, x in xs.items():
             name = self.prefix + name
             if isinstance(x, (float, int)):
