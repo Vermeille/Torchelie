@@ -140,7 +140,7 @@ def StyleGAN2Recipe(G: nn.Module,
     Returns:
         recipe, G EMA model
     """
-    G_polyak = copy.copy(G)
+    G_polyak = copy.deepcopy(G)
 
     G = nn.parallel.DistributedDataParallel(G.to(gpu_id), [gpu_id], gpu_id)
     D = nn.parallel.DistributedDataParallel(D.to(gpu_id), [gpu_id], gpu_id)

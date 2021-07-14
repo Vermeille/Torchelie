@@ -252,7 +252,10 @@ class StyleGAN2Block(nn.Module):
                                  kernel_size=3,
                                  padding=1,
                                  bias=True)
-            kaiming(conv, dynamic=dyn, a=0.2)
+
+            if dyn:
+                conv.to_equal_lr(leak=0.2)
+
             inside.add_operation(inputs=[f'in_{i}', 'w'],
                                  outputs=[f'conv_{i}'],
                                  name=f'conv_{i}',
@@ -271,21 +274,16 @@ class StyleGAN2Block(nn.Module):
 
             in_ch = out_ch
 
-        if dyn:
-            for m in inside:
-                if isinstance(m, ModulatedConv):
-                    xavier(m.make_s, dynamic=True)
-
         self.inside = inside
-        self.to_rgb = xavier(ModulatedConv(out_ch,
-                                           noise_size,
-                                           3,
-                                           kernel_size=1,
-                                           padding=0,
-                                           bias=True,
-                                           demodulate=False),
-                             dynamic=dyn,
-                             a=0.2)
+        self.to_rgb = ModulatedConv(out_ch,
+                                    noise_size,
+                                    3,
+                                    kernel_size=1,
+                                    padding=0,
+                                    bias=True,
+                                    demodulate=False)
+        if dyn:
+            self.to_rgb.to_equal_lr(leak=0.2)
 
     def n_noise(self) -> int:
         return len(self.inside) // 3

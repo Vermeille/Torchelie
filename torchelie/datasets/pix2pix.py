@@ -33,10 +33,10 @@ class UnlabeledImages:
         return len(self.samples)
 
     def __getitem__(self, i: int):
-        img = Image.open(self.samples[i])
+        img = Image.open(self.samples[i]).convert('RGB')
         if self.transform is not None:
             img = self.transform(img)
-        return img
+        return [img]
 
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}:\n'
