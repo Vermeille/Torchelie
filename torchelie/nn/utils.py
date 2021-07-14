@@ -10,6 +10,20 @@ from torchelie.utils import kaiming_gain, kaiming, fast_zero_grad
 from torch.nn.parameter import Parameter
 
 
+def patch_repr(m: nn.Module):
+    import types
+    base_repr = m.extra_repr
+
+    def show_hooks(self: nn.Module):
+        return base_repr() + ' hooks:' + ','.join([
+            v.name if hasattr(v, 'name') else v.__class__.__name__
+            for v in self._forward_pre_hooks.values()
+        ])
+
+    m.extra_repr = types.MethodType(show_hooks, m)
+    return m
+
+
 class WeightLambda:
     """
     Apply a lambda function as a hook to the weight matrix of a layer before
@@ -42,10 +56,13 @@ class WeightLambda:
         del module._parameters[name]
 
         module.register_parameter(name + '_g', Parameter(weight.data))
-        setattr(module, name, fn.fun(getattr(module, name + '_g')))
+        with torch.no_grad():
+            setattr(module, name, fn.fun(getattr(module, name + '_g')))
 
         # recompute weight before every forward()
         module.register_forward_pre_hook(fn)
+
+        patch_repr(module)
 
         return fn
 

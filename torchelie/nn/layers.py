@@ -39,9 +39,16 @@ class ModulatedConv(nn.Conv2d):
                  demodulate: bool = True,
                  **kwargs):
         super(ModulatedConv, self).__init__(in_channels, *args, **kwargs)
-        self.make_s = tu.xavier(nn.Linear(noise_channels, in_channels))
-        self.make_s.bias.data.fill_(1)
+        with torch.no_grad():
+            self.make_s = tu.xavier(nn.Linear(noise_channels, in_channels))
+            self.make_s.bias.data.fill_(1)
         self.demodulate = demodulate
+
+    def to_equal_lr(self, leak: float = 0.2) -> 'ModulatedConv':
+        tu.kaiming(self, a=leak, dynamic=True)
+        tu.xavier(self.make_s, dynamic=True)
+        self.make_s.bias.data.fill_(1)
+        return self
 
     def condition(self, z: torch.Tensor) -> None:
         self.s = self.make_s(z)

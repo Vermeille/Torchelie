@@ -21,6 +21,7 @@ class LinearReLU(tnn.CondSeq):
         self.linear = tu.kaiming(nn.Linear(in_features, out_features))
         self.relu = nn.ReLU(True)
 
+    @torch.no_grad()
     def leaky(self) -> 'LinearReLU':
         if isinstance(self.relu, (nn.ReLU, nn.LeakyReLU)):
             self.relu = nn.LeakyReLU(0.2, self.relu.inplace)
@@ -28,6 +29,7 @@ class LinearReLU(tnn.CondSeq):
             self.relu = nn.LeakyReLU(0.2, True)
         return self
 
+    @torch.no_grad()
     def to_equal_lr(self) -> 'LinearReLU':
         if isinstance(self.relu, nn.LeakyReLU):
             tu.kaiming(self.linear, dynamic=True, a=self.relu.negative_slope)
@@ -35,6 +37,7 @@ class LinearReLU(tnn.CondSeq):
             tu.kaiming(self.linear, dynamic=True)
         return self
 
+    @torch.no_grad()
     def to_differential_lr(self, lr: float):
         tnn.utils.weight_scale(self.linear, name='bias', scale=lr)
         if isinstance(self.relu, nn.LeakyReLU):
@@ -48,22 +51,26 @@ class LinearReLU(tnn.CondSeq):
 
 
 class MappingNetwork(tnn.CondSeq):
+
     def __init__(self, num_features: int, num_layers: int = 3) -> None:
         super().__init__()
         for i in range(num_layers):
-            self.add_module(f'linear_{i}',
-                            LinearReLU(num_features, num_features))
+            self.add_module(f'linear_{i}', LinearReLU(num_features,
+                                                      num_features))
 
+    @torch.no_grad()
     def leaky(self) -> 'MappingNetwork':
         for m in self:
             m.leaky()
         return self
 
+    @torch.no_grad()
     def to_equal_lr(self) -> 'MappingNetwork':
         for m in self:
             m.to_equal_lr()
         return self
 
+    @torch.no_grad()
     def to_differential_lr(self, lr: float) -> 'MappingNetwork':
         for m in self:
             m.to_differential_lr(lr)
