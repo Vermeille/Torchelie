@@ -110,9 +110,9 @@ class StyleGAN2Generator(nn.Module):
                 render.add_operation(inputs=['N'],
                                      outputs=['fmap_constxconst'],
                                      name='const',
-                                     operation=tnn.Const(
-                                         min(max_ch, ch), 4, 4))
+                                     operation=tnn.Const(min(max_ch, ch), 4, 4))
                 prev_res = 'const'
+                self.base_ch = min(max_ch, ch)
             else:
                 prev_res = str(res // 2)
 
@@ -138,19 +138,20 @@ class StyleGAN2Generator(nn.Module):
 
         self.render = render
 
+    def use_affine_input(self):
+        self.render.const = nn.Sequential(
+            LinearReLU(self.noise_size,
+                       self.base_ch * 4 * 4).leaky().to_equal_lr(),
+            tnn.Reshape(self.base_ch, 4, 4))
+        return self
+
     @overload
-    def forward(self,
-                z,
-                mixing: bool,
-                get_w: Literal[False]) -> torch.Tensor:
+    def forward(self, z, mixing: bool, get_w: Literal[False]) -> torch.Tensor:
         ...
 
     @overload
-    def forward(
-            self,
-            z,
-            mixing: bool,
-            get_w: Literal[True]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, z, mixing: bool,
+                get_w: Literal[True]) -> Tuple[torch.Tensor, torch.Tensor]:
         ...
 
     def forward(self, z, mixing: bool = True, get_w: bool = False):
@@ -171,6 +172,7 @@ class StyleGAN2Generator(nn.Module):
                 ws[f'w_{res}x{res}'] = 0.3 * self.w_avg + 0.7 * w
             else:
                 ws[f'w_{res}x{res}'] = w
+        ws['N'] = ws['w_4x4']
 
         if not get_w:
             return self.render(rgb_constxconst=None, **ws)
@@ -179,10 +181,10 @@ class StyleGAN2Generator(nn.Module):
 
     def w_to_dict(self, w):
         return {
-            'N': w.shape[0],
+            'N': w,
             **{
-                f'w_{2**(i+2)}x{2**(i+2)}': w
-                for i in range(len(self.render) - 1)
+                f'w_{2**(i+2)}x{2**(i+2)}': w for i in range(
+                    len(self.render) - 1)
             }
         }
 
