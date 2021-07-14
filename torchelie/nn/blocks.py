@@ -76,6 +76,7 @@ class SpadeResBlock(PreactResBlock):
 
     https://arxiv.org/abs/1903.07291
     """
+
     def __init__(self,
                  in_channels: int,
                  out_channels: int,
@@ -107,6 +108,7 @@ class AutoGANGenBlock(nn.Module):
         ks (int): kernel size of the convolutions
         mode (str): usampling mode, 'nearest' or 'bilinear'
     """
+
     def __init__(self,
                  in_ch: int,
                  out_ch: int,
@@ -176,6 +178,7 @@ class ResidualDiscrBlock(PreactResBlock):
     A preactivated resblock suited for discriminators: it features leaky relus,
     no batchnorm, and an optional downsampling operator.
     """
+
     def __init__(self,
                  in_channels: int,
                  out_channels: int,
@@ -231,6 +234,7 @@ class StyleGAN2Block(nn.Module):
             init scaling (weight_scale)
 
     """
+
     def __init__(self,
                  in_ch: int,
                  out_ch: int,
@@ -313,6 +317,5 @@ class StyleGAN2Block(nn.Module):
         maps = self.inside(
             in_0=maps,
             w=w,
-            **({f'noise_{i}': None
-                for i in range(len(self.inside) // 3)}))
+            **({f'noise_{i}': None for i in range(len(self.inside) // 3)}))
         return rgb + self.to_rgb(maps, w), maps
