@@ -879,14 +879,28 @@ class GANMetrics:
         self.real_key = real_key
         self.fake_key = fake_key
         self.metrics = metrics
+        self.batch_chunks = 1
 
     @torch.no_grad()
     def on_batch_end(self, state: dict):
         real = tu.dict_by_key(state, self.real_key).to(self.device)
         fake = tu.dict_by_key(state, self.fake_key).to(self.device)
 
-        real_feats = self.model(real)[0]
-        fake_feats = self.model(fake)[0]
+        for i in range(self.batch_chunks, min(len(real), len(fake))):
+            try:
+                real_feats = torch.cat(
+                    [self.model(r)[0] for r in torch.chunk(real, i)], dim=0)
+                fake_feats = torch.cat(
+                    [self.model(f)[0] for f in torch.chunk(fake, i)], dim=0)
+                break
+            except RuntimeError as e:
+                if 'out of memory' in str(e):
+                    print('GANMetrics: OoM with batch_size '
+                          f'{len(real) // self.batch_chunks}, divide into one'
+                          ' more chunk')
+                    self.batch_chunks += 1
+                else:
+                    raise e
 
         if torch.distributed.is_initialized() and self.device != 'cpu':
             all_real_list = [
