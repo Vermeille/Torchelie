@@ -115,6 +115,7 @@ class GradientPenalty:
 def StyleGAN2Recipe(G: nn.Module,
                     D: nn.Module,
                     dataloader,
+                    testloader,
                     noise_size: int,
                     gpu_id: int,
                     total_num_gpus: int,
@@ -122,10 +123,11 @@ def StyleGAN2Recipe(G: nn.Module,
                     G_lr: float = 2e-3,
                     D_lr: float = 2e-3,
                     tag: str = 'model',
-                    ada: bool = True):
+                    ada: bool = True,
+                    mixing: bool = True):
     """
     StyleGAN2 Recipe distributed with DistributedDataParallel
-
+128, 
     Args:
         G (nn.Module): a Generator.
         D (nn.Module): a Discriminator.
@@ -159,17 +161,19 @@ def StyleGAN2Recipe(G: nn.Module,
 
     batch_size = len(next(iter(dataloader))[0])
     diffTF = ADATF(-2 if not ada else -0.9,
-                   50000 / (batch_size * total_num_gpus))
+                   min(0.001, 50000 / (batch_size * total_num_gpus)))
 
     ppl = PPL(4)
 
     def G_train(batch):
+        tu.freeze(D)
         with G.no_sync():
-            pl = ppl(G, torch.randn(batch_size, noise_size, device=gpu_id))
+            pl = 0  #ppl(G, torch.randn(batch_size, noise_size, device=gpu_id))
         ##############
         #   G pass   #
         ##############
-        imgs = G(torch.randn(batch_size, noise_size, device=gpu_id))
+        imgs = G(torch.randn(batch_size, noise_size, device=gpu_id),
+                 mixing=mixing)
         pred = D(diffTF(imgs) * 2 - 1)
         score = gan_loss.generated(pred)
         score.backward()
@@ -179,6 +183,7 @@ def StyleGAN2Recipe(G: nn.Module,
     gradient_penalty = GradientPenalty(0.1)
 
     def D_train(batch):
+        tu.unfreeze(D)
         ###################
         #    Fake pass    #
         ###################
@@ -186,7 +191,7 @@ def StyleGAN2Recipe(G: nn.Module,
             # Sync the gradient on the last backward
             noise = torch.randn(batch_size, noise_size, device=gpu_id)
             with torch.no_grad():
-                fake = G(noise)
+                fake = G(noise, mixing=mixing)
             fake.requires_grad_(True)
             fake.retain_grad()
             fake_tf = diffTF(fake) * 2 - 1
@@ -201,13 +206,12 @@ def StyleGAN2Recipe(G: nn.Module,
         tfmed = diffTF(batch[0]) * 2 - 1
 
         with D.no_sync():
-            grad_norm = gradient_penalty(D, batch[0] * 2 - 1,
-                                         fake.detach() * 2 - 1)
+            grad_norm = gradient_penalty(D, tfmed, fake_tf.detach())
 
         ###################
         #    Real pass    #
         ###################
-        real_out = D(tfmed)
+        real_out = D(tfmed).squeeze(1)
         correct += (real_out > 0).detach().int().eq(1).float().sum()
         real_loss = gan_loss.real(real_out)
         real_loss.backward()
@@ -265,12 +269,20 @@ def StyleGAN2Recipe(G: nn.Module,
         t = torch.linspace(0, 1, 8, device=noise1.device).view(8, 1)
         noise = noise1 * t + noise2 * (1 - t)
         noise = noise.view(-1, noise_size)
-        interp = torch.cat([
-            G_polyak(n, mixing=False) for n in torch.split(noise, batch_size)
-        ], dim=0)
+        interp = torch.cat(
+            [G_polyak(n, mixing=False) for n in torch.split(noise, batch_size)],
+            dim=0)
+
+        out = torch.cat([
+            G_polyak(torch.randn(len(b), noise_size, device=gpu_id),
+                     mixing=False)
+            for b in torch.split(torch.arange(128), batch_size)
+        ],
+                        dim=0)
         return {
             'polyak_imgs': fake,
             'polyak_interp': interp,
+            'out': out,
         }
 
     recipe = GANRecipe(G,
@@ -279,6 +291,7 @@ def StyleGAN2Recipe(G: nn.Module,
                        D_train,
                        test,
                        dataloader,
+                       test_loader=testloader,
                        visdom_env=tag if gpu_id == 0 else None,
                        log_every=10,
                        test_every=1000,
@@ -289,7 +302,7 @@ def StyleGAN2Recipe(G: nn.Module,
         tcb.WindowedMetricAvg('fake_loss'),
         tcb.WindowedMetricAvg('real_loss'),
         tcb.WindowedMetricAvg('grad_norm'),
-        tcb.WindowedMetricAvg('ADA-p'),
+        tcb.Log('ADA-p', 'ADA-p'),
         tcb.WindowedMetricAvg('D-correct'),
         tcb.Log('i_grad', 'img_grad'),
         tch.callbacks.Optimizer(optD),
@@ -303,6 +316,12 @@ def StyleGAN2Recipe(G: nn.Module,
     recipe.test_loop.callbacks.add_callbacks([
         tcb.Log('polyak_imgs', 'polyak'),
         tcb.Log('polyak_interp', 'interp'),
+        tcb.GANMetrics(real_key='batch.0', fake_key='out', device=gpu_id),
+        tcb.Log('kid', 'kid'),
+        tcb.Log('fid', 'fid'),
+        tcb.Log('precision', 'precision'),
+        tcb.Log('recall', 'recall'),
+        tcb.Log('out', 'test_out'),
     ])
     recipe.register('G_polyak', G_polyak)
     recipe.to(gpu_id)
@@ -312,7 +331,7 @@ def StyleGAN2Recipe(G: nn.Module,
 @tu.experimental
 def train(rank, world_size):
     from torchelie.models import StyleGAN2Generator, StyleGAN2Discriminator
-    from torchvision.datasets import ImageFolder
+    from torchelie.datasets import UnlabeledImages
     import torchvision.transforms as TF
     import argparse
 
@@ -324,10 +343,13 @@ def train(rank, world_size):
     parser.add_argument('--img-dir', required=True)
     parser.add_argument('--ch-mul', type=float, default=1.)
     parser.add_argument('--max-ch', type=int, default=512)
-    parser.add_argument('--no-ada', action='store_true')
+    parser.add_argument('--no-ada', dest='ada', action='store_false')
     parser.add_argument('--gp-thresh', type=float, default=0.3)
+    parser.add_argument('--mixing', default=True, action='store_true')
+    parser.add_argument('--no-mixing', dest='mixing', action='store_false')
     parser.add_argument('--from-ckpt')
     opts = parser.parse_args()
+    print(opts)
 
     tag = opts.img_dir.split('/')[-1] or opts.img_dir.split('/')[-2]
     tag = 'gan_' + tag
@@ -335,7 +357,8 @@ def train(rank, world_size):
     G = StyleGAN2Generator(opts.noise_size,
                            img_size=opts.img_size,
                            ch_mul=opts.ch_mul,
-                           max_ch=opts.max_ch)
+                           max_ch=opts.max_ch,
+                           mapping_lr_mul=1).use_affine_input()
     D = StyleGAN2Discriminator(input_sz=opts.img_size,
                                ch_mul=opts.ch_mul,
                                max_ch=opts.max_ch)
@@ -348,21 +371,29 @@ def train(rank, world_size):
         TF.RandomHorizontalFlip(),
         TF.ToTensor()
     ])
-    ds = tch.datasets.NoexceptDataset(ImageFolder(opts.img_dir, transform=tfm))
+    ds = tch.datasets.NoexceptDataset(
+        UnlabeledImages(opts.img_dir, transform=tfm))
     dl = torch.utils.data.DataLoader(ds,
                                      num_workers=4,
                                      shuffle=True,
                                      pin_memory=True,
                                      drop_last=True,
                                      batch_size=opts.batch_size)
+    dlt = torch.utils.data.DataLoader(ds,
+                                      num_workers=4,
+                                      shuffle=True,
+                                      drop_last=True,
+                                      batch_size=128)
     recipe, _ = StyleGAN2Recipe(G,
                                 D,
                                 dl,
+                                dlt,
                                 opts.noise_size,
                                 rank,
                                 world_size,
                                 tag=tag,
-                                ada=not opts.no_ada)
+                                ada=opts.ada,
+                                mixing=opts.mixing)
     if opts.from_ckpt is not None:
         ckpt = torch.load(opts.from_ckpt, map_location='cpu')
         recipe.load_state_dict(ckpt)

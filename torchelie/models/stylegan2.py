@@ -95,11 +95,13 @@ class StyleGAN2Generator(nn.Module):
                  noise_size: int,
                  ch_mul: float = 1,
                  img_size: int = 128,
-                 max_ch: int = 512):
+                 max_ch: int = 512,
+                 mapping_lr_mul: float = 0.01):
         super().__init__()
+        self.noise_size = noise_size
         self.register_buffer('w_avg', torch.zeros(noise_size))
 
-        self.encode = MappingNetwork(noise_size, 3).to_differential_lr(0.01)
+        self.encode = MappingNetwork(noise_size, 3).to_differential_lr(mapping_lr_mul)
         self.encode.leaky()
         res = 4
         render = tnn.ModuleGraph('out')
