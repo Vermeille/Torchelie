@@ -126,6 +126,7 @@ class MultiVQ(nn.Module):
         super(MultiVQ, self).__init__()
         self.dim = dim
         self.num_codebooks = num_codebooks
+        self.return_indices = return_indices
         self.vqs = nn.ModuleList([
             VQ(latent_dim // num_codebooks,
                num_tokens,
@@ -140,5 +141,9 @@ class MultiVQ(nn.Module):
         self, x: torch.Tensor
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         x_chunks = torch.chunk(x, self.num_codebooks, dim=self.dim)
-        return torch.cat([vq(chunk) for chunk, vq in zip(x_chunks, self.vqs)],
-                         dim=self.dim)
+        quantized = [vq(chunk) for chunk, vq in zip(x_chunks, self.vqs)]
+        if self.return_indices:
+            q = torch.cat([q[0] for q in quantized], dim=self.dim)
+            return q, torch.cat([q[1] for q in quantized], dim=self.dim)
+        else:
+            return torch.cat(quantized, dim=self.dim)
