@@ -19,6 +19,7 @@ try:
     from torch.utils.tensorboard import SummaryWriter
     HAS_TS = True
 except Exception:
+    HAS_TS = False
     pass
 
 

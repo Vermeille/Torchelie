@@ -12,6 +12,7 @@ class RunningAvg(tu.AutoStateDict):
     Useful when the metrics come per batch and an accurate number for the whole
     epoch is needed.
     """
+
     def __init__(self) -> None:
         super(RunningAvg, self).__init__()
         self.count = 0.0
@@ -44,6 +45,7 @@ class WindowAvg(tu.AutoStateDict):
     Args:
         k (int): the window's length
     """
+
     def __init__(self, k: int = 100) -> None:
         super(WindowAvg, self).__init__()
         self.vals: List[float] = []
@@ -75,8 +77,9 @@ class ExponentialAvg(tu.AutoStateDict):
     Args:
         beta (float): the decay rate
     """
+
     def __init__(self, beta: float = 0.6):
-        super(ExponentialAvg, self).__init__()
+        super(ExponentialAvg, self).__init__(['beta'])
         self.beta = beta
         self.val: Optional[float] = None
 

@@ -4,7 +4,7 @@ import torchelie.utils as tu
 from torchelie.recipes.gan import GANRecipe
 import torchvision.transforms as TF
 import torchelie.loss.gan.standard as gan_loss
-from torchelie.loss.gan.penalty import zero_gp
+from torchelie.loss.gan.penalty import zero_gp, R1
 from torchelie.datasets.pix2pix import UnlabeledImages
 from torchelie.models import *
 import torch.nn as nn
@@ -129,6 +129,13 @@ def celeba(path, train: bool, tfm=None):
     return tch.datasets.pix2pix.ImagesPaths(files, tfm)
 
 
+def big_patch34() -> PatchDiscriminator:
+    """
+    Patch Discriminator from pix2pix
+    """
+    return PatchDiscriminator([256, 512, 512])
+
+
 @tu.experimental
 def train(rank, world_size, opts):
 
@@ -138,7 +145,7 @@ def train(rank, world_size, opts):
 
         def to_adain(m):
             if isinstance(m, nn.InstanceNorm2d):
-                #return tnn.AdaIN2d(m.num_features, 256)
+                # return tnn.AdaIN2d(m.num_features, 256)
                 return tnn.FiLM2d(m.num_features, 256)
             return m
 

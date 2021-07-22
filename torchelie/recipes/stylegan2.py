@@ -92,6 +92,7 @@ class PPL:
 
 
 class GradientPenalty:
+
     @tu.experimental
     def __init__(self, gamma):
         self.gamma = gamma
@@ -99,7 +100,7 @@ class GradientPenalty:
         self.last_norm = float('nan')
 
     def __call__(self, model, real, fake):
-        if self.iters % 4 == 3:
+        if self.iters < 100 or self.iters % 4 == 3:
             real = real.detach()
             fake = fake.detach()
             gp, g_norm = zero_gp(model, real, fake)
@@ -120,6 +121,7 @@ def StyleGAN2Recipe(G: nn.Module,
                     gpu_id: int,
                     total_num_gpus: int,
                     *,
+                    ppl_coef: float = 0,
                     G_lr: float = 2e-3,
                     D_lr: float = 2e-3,
                     tag: str = 'model',
@@ -127,7 +129,6 @@ def StyleGAN2Recipe(G: nn.Module,
                     mixing: bool = True):
     """
     StyleGAN2 Recipe distributed with DistributedDataParallel
-128, 
     Args:
         G (nn.Module): a Generator.
         D (nn.Module): a Discriminator.
@@ -163,12 +164,13 @@ def StyleGAN2Recipe(G: nn.Module,
     diffTF = ADATF(-2 if not ada else -0.9,
                    min(0.001, 50000 / (batch_size * total_num_gpus)))
 
-    ppl = PPL(4)
+    ppl = PPL(ppl_coef)
 
     def G_train(batch):
         tu.freeze(D)
-        with G.no_sync():
-            pl = 0  #ppl(G, torch.randn(batch_size, noise_size, device=gpu_id))
+        if ppl_coef > 0:
+            with G.no_sync():
+                pl = ppl(G, torch.randn(batch_size, noise_size, device=gpu_id))
         ##############
         #   G pass   #
         ##############
