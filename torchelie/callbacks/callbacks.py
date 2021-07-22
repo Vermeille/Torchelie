@@ -55,6 +55,39 @@ class WindowedMetricAvg(tu.AutoStateDict):
         state['metrics'][self.name] = self.avg.get()
 
 
+class ExponentialMetricAvg(tu.AutoStateDict):
+    """
+    Log to the metrics a exponential averaged value in the current state
+
+    Args:
+        name (str): the name of the value to log
+        beta (float): the exponential averaging coefficient
+        post_each_batch (bool): whether to post on each batch (True, default),
+            or only on epoch ends (False)
+    """
+
+    def __init__(self, name, beta: float = 0.9, post_each_batch: bool = True):
+        super(ExponentialMetricAvg, self).__init__()
+        self.name = name
+        self.avg = ExponentialAvg(beta)
+        self.post_each_batch = post_each_batch
+
+    def on_epoch_start(self, state):
+        if self.name in state['metrics']:
+            del state['metrics'][self.name]
+
+    @torch.no_grad()
+    def on_batch_end(self, state):
+        val = state.get(self.name, None)
+        if val is not None:
+            self.avg.log(val)
+        if self.post_each_batch:
+            state['metrics'][self.name] = self.avg.get()
+
+    def on_epoch_end(self, state):
+        state['metrics'][self.name] = self.avg.get()
+
+
 class EpochMetricAvg(tu.AutoStateDict):
     """
     Log to the metrics a value averaged over an epoch in the current state
