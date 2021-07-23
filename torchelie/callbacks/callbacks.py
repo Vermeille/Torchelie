@@ -1024,7 +1024,7 @@ class GANMetrics:
             all_fake = torch.cat(all_fake_list, dim=0).cpu()
         else:
             all_real = real_feats.cpu()
-            all_fake = real_feats.cpu()
+            all_fake = fake_feats.cpu()
 
         all_real = all_real.squeeze(2).squeeze(2).numpy()
         all_fake = all_fake.squeeze(2).squeeze(2).numpy()
