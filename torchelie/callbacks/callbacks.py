@@ -369,6 +369,7 @@ class VisdomLogger:
         if self.log_every != -1 and iters % self.log_every == 0:
             self.log(iters, state['metrics'])
 
+    @torch.no_grad()
     def on_epoch_end(self, state):
         if self.post_epoch_ends:
             self.log(state['iters'], state['metrics'])
@@ -466,6 +467,7 @@ class TensorboardLogger:
         if self.log_every != -1 and iters % self.log_every == 0:
             self.log(iters, state['metrics'])
 
+    @torch.no_grad()
     def on_epoch_end(self, state):
         if self.post_epoch_ends:
             self.log(state['iters'], state['metrics'])
@@ -508,6 +510,7 @@ class StdoutLogger(tu.AutoStateDict):
         self.log_every = log_every
         self.prefix = prefix
 
+    @torch.no_grad()
     def on_batch_end(self, state):
         iters = state['iters']
         if self.log_every != -1 and iters % self.log_every == 0:
