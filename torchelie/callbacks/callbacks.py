@@ -112,6 +112,9 @@ class EpochMetricAvg(tu.AutoStateDict):
 
     @torch.no_grad()
     def on_batch_end(self, state):
+        if self.name not in state:
+            return
+
         self.avg.log(state[self.name])
         if self.post_each_batch:
             state['metrics'][self.name] = self.avg.get()
