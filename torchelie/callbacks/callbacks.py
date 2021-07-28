@@ -988,6 +988,7 @@ class GANMetrics:
         self.fake_key = fake_key
         self.metrics = metrics
         self.batch_chunks = 1
+        self.caches = {'real': [], 'fake': []}
 
     @torch.no_grad()
     def on_batch_end(self, state: dict):
@@ -1009,6 +1010,15 @@ class GANMetrics:
                     self.batch_chunks += 1
                 else:
                     raise e
+
+        self.caches['real'].append(real_feats)
+        self.caches['fake'].append(fake_feats)
+
+    @torch.no_grad()
+    def on_epoch_end(self, state: dict):
+        real_feats = torch.cat(self.caches['real'], dim=0)
+        fake_feats = torch.cat(self.caches['fake'], dim=0)
+        self.caches = {'real': [], 'fake': []}
 
         if torch.distributed.is_initialized() and self.device != 'cpu':
             all_real_list = [
