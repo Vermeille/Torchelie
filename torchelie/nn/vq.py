@@ -31,7 +31,8 @@ class VQ(nn.Module):
                  dim: int = 1,
                  commitment: float = 0.25,
                  init_mode: str = 'normal',
-                 return_indices: bool = True):
+                 return_indices: bool = True,
+                 max_age: int = 1000):
         super(VQ, self).__init__()
         self.embedding = nn.Embedding(num_tokens, latent_dim)
         nn.init.normal_(self.embedding.weight, 0, 1.1)
@@ -41,24 +42,35 @@ class VQ(nn.Module):
         self.return_indices = return_indices
         assert init_mode in ['normal', 'first']
         self.init_mode = init_mode
-        self.register_buffer('usage', torch.zeros(num_tokens))
+        self.register_buffer('age', torch.empty(num_tokens).fill_(max_age))
+        self.max_age = max_age
 
     def update_usage(self, indices):
-        nb_codes = self.embedding.weight.shape[0]
         with torch.no_grad():
-            id_flat = indices.view(indices.shape[0], -1)
-            u = F.one_hot(id_flat, nb_codes).float().mean(0).sum(0)
-            self.usage.mul_(0.99).add_(0.01 * nb_codes * u)
+            self.age += 1
+            if torch.distributed.is_initialized():
+                n_gpu = torch.distributed.get_world_size()
+                all_indices = [torch.empty_like(indices) for _ in range(n_gpu)]
+                torch.distributed.all_gather(all_indices, indices)
+                indices = torch.cat(all_indices)
+            used = torch.unique(indices)
+            self.age[used] = 0
 
     def resample_dead(self, x):
         with torch.no_grad():
-            dead = torch.nonzero(self.usage < 0.001, as_tuple=True)[0]
-            if len(dead) > 0:
-                print(f'{len(dead)} dead codes resampled')
-                x_flat = x.view(-1, x.shape[-1])
-                emb_weight = self.embedding.weight.data
-                emb_weight[dead[:len(x_flat)]] = x_flat[torch.randperm(
-                    len(x_flat))[:len(dead)]]
+            dead = torch.nonzero(self.age > self.max_age, as_tuple=True)[0]
+            if len(dead) == 0:
+                return
+
+            print(f'{len(dead)} dead codes resampled')
+            x_flat = x.view(-1, x.shape[-1])
+            emb_weight = self.embedding.weight.data
+            emb_weight[dead[:len(x_flat)]] = x_flat[torch.randperm(
+                len(x_flat))[:len(dead)]]
+            self.age[dead[:len(x_flat)]] = 0
+
+            if torch.distributed.is_initialized():
+                torch.distributed.broadcast(emb_weight, 0)
 
     def forward(
         self, x: torch.Tensor
