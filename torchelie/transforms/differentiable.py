@@ -121,6 +121,7 @@ def _mblur_kernel():
 
 
 class BinomialFilter2d(torch.nn.Module):
+
     def __init__(self, stride: int):
         super().__init__()
         self.stride = stride
@@ -131,7 +132,8 @@ class BinomialFilter2d(torch.nn.Module):
     def forward(self, x):
         x = torch.nn.functional.pad(x, (1, 1, 1, 1), mode='replicate')
         return torch.nn.functional.conv2d(x,
-                                          self.weight.expand(x.shape[1], 1, -1, -1),
+                                          self.weight.expand(
+                                              x.shape[1], 1, -1, -1),
                                           groups=x.shape[1],
                                           stride=self.stride,
                                           padding=0)
@@ -190,7 +192,10 @@ class AllAtOnceGeometric:
         self.m = torch.where(
             torch.rand(RND) < prob, torch.bmm(m, self.m), self.m)
 
-    def translate(self, x: float, y: float, prob: float = 1.) -> 'AllAtOnceGeometric':
+    def translate(self,
+                  x: float,
+                  y: float,
+                  prob: float = 1.) -> 'AllAtOnceGeometric':
         """
         Randomly translate image horizontally with an offset sampled in [-x, x]
         and vertically [-y, y]. Note that the coordinate are not pixel
@@ -202,7 +207,10 @@ class AllAtOnceGeometric:
         self._mix(tfm, prob)
         return self
 
-    def scale(self, x: float, y: float, prob: float = 1.) -> 'AllAtOnceGeometric':
+    def scale(self,
+              x: float,
+              y: float,
+              prob: float = 1.) -> 'AllAtOnceGeometric':
         """
         Randomly scale the image horizontally by a factor [1 - x; 1 + x] and
         vertically by a factor of [1 - y; 1 + y].
@@ -237,7 +245,7 @@ class AllAtOnceGeometric:
     def flip_x(self, p: float, prob: float = 1.) -> 'AllAtOnceGeometric':
         tfm = []
         for _ in range(self.B):
-            p_rot = math.copysign(1, random.random() - (1 - p))
+            p_rot = math.copysign(1, random.random() - 0.5)
             tfm.append([[p_rot, 0., 0], [0, 1, 0], [0, 0, 1]])
         tfm_matrix = torch.tensor(tfm)
         self._mix(tfm_matrix, prob)
@@ -246,7 +254,7 @@ class AllAtOnceGeometric:
     def flip_y(self, p: float, prob: float = 1.) -> 'AllAtOnceGeometric':
         tfm = []
         for _ in range(self.B):
-            p_rot = math.copysign(1, random.random() - (1 - p))
+            p_rot = math.copysign(1, random.random() - 0.5)
             tfm.append([[1, 0., 0], [0, p_rot, 0], [0, 0, 1]])
         tfm_matrix = torch.tensor(tfm)
         self._mix(tfm_matrix, prob)
@@ -255,7 +263,10 @@ class AllAtOnceGeometric:
     def apply(self, x: torch.Tensor) -> torch.Tensor:
         grid = F.affine_grid(self.m[:, :2, :], cast(List[int], x.shape))
         grid = grid.to(x.device)
-        return F.grid_sample(x, grid, mode='bilinear', padding_mode='reflection')
+        return F.grid_sample(x,
+                             grid,
+                             mode='bilinear',
+                             padding_mode='reflection')
 
 
 class AllAtOnceColor:
@@ -292,7 +303,8 @@ class AllAtOnceColor:
         tfm = torch.stack([
             torch.eye(4, 4) * random.uniform(1 - alpha, 1 + alpha)
             for _ in range(self.B)
-        ], dim=0)
+        ],
+                          dim=0)
         tfm[:, 3, 3] = 1
         self._mix(tfm, prob)
         return self
