@@ -6,6 +6,8 @@ import torchvision.transforms.functional as F
 from PIL import Image
 import numpy as np
 
+from .randaugment import RandAugment
+
 try:
     import cv2
     HAS_CV = True
