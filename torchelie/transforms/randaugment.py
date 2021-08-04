@@ -20,19 +20,19 @@ class RandAugment(torch.nn.Module):
         ('AutoContrast', None, None),
         ('Equalize', None, None),
         ('Invert', None, None),
-        ('Rotate', -30, 30),
-        ('Posterize', 1, 4),
+        ('Rotate', 0, 30),
+        ('Posterize', 4, 8),
         ('Solarize', 0, 256),
         ('SolarizeAdd', 0, 110),
-        ('Color', 0.1, 1.9),
-        ('Contrast', 0.1, 1.9),
-        ('Brightness', 0.1, 1.9),
-        ('Sharpness', 0.1, 1.9),
+        ('Color', 0., 0.9),
+        ('Contrast', 0., 0.9),
+        ('Brightness', 0., 0.9),
+        ('Sharpness', 0., 0.9),
         ('ShearX', 0., 0.3),
         ('ShearY', 0., 0.3),
         ('Cutout', 0, 0.5),
-        ('TranslateX', -0.1, 0.1),
-        ('TranslateY', -0.1, 0.1),
+        ('TranslateX', 0, 0.2),
+        ('TranslateY', 0, 0.2),
     ]
 
     def __init__(self,
@@ -60,22 +60,23 @@ class RandAugment(torch.nn.Module):
             elif fill is not None:
                 fill = [float(f) for f in fill]
 
-        for tf_id in range(self.n_transforms):
-            op_name, minv, maxv = random.choice(self.transforms)
+        for op_name, minv, maxv in random.sample(self.transforms,
+                                                 self.n_transforms):
 
             if maxv is None:
                 magnitude = None
             else:
                 magnitude = random.uniform(minv, maxv * self.magnitude / 10)
+                signed_magnitude = magnitude * 2 - self.magnitude * maxv / 10
 
             if op_name == 'Identity':
-                continue
+                pass
             elif op_name == "ShearX":
                 img = F.affine(img,
                                angle=0.0,
                                translate=[0, 0],
                                scale=1.0,
-                               shear=[math.degrees(magnitude), 0.0],
+                               shear=[math.degrees(signed_magnitude), 0.0],
                                interpolation=self.interpolation,
                                fill=fill)
             elif op_name == "ShearY":
@@ -83,14 +84,16 @@ class RandAugment(torch.nn.Module):
                                angle=0.0,
                                translate=[0, 0],
                                scale=1.0,
-                               shear=[0.0, math.degrees(magnitude)],
+                               shear=[0.0, math.degrees(signed_magnitude)],
                                interpolation=self.interpolation,
                                fill=fill)
             elif op_name == "TranslateX":
                 img = F.affine(
                     img,
                     angle=0.0,
-                    translate=[int(F._get_image_size(img)[0] * magnitude), 0],
+                    translate=[
+                        int(F._get_image_size(img)[0] * signed_magnitude), 0
+                    ],
                     scale=1.0,
                     interpolation=self.interpolation,
                     shear=[0.0, 0.0],
@@ -99,31 +102,33 @@ class RandAugment(torch.nn.Module):
                 img = F.affine(
                     img,
                     angle=0.0,
-                    translate=[0, int(F._get_image_size(img)[1] * magnitude)],
+                    translate=[
+                        0, int(F._get_image_size(img)[1] * signed_magnitude)
+                    ],
                     scale=1.0,
                     interpolation=self.interpolation,
                     shear=[0.0, 0.0],
                     fill=fill)
             elif op_name == "Rotate":
                 img = F.rotate(img,
-                               magnitude,
+                               signed_magnitude,
                                interpolation=self.interpolation,
                                fill=fill)
             elif op_name == "Brightness":
-                img = F.adjust_brightness(img, 1.0 + magnitude)
+                img = F.adjust_brightness(img, 1.0 + signed_magnitude)
             elif op_name == "Color":
-                img = F.adjust_saturation(img, 1.0 + magnitude)
+                img = F.adjust_saturation(img, 1.0 + signed_magnitude)
             elif op_name == "Contrast":
-                img = F.adjust_contrast(img, 1.0 + magnitude)
+                img = F.adjust_contrast(img, 1.0 + signed_magnitude)
             elif op_name == "Sharpness":
-                img = F.adjust_sharpness(img, 1.0 + magnitude)
+                img = F.adjust_sharpness(img, 1.0 + signed_magnitude)
             elif op_name == "Posterize":
                 img = F.posterize(img, int(magnitude))
             elif op_name == "Solarize":
                 img = F.solarize(img, magnitude)
             elif op_name == "SolarizeAdd":
                 img_np = np.array(img).astype(np.int)
-                img_np = img_np + magnitude
+                img_np = img_np + signed_magnitude
                 img_np = np.clip(img_np, 0, 255)
                 img_np = img_np.astype(np.uint8)
                 img = PIL.Image.fromarray(img_np)
