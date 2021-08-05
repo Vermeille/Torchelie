@@ -81,16 +81,16 @@ def test_blocks():
 
 
 def test_vq():
-    m = VQ(8, 16, mode='nearest')
+    m = VQ(8, 16)
     m(torch.randn(10, 8))
 
-    m = VQ(8, 16, mode='angular')
+    m = VQ(8, 16)
     m(torch.randn(10, 8))
 
-    m = VQ(8, 16, mode='nearest', init_mode='first')
+    m = VQ(8, 16, init_mode='first')
     m(torch.randn(10, 8))
 
-    m = VQ(8, 16, mode='angular', init_mode='first')
+    m = VQ(8, 16, init_mode='first')
     m(torch.randn(10, 8))
 
 
