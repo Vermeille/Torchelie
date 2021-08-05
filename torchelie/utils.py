@@ -381,6 +381,7 @@ class FrozenModule(nn.Module):
     Args:
         m (nn.Module): a module
     """
+
     def __init__(self, m: nn.Module) -> None:
         super(FrozenModule, self).__init__()
         self.m = freeze(m).eval()
@@ -401,6 +402,7 @@ class DetachedModule:
     Args:
         m (nn.Module): a module
     """
+
     def __init__(self, m):
         self.m = freeze(m).eval()
 
@@ -533,6 +535,7 @@ class AutoStateDict:
 
     Exclusions can be specified via `except_names`
     """
+
     def __init__(self, except_names: List[str] = []):
         self._except = except_names
 
@@ -569,6 +572,7 @@ def dist_setup(rank):
 
 
 class _WrapFun:
+
     def __init__(self, fun, *args, **kwargs):
         self.fun = fun
         self.args = args
@@ -627,8 +631,8 @@ def experimental(func):
         if doc is None:
             return f'**Experimental**\n\n.. warning::\n  {msg}\n\n.\n'
         else:
-            return ('**Experimental**: ' + dedent(func.__doc__)
-                    + f'.. warning::\n {msg}\n\n\n')
+            return ('**Experimental**: ' + dedent(func.__doc__) +
+                    f'.. warning::\n {msg}\n\n\n')
 
     if isfunction(func):
         func.__doc__ = deprecate_doc(func.__doc__)
@@ -655,4 +659,4 @@ def experimental(func):
             # '__getstate__': __getstate__,
             # '__setstate__': __setstate__
         }
-        return type(cls.__name__, (cls, ), d)
+        return type(cls.__name__, (cls,), d)
