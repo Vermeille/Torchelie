@@ -180,6 +180,8 @@ class Canny:
         self.thresh_low = thresh_low
         self.thresh_high = thresh_high
         self.available = HAS_CV
+        if not HAS_CV:
+            print("Can't import OpenCV. Canny will notwork properly")
 
     def __call__(self, img):
         """
@@ -192,9 +194,8 @@ class Canny:
             edges detected in `img` as PIL Image
         """
         if not HAS_CV:
-            print("Can't import OpenCV. Canny will notwork properly")
             return img
 
         img = np.array(img)
         img = cv2.Canny(img, self.thresh_low, self.thresh_high)
-        return Image.fromarray(img)
+        return PIL.Image.fromarray(img)
