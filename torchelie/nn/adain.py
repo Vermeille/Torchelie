@@ -81,9 +81,9 @@ class FiLM2d(nn.Module):
     """
     weight: Optional[torch.Tensor]
     bias: Optional[torch.Tensor]
-    make_bias: Optional[nn.Module]
+    make_bias: Optional[nn.Linear]
 
-    def __init__(self, channels: int, cond_channels: int, bias=True) -> None:
+    def __init__(self, channels: int, cond_channels: int, bias: bool = True):
         super(FiLM2d, self).__init__()
         self.make_weight = nn.Linear(cond_channels, channels)
         if bias:
