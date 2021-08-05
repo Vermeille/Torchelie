@@ -4,12 +4,16 @@ import torch
 
 from enum import Enum
 from torch import Tensor
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Callable
 
 import PIL
-import numpy as np
+from PIL.Image import Image as PILImage
 
 from torchvision.transforms import functional as F, InterpolationMode
+import torchvision.transforms as TF
+from torchelie.utils import indent
+
+from .augments import *
 
 __all__ = ['RandAugment']
 
@@ -21,33 +25,58 @@ class RandAugment(torch.nn.Module):
                  magnitude: int,
                  interpolation: InterpolationMode = InterpolationMode.NEAREST,
                  fill: Optional[List[float]] = None):
+        """
+        RandAugment policy from RandAugment: Practical automated data
+        augmentation with a reduced search space.
+
+        Args:
+            n_transforms (int): how many transforms to apply
+            magnitude (int): magnitude of the transforms. 10 is base rate, can
+                be set to more.
+            interpolation: interpolation to use for suitable transforms
+            fill: fill value to use for suitable transforms
+        """
         super().__init__()
         self.interpolation = interpolation
         self.fill = fill
         self.n_transforms = n_transforms
+        magnitude /= 10
         self.magnitude = magnitude
 
         self.transforms = [
-            (Identity, None, None),
-            (AutoContrast, None, None),
-            (Equalize, None, None),
-            (Invert, None, None),
-            (Rotate, 0, 30),
-            (Posterize, 4, 8),
-            (Solarize, 0, 256),
-            (SolarizeAdd, 0, 110),
-            (Color, 0., 0.9),
-            (Contrast, 0., 0.9),
-            (Brightness, 0., 0.9),
-            (Sharpness, 0., 0.9),
-            (ShearX, 0., 0.3),
-            (ShearY, 0., 0.3),
-            (Cutout, 0, 0.5),
-            (TranslateX, 0, 0.45),
-            (TranslateY, 0, 0.45),
+            Identity(),
+            TF.RandomAutocontrast(p=1),
+            TF.RandomEqualize(p=1),
+            TF.RandomInvert(p=1),
+            TF.RandomAffine(degrees=magnitude * 30,
+                            interpolation=self.interpolation,
+                            fill=self.fill),
+            Posterize(min_bits=8 - magnitude * 4, max_bits=8),
+            Solarize(magnitude * 256),
+            TF.ColorJitter(saturation=0.9 * magnitude),
+            TF.ColorJitter(contrast=0.9 * magnitude),
+            TF.ColorJitter(brightness=0.9 * magnitude),
+            TF.RandomAdjustSharpness(0.9 * magnitude, p=1),
+            TF.RandomAffine(0,
+                            shear=(-15 * magnitude, 15 * magnitude, 0, 0),
+                            interpolation=self.interpolation,
+                            fill=self.fill),
+            TF.RandomAffine(0,
+                            shear=(0, 0, -15 * magnitude, 15 * magnitude),
+                            interpolation=self.interpolation,
+                            fill=self.fill),
+            Cutout(magnitude * 0.5),
+            TF.RandomAffine(0,
+                            translate=(0.45 * magnitude, 0),
+                            interpolation=self.interpolation,
+                            fill=self.fill),
+            TF.RandomAffine(0,
+                            translate=(0, 0.45 * magnitude),
+                            interpolation=self.interpolation,
+                            fill=self.fill),
         ]
 
-    def forward(self, img: Tensor):
+    def forward(self, img: PILImage) -> PILImage:
         """
             img (PIL Image or Tensor): Image to be transformed.
 
@@ -61,137 +90,52 @@ class RandAugment(torch.nn.Module):
             elif fill is not None:
                 fill = [float(f) for f in fill]
 
-        for op, minv, maxv in random.choices(self.transforms,
-                                             k=self.n_transforms):
-            if maxv is None:
-                magnitude = None
-                signed_magnitude = None
-            else:
-                magnitude = random.uniform(minv, maxv * self.magnitude / 10)
-                signed_magnitude = magnitude * 2 - self.magnitude * maxv / 10
-
-            img = op(img, magnitude, signed_magnitude, self.interpolation,
-                     self.fill)
+        for op in random.choices(self.transforms, k=self.n_transforms):
+            img = op(img)
 
         return img
 
-    def add_transform(self, tfm, minv=None, maxv=None):
-        self.transforms.append(tfm, minv, maxv)
+    def add_transform(self, tfm: Callable[[PILImage],
+                                          PILImage]) -> 'RandAugment':
+        self.transforms.append(tfm)
         return self
 
-    def __repr__(self):
-        return self.__class__.__name__ + '(n_transforms={}, magnitude={}, fill={})'.format(
-            self.n_transforms, self.magnitude, self.fill)
+    def add_scale(self) -> 'RandAugment':
+        s = 0.9 * self.magnitude
+        return self.add_transform(
+            TF.RandomAffine(0,
+                            scale=(max(0, 1 - s), 1 + s),
+                            interpolation=self.interpolation,
+                            fill=self.fill))
 
+    def add_greyscale(self) -> 'RandAugment':
+        return self.add_transform(TF.RandomGrayscale(p=1))
 
-def Identity(x, *_):
-    return x
+    def add_subsampling(self) -> 'RandAugment':
+        return self.add_transform(
+            Subsample(int(self.magnitude * 8), 1., self.interpolation))
 
+    def add_jpeg(self):
+        return self.add_transform(JPEGArtifacts(1 - self.magnitude, p=1))
 
-def AutoContrast(x, *_):
-    return F.autocontrast(x)
+    def berserk_mode(self) -> 'RandAugment':
+        """
+        Load even more transforms
+        """
+        self.add_scale()
+        self.add_greyscale()
+        self.add_perspective()
+        self.add_subsampling()
+        self.add_jpeg()
+        return self
 
+    def add_perspective(self) -> 'RandAugment':
+        return self.add_transform(
+            TF.RandomPerspective(max(0, min(self.magnitude, 1)), 1.0,
+                                 self.interpolation, self.fill))
 
-def Equalize(x, *_):
-    return F.equalize(x)
-
-
-def Invert(x, *_):
-    return F.invert(x)
-
-
-def Rotate(x, _, signed_magnitude, interpolation, fill):
-    return F.rotate(x, signed_magnitude, interpolation=interpolation, fill=fill)
-
-
-def Posterize(x, magnitude, *_):
-    return F.posterize(x, int(magnitude))
-
-
-def Solarize(x, magnitude, *_):
-    return F.solarize(x, magnitude)
-
-
-def SolarizeAdd(x, magnitude, signed_magnitude, *_):
-    img_np = np.array(x).astype(np.int)
-    img_np = img_np + signed_magnitude
-    img_np = np.clip(img_np, 0, 255)
-    img_np = img_np.astype(np.uint8)
-    img = PIL.Image.fromarray(img_np)
-    return F.solarize(img, 128)
-
-
-def Color(x, magnitude, signed_magnitude, *_):
-    return F.adjust_saturation(x, 1.0 + signed_magnitude)
-
-
-def Contrast(x, magnitude, signed_magnitude, *_):
-    return F.adjust_contrast(x, 1.0 + signed_magnitude)
-
-
-def Brightness(x, magnitude, signed_magnitude, *_):
-    return F.adjust_brightness(x, 1.0 + signed_magnitude)
-
-
-def Sharpness(x, magnitude, signed_magnitude, *_):
-    return F.adjust_sharpness(x, 1.0 + signed_magnitude)
-
-
-def ShearX(x, _, signed_magnitude, interpolation, fill):
-    return F.affine(x,
-                    angle=0.0,
-                    translate=[0, 0],
-                    scale=1.0,
-                    shear=[math.degrees(signed_magnitude), 0.0],
-                    interpolation=interpolation,
-                    fill=fill)
-
-
-def ShearY(x, _, signed_magnitude, interpolation, fill):
-    return F.affine(x,
-                    angle=0.0,
-                    translate=[0, 0],
-                    scale=1.0,
-                    shear=[0.0, math.degrees(signed_magnitude)],
-                    interpolation=interpolation,
-                    fill=fill)
-
-
-def Cutout(x, magnitude, *_):
-    w, h = x.size
-    x0 = np.random.uniform(w)
-    y0 = np.random.uniform(h)
-
-    v = int(magnitude * min(w, h))
-    x0 = int(max(0, x0 - v / 2.))
-    y0 = int(max(0, y0 - v / 2.))
-    x1 = min(w, x0 + v)
-    y1 = min(h, y0 + v)
-
-    xy = (x0, y0, x1, y1)
-    color = (125, 123, 114)
-    img = x.copy()
-    PIL.ImageDraw.Draw(img).rectangle(xy, color)
-    return img
-
-
-def TranslateX(x, _, signed_magnitude, interpolation, fill):
-    return F.affine(
-        x,
-        angle=0.0,
-        translate=[int(F._get_image_size(x)[0] * signed_magnitude), 0],
-        scale=1.0,
-        interpolation=interpolation,
-        shear=[0.0, 0.0],
-        fill=fill)
-
-
-def TranslateY(x, _, signed_magnitude, interpolation, fill):
-    return F.affine(
-        x,
-        angle=0.0,
-        translate=[0, int(F._get_image_size(x)[1] * signed_magnitude)],
-        scale=1.0,
-        interpolation=interpolation,
-        shear=[0.0, 0.0],
-        fill=fill)
+    def __repr__(self) -> str:
+        return (self.__class__.__name__ + '(n_transforms={}, magnitude={},'
+                ' fill={}, transforms=[\n{}\n])'.format(
+                    self.n_transforms, self.magnitude, self.fill,
+                    indent(',\n'.join([repr(t) for t in self.transforms]))))

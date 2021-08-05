@@ -7,12 +7,7 @@ from PIL import Image
 import numpy as np
 
 from .randaugment import RandAugment
-
-try:
-    import cv2
-    HAS_CV = True
-except:
-    pass
+from .augments import *
 
 
 class ResizeNoCrop:
@@ -105,36 +100,6 @@ class MultiBranch:
         return tuple(tf(x) for tf in self.transforms)
 
 
-class Canny:
-    """
-    Run Canny edge detector over an image. Requires OpenCV to be installed
-
-    Args:
-        thresh_low (int): lower threshold (default: 100)
-        thresh_high (int): upper threshold (default: 200)
-    """
-
-    def __init__(self, thresh_low=100, thresh_high=200):
-        self.thresh_low = thresh_low
-        self.thresh_high = thresh_high
-
-    def __call__(self, img):
-        """
-        Detect edges
-
-        Args:
-            img (PIL.Image): the image
-
-        Returns:
-            edges detected in `img` as PIL Image
-        """
-        assert HAS_CV, ("Can't import OpenCV. Some transforms will not "
-                        "work properly")
-        img = np.array(img)
-        img = cv2.Canny(img, self.thresh_low, self.thresh_high)
-        return Image.fromarray(img)
-
-
 class ResizedCrop(object):
     """Crop the given PIL Image to size.
     A crop of size of the original size is made. This crop
@@ -146,8 +111,7 @@ class ResizedCrop(object):
         interpolation: Default: PIL.Image.BILINEAR
     """
 
-    def __init__(self, size, scale=0.54, ratio=1,
-                 interpolation=Image.BILINEAR):
+    def __init__(self, size, scale=0.54, ratio=1, interpolation=Image.BILINEAR):
         if isinstance(size, tuple):
             self.size = size
         else:
@@ -211,6 +175,7 @@ class ResizedCrop(object):
 
 
 class Noise:
+
     def __init__(self, std):
         self.std = std
 
@@ -233,8 +198,7 @@ def patches(img, patch_size=128):
     padder = AdaptPad((patch_size, patch_size))
     for row, h_off in enumerate(range(0, h, patch_size)):
         for c, w_off in enumerate(range(0, w, patch_size)):
-            p = img.crop(
-                (w_off, h_off, w_off + patch_size, h_off + patch_size))
+            p = img.crop((w_off, h_off, w_off + patch_size, h_off + patch_size))
             yield (row, c), padder(p)
 
 
