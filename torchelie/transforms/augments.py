@@ -26,15 +26,15 @@ __all__ = [
 
 
 class Posterize:
+    """
+    Apply a Posterize filter with a random number of bits.
+
+    Args:
+        min_bits (int): minimum color encoding bits
+        max_bits (int): maximum color encoding bits
+    """
 
     def __init__(self, min_bits: int = 4, max_bits: int = 8):
-        """
-        Apply a Posterize filter with a random number of bits.
-
-        Args:
-            min_bits (int): minimum color encoding bits
-            max_bits (int): maximum color encoding bits
-        """
         self.min_bits = int(min_bits)
         self.max_bits = int(max_bits)
 
@@ -46,14 +46,14 @@ class Posterize:
 
 
 class Solarize:
+    """
+    Apply a Solarize filter with a random threshold.
+
+    Args:
+        max_thresh (int): upper bound for the random threshold.
+    """
 
     def __init__(self, max_thresh: int = 128):
-        """
-        Apply a Solarize filter with a random threshold.
-
-        Args:
-            max_thresh (int): upper bound for the random threshold.
-        """
         self.max_thresh = int(max_thresh)
 
     def __call__(self, x: PILImage) -> PILImage:
@@ -64,16 +64,16 @@ class Solarize:
 
 
 class Cutout:
+    """
+    Applies a random Cutout filter erasing at most :code:`max_size*100`% of
+    the picture.
+
+    Args:
+        max_size (float): the maximum ratio that can be erased. 0 means no
+            erasure, 1 means up to the whole image can be erased.
+    """
 
     def __init__(self, max_size: float):
-        """
-        Applies a random Cutout filter erasing at most :code:`max_size*100`% of
-        the picture.
-
-        Args:
-            max_size (float): the maximum ratio that can be erased. 0 means no
-                erasure, 1 means up to the whole image can be erased.
-        """
         self.max_size = max_size
 
     def __call__(self, x: PILImage) -> PILImage:
@@ -99,6 +99,9 @@ class Cutout:
 
 
 class Identity:
+    """
+    Do nothing
+    """
 
     def __call__(self, x: PILImage) -> PILImage:
         return x
@@ -108,19 +111,19 @@ class Identity:
 
 
 class Subsample:
+    """
+    Randomly subsample images.
+
+    Args:
+        p (float): the transform is applied with probability p
+        max_ratio (int): maximum subscaling factor
+        interpolation (InterpolationMode): interpolation mode
+    """
 
     def __init__(self,
                  max_ratio: int = 3,
                  p: float = 0.5,
                  interpolation: InterpolationMode = InterpolationMode.BILINEAR):
-        """
-        Randomly subsample images.
-
-        Args:
-            p (float): the transform is applied with probability p
-            max_ratio (int): maximum subscaling factor
-            interpolation (InterpolationMode): interpolation mode
-        """
         self.max_ratio = max_ratio
         self.p = p
         self.interpolation = interpolation
@@ -141,15 +144,15 @@ class Subsample:
 
 
 class JPEGArtifacts:
+    """
+    Add some random jpeg compression artifacts
+
+    Args:
+        p (float): probability of applying the filter
+        min_compression (float): minimum quality (1: maximum quality)
+    """
 
     def __init__(self, min_compression: float = 0.5, p: float = 0.5):
-        """
-        Add some random jpeg compression artifacts
-
-        Args:
-            p (float): probability of applying the filter
-            min_compression (float): minimum quality (1: maximum quality)
-        """
         self.p = p
         self.min_compression = min_compression
 

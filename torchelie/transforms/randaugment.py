@@ -19,23 +19,23 @@ __all__ = ['RandAugment']
 
 
 class RandAugment(torch.nn.Module):
+    """
+    RandAugment policy from RandAugment: Practical automated data
+    augmentation with a reduced search space.
+
+    Args:
+        n_transforms (int): how many transforms to apply
+        magnitude (int): magnitude of the transforms. 10 is base rate, can
+            be set to more.
+        interpolation: interpolation to use for suitable transforms
+        fill: fill value to use for suitable transforms
+    """
 
     def __init__(self,
                  n_transforms: int,
                  magnitude: int,
                  interpolation: InterpolationMode = InterpolationMode.NEAREST,
                  fill: Optional[List[float]] = None):
-        """
-        RandAugment policy from RandAugment: Practical automated data
-        augmentation with a reduced search space.
-
-        Args:
-            n_transforms (int): how many transforms to apply
-            magnitude (int): magnitude of the transforms. 10 is base rate, can
-                be set to more.
-            interpolation: interpolation to use for suitable transforms
-            fill: fill value to use for suitable transforms
-        """
         super().__init__()
         self.interpolation = interpolation
         self.fill = fill
