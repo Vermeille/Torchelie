@@ -179,7 +179,6 @@ def train(rank, world_size, opts):
 
     def to_adain(m):
         if isinstance(m, nn.InstanceNorm2d):
-            #return tnn.AdaIN2d(m.num_features, 256)
             return tnn.FiLM2d(m.num_features, 256)
         return m
 
@@ -372,16 +371,16 @@ def train(rank, world_size, opts):
                                  weight_decay=0))),
         tch.callbacks.Log('out', 'out'),
         tch.callbacks.Log('batch.0', 'x'),
-        #tch.callbacks.Log('batch.1', 'y'),
-        # tch.callbacks.Log('batch.0.1', 'y'),
-        #tch.callbacks.WindowedMetricAvg('fake_loss', 'fake_loss'),
-        #tch.callbacks.WindowedMetricAvg('real_loss', 'real_loss'),
-        #tch.callbacks.WindowedMetricAvg('prob_fake', 'prob_fake'),
-        #tch.callbacks.WindowedMetricAvg('prob_real', 'prob_real'),
+        tch.callbacks.Log('batch.1', 'y'),
+        tch.callbacks.Log('batch.0.1', 'y'),
+        tch.callbacks.WindowedMetricAvg('fake_loss', 'fake_loss'),
+        tch.callbacks.WindowedMetricAvg('real_loss', 'real_loss'),
+        tch.callbacks.WindowedMetricAvg('prob_fake', 'prob_fake'),
+        tch.callbacks.WindowedMetricAvg('prob_real', 'prob_real'),
         tch.callbacks.WindowedMetricAvg('D-correct', 'D-correct'),
         tch.callbacks.WindowedMetricAvg('match_correct', 'match_correct'),
         tch.callbacks.Log('g_norm', 'g_norm'),
-        #tch.callbacks.Log('match_g_norm', 'match_g_norm'),
+        tch.callbacks.Log('match_g_norm', 'match_g_norm'),
     ])
     recipe.G_loop.callbacks.add_callbacks([
         tch.callbacks.Optimizer(
