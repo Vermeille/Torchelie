@@ -4,10 +4,61 @@ import torchelie.utils as tu
 from torchelie.recipes.gan import GANRecipe
 import torchvision.transforms as TF
 import torchelie.loss.gan.standard as gan_loss
-from torchelie.loss.gan.penalty import zero_gp, R1
+from torchelie.loss.gan.penalty import zero_gp
 from torchelie.datasets.pix2pix import UnlabeledImages
 from torchelie.models import *
 import torch.nn as nn
+"""
+MtF:
+torchelie.recipes.unpaired
+        --r0-D 0.01
+        --r0-M 0.1
+        --consistency 1
+
+"""
+
+
+@tu.experimental
+class GradientPenaltyM:
+
+    def __init__(self, gamma):
+        self.gamma = gamma
+        self.iters = 0
+        self.last_norm = float('nan')
+
+    def do(self, model, fake_dst, src, real_dst, objective_norm: float):
+        fake_dst = fake_dst.detach()
+        src = src.detach()
+
+        t = torch.rand(fake_dst.shape[0], 1, 1, 1, device=fake_dst.device)
+        fake_dst = t * fake_dst + (1 - t) * real_dst
+
+        fake_dst.requires_grad_(True)
+        src.requires_grad_(True)
+
+        out = model(fake_dst, src)['matches'].sum()
+
+        g = torch.autograd.grad(outputs=out,
+                                inputs=fake_dst,
+                                create_graph=True,
+                                only_inputs=True)[0]
+
+        g_norm = g.pow(2).sum(dim=(1, 2, 3)).add_(1e-8).sqrt()
+        return (g_norm - objective_norm).pow(2).mean(), g_norm.mean().item()
+
+    def __call__(self, model, fake_dst, src, real_dst):
+        if self.iters < 100 or self.iters % 4 == 0:
+            real_dst = real_dst.detach()
+            fake_dst = fake_dst.detach()
+            gp, g_norm = self.do(model, fake_dst, src, real_dst, 0)
+            # Sync the gradient on the next backward
+            if torch.any(torch.isnan(gp)):
+                gp.detach_()
+            else:
+                (4 * self.gamma * gp).backward()
+            self.last_norm = g_norm
+        self.iters += 1
+        return self.last_norm
 
 
 class Matcher(nn.Module):
@@ -19,72 +70,64 @@ class Matcher(nn.Module):
 
         self.n_scales = n_scales
         self.nets = nn.ModuleDict()
-        self.projs = nn.ModuleDict()
+        self.proj_As = nn.ModuleDict()
+        self.proj_Bs = nn.ModuleDict()
         for i in range(n_scales):
             net = patch34().remove_batchnorm()
             net.classifier = nn.Sequential()
             net.to_equal_lr()
-            proj = nn.Sequential(
+            proj_A = nn.Sequential(
                 nn.LeakyReLU(0.2, False),
                 tu.kaiming(tnn.Conv1x1(proj_size, proj_size), dynamic=True))
+            proj_B = nn.Identity()
 
             self.nets[str(i)] = net
-            self.projs[str(i)] = proj
+            self.proj_As[str(i)] = proj_A
+            self.proj_Bs[str(i)] = proj_B
 
-    def barlow(self, src, proj):
-        src = F.normalize(src, dim=1)
-        proj = F.normalize(proj, dim=1)
-        n, c, h, w = src.shape
+    def barlow(self, f1, f2):
+        f1 = F.normalize(f1, dim=1)
+        f2 = F.normalize(f2, dim=1)
+        n, c, h, w = f1.shape
         out = torch.bmm(
-            src.permute(2, 3, 0, 1).reshape(-1, n, c),
-            proj.permute(2, 3, 0, 1).reshape(-1, n, c).permute(0, 2, 1))
+            f1.permute(2, 3, 0, 1).reshape(-1, n, c),
+            f2.permute(2, 3, 0, 1).reshape(-1, n, c).permute(0, 2, 1))
         out = out.view(h, w, n, n).permute(2, 3, 0, 1)
 
         labels = torch.eye(n, device=out.device)
         labels = labels.view(n, n, 1, 1).expand(n, n, h, w)
-        return {
-            'cosine': out,
-            'loss': F.smooth_l1_loss(out, labels, beta=0.1),
-            'src_feats': src,
-            'proj_feats': proj
-        }
+        return out, F.smooth_l1_loss(out, labels, beta=0.1)
 
-    def forward(self, src, dst):
+    def forward(self, fake, ins):
+        total_loss = 0
         outs = []
+        all_labels = []
         for scale_order in range(self.n_scales):
             scale = 2**scale_order
-            src_scale = F.interpolate(src,
-                                      scale_factor=1 / scale,
-                                      mode='bilinear')
-            dst_scale = F.interpolate(dst,
+            fake_scale = F.interpolate(fake,
+                                       scale_factor=1 / scale,
+                                       mode='bilinear')
+            ins_scale = F.interpolate(ins,
                                       scale_factor=1 / scale,
                                       mode='bilinear')
 
-            src_feats = self.nets[str(scale_order)](src_scale)
-            proj_feats = self.projs[str(scale_order)](
-                self.nets[str(scale_order)](dst_scale))
-            N, c, h, w = src_feats.shape
-            labels = torch.arange(N, device=src.device)
+            f1 = self.proj_As[str(scale_order)](
+                self.nets[str(scale_order)](fake_scale))
+            f2 = self.proj_Bs[str(scale_order)](
+                self.nets[str(scale_order)](ins_scale))
+            N, c, h, w = f1.shape
+            labels = torch.arange(N, device=f1.device)
             labels = labels.view(N, 1, 1).expand(N, h, w)
 
-            outs.append(self.barlow(src_feats, proj_feats))
-            outs[-1]['labels'] = labels
-
-        total_loss = sum(out['loss'] for out in outs)
-        matches = torch.cat([
-            out['cosine'].view(out['cosine'].shape[0], out['cosine'].shape[1],
-                               -1) for out in outs
-        ],
-                            dim=2)
-        all_labels = torch.cat(
-            [out['labels'].view(out['labels'].shape[0], -1) for out in outs],
-            dim=1)
+            out, loss = self.barlow(f1, f2)
+            total_loss += loss
+            outs.append(out.reshape(out.shape[0], out.shape[1], -1))
+            all_labels.append(labels.reshape(labels.shape[0], -1))
+        outs = torch.cat(outs, dim=2)
         return {
-            'matches': matches,
+            'matches': outs,
             'loss': total_loss,
-            'labels': all_labels,
-            'src_feats': [out['src_feats'] for out in outs],
-            'proj_feats': [out['proj_feats'] for out in outs],
+            'labels': torch.cat(all_labels, dim=1)
         }
 
 
@@ -129,50 +172,34 @@ def celeba(path, train: bool, tfm=None):
     return tch.datasets.pix2pix.ImagesPaths(files, tfm)
 
 
-def big_patch34() -> PatchDiscriminator:
-    """
-    Patch Discriminator from pix2pix
-    """
-    return PatchDiscriminator([256, 512, 512])
-
-
 @tu.experimental
 def train(rank, world_size, opts):
+    G = pix2pix_128_dev()
+    G.to_instance_norm()
 
-    def make_G():
-        G = pix2pix_128()
-        G.to_instance_norm()
+    def to_adain(m):
+        if isinstance(m, nn.InstanceNorm2d):
+            #return tnn.AdaIN2d(m.num_features, 256)
+            return tnn.FiLM2d(m.num_features, 256)
+        return m
 
-        def to_adain(m):
-            if isinstance(m, nn.InstanceNorm2d):
-                # return tnn.AdaIN2d(m.num_features, 256)
-                return tnn.FiLM2d(m.num_features, 256)
-            return m
+    tnn.edit_model(G, to_adain)
+    tnn.utils.net_to_equal_lr(G, leak=0.2)
 
-        tnn.edit_model(G, to_adain)
-        tnn.utils.net_to_equal_lr(G, leak=0.2)
-        return G
+    D = patch34().remove_batchnorm()
+    tnn.utils.net_to_equal_lr(D, leak=0.2)
+    D = MultiScaleDiscriminator(D)
 
-    Gy = make_G()
-    Gx = make_G()
-
-    def make_D(inputs):
-        D = big_patch34()
-        D.set_input_specs(inputs)
-        D.remove_batchnorm()
-        tnn.utils.net_to_equal_lr(D, leak=0.2)
-        D = MultiScaleDiscriminator(D)
-        return D
-
-    D = make_D(6)
+    M = Matcher()
 
     if rank == 0:
-        print(Gy)
+        print(G)
         print(D)
+        print(M)
 
-    Gy = torch.nn.parallel.DistributedDataParallel(Gy.to(rank), [rank], rank)
-    Gx = torch.nn.parallel.DistributedDataParallel(Gx.to(rank), [rank], rank)
+    G = torch.nn.parallel.DistributedDataParallel(G.to(rank), [rank], rank)
     D = torch.nn.parallel.DistributedDataParallel(D.to(rank), [rank], rank)
+    M = torch.nn.parallel.DistributedDataParallel(M.to(rank), [rank], rank)
 
     SIZE = 128
     ds_A = get_dataset(opts.data_A[0], opts.data_A[1], True, SIZE)
@@ -202,25 +229,24 @@ def train(rank, world_size, opts):
                                           shuffle=True,
                                           pin_memory=True)
 
-    def dpo(val, p=0):
-        if torch.rand(1).item() < p:
-            return torch.zeros_like(val)
-        else:
-            return val
-
     def G_fun(batch) -> dict:
         x, y = batch
-        out = Gy(x * 2 - 1, torch.randn(x.shape[0], 256, device=x.device))
+        D.train()
+        M.eval()
+        out = G(x * 2 - 1, torch.randn(x.shape[0], 256, device=x.device))
+        out_d = out.detach()
+        out_d.requires_grad_()
         with D.no_sync():
-            loss = gan_loss.real(D(torch.cat([out * 2 - 1, x * 2 - 1], dim=1)))
-
+            loss = gan_loss.generated(D(out_d * 2 - 1))
         loss.backward()
 
-        out = Gx(y * 2 - 1, torch.randn(x.shape[0], 256, device=x.device))
-        with D.no_sync():
-            loss = gan_loss.fake(D(torch.cat([y * 2 - 1, out * 2 - 1], dim=1)))
+        if opts.consistency != 0:
+            with M.no_sync():
+                clf_loss = opts.consistency * M(out_d * 2 - 1,
+                                                x * 2 - 1)['loss']
 
-        loss.backward()
+            clf_loss.backward()
+        out.backward(out_d.grad)
         return {'G_loss': loss.item()}
 
     class GradientPenalty:
@@ -235,7 +261,6 @@ def train(rank, world_size, opts):
                 real = real.detach()
                 fake = fake.detach()
                 gp, g_norm = zero_gp(model, real, fake)
-                # gp, g_norm = R1(model, real, fake)
                 # Sync the gradient on the next backward
                 if torch.any(torch.isnan(gp)):
                     gp.detach_()
@@ -245,62 +270,81 @@ def train(rank, world_size, opts):
             self.iters += 1
             return self.last_norm
 
-    gradient_penalty_x = GradientPenalty(opts.r0_D)
+    gradient_penalty = GradientPenalty(opts.r0_D)
+    gradient_penalty_M = GradientPenaltyM(opts.r0_M)
 
     def D_fun(batch) -> dict:
         x, y = batch
-        x = x * 2 - 1
-        y = y * 2 - 1
-
-        with torch.no_grad():
-            with Gy.no_sync():
-                out = Gy(x, torch.randn(x.shape[0], 256, device=x.device))
-            y_ = out * 2 - 1
-
-        with torch.no_grad():
-            with Gx.no_sync():
-                out = Gx(y, torch.randn(x.shape[0], 256, device=x.device))
-            x_ = out * 2 - 1
-
-        neg = torch.cat([y_, x], dim=1)
-        pos = torch.cat([y, x_], dim=1)
+        with G.no_sync():
+            with torch.no_grad():
+                out = G(x * 2 - 1, torch.randn(x.shape[0], 256,
+                                               device=x.device))
+        fake = out * 2 - 1
+        real = y * 2 - 1
         with D.no_sync():
-            prob_fake = D(neg, flatten=False)
-            # fake_correct = prob_fake.detach().lt(0).int().eq(1).sum()
+            prob_fake = D(fake)
+            fake_correct = prob_fake.detach().lt(0).int().eq(1).sum()
             fake_loss = gan_loss.fake(prob_fake)
             fake_loss.backward()
 
         with D.no_sync():
-            g_norm = gradient_penalty_x(D, pos, neg)
-        prob_real = D(pos, flatten=False)
-        # real_correct = prob_real.detach().gt(0).int().eq(1).sum()
+            g_norm = gradient_penalty(D, real, fake)
+
+        prob_real = D(real)
+        real_correct = prob_real.detach().gt(0).int().eq(1).sum()
         real_loss = gan_loss.real(prob_real)
         real_loss.backward()
 
+        if opts.consistency != 0:
+            with M.no_sync():
+                match_g_norm = gradient_penalty_M(M, fake, x * 2 - 1, real)
+        else:
+            match_g_norm = 0
+
+        M_out = M(fake, x * 2 - 1)
+        matches = M_out['matches']
+        labels = M_out['labels']
+        match_correct = matches.argmax(1).eq(labels).float().mean()
+
+        loss = M_out['loss']
+        loss.backward()
+
         return {
-            'out': torch.cat([y_, x_], dim=0),
-            'fake_loss': fake_loss.item(),
-            # 'prob_fake': torch.sigmoid(prob_fake).mean().item(),
-            # 'prob_real': torch.sigmoid(prob_real).mean().item(),
-            'real_loss': real_loss.item(),
-            'g_norm': g_norm,
-            # 'D-correct': (fake_correct + real_correct) / (2 * prob_fake.numel()),
+            'out':
+                out,
+            'fake_loss':
+                fake_loss.item(),
+            'prob_fake':
+                torch.sigmoid(prob_fake).mean().item(),
+            'prob_real':
+                torch.sigmoid(prob_real).mean().item(),
+            'real_loss':
+                real_loss.item(),
+            'g_norm':
+                g_norm,
+            'D-correct':
+                (fake_correct + real_correct) / (2 * prob_fake.numel()),
+            'match_correct':
+                match_correct,
+            'match_g_norm':
+                match_g_norm,
         }
 
     def test_fun(batch):
         x, y = batch
-        with Gy.no_sync():
-            out_y = torch.cat([
-                Gy(
+        G.train()
+        with G.no_sync():
+            out = torch.cat([
+                G(
                     xx * 2 - 1,
                     tch.distributions.sample_truncated_normal(
                         xx.shape[0], 256).to(xx.device))
                 for xx in torch.split(x, 32)
             ],
-                              dim=0)
-            return {'out': out_y}
+                            dim=0)
+            return {'out': out}
 
-    recipe = GANRecipe(nn.ModuleList([Gy, Gx]),
+    recipe = GANRecipe(G,
                        D,
                        G_fun,
                        D_fun,
@@ -311,6 +355,7 @@ def train(rank, world_size, opts):
                        log_every=100,
                        checkpoint='main_adain' if rank == 0 else None,
                        visdom_env='main_adain' if rank == 0 else None)
+    recipe.register('M', M)
 
     recipe.callbacks.add_callbacks([
         tch.callbacks.Optimizer(
@@ -319,28 +364,29 @@ def train(rank, world_size, opts):
                                  lr=2e-3,
                                  betas=(0., 0.99),
                                  weight_decay=0))),
+        tch.callbacks.Optimizer(
+            tch.optim.Lookahead(
+                tch.optim.RAdamW(M.parameters(),
+                                 lr=2e-3,
+                                 betas=(0.9, 0.99),
+                                 weight_decay=0))),
         tch.callbacks.Log('out', 'out'),
         tch.callbacks.Log('batch.0', 'x'),
-        tch.callbacks.Log('batch.1', 'y'),
-        # tch.callbacks.Log('batch.1', 'y'),
+        #tch.callbacks.Log('batch.1', 'y'),
         # tch.callbacks.Log('batch.0.1', 'y'),
-        # tch.callbacks.WindowedMetricAvg('fake_loss', 'fake_loss'),
-        # tch.callbacks.WindowedMetricAvg('real_loss', 'real_loss'),
-        # tch.callbacks.WindowedMetricAvg('prob_fake', 'prob_fake'),
-        # tch.callbacks.WindowedMetricAvg('prob_real', 'prob_real'),
+        #tch.callbacks.WindowedMetricAvg('fake_loss', 'fake_loss'),
+        #tch.callbacks.WindowedMetricAvg('real_loss', 'real_loss'),
+        #tch.callbacks.WindowedMetricAvg('prob_fake', 'prob_fake'),
+        #tch.callbacks.WindowedMetricAvg('prob_real', 'prob_real'),
         tch.callbacks.WindowedMetricAvg('D-correct', 'D-correct'),
+        tch.callbacks.WindowedMetricAvg('match_correct', 'match_correct'),
         tch.callbacks.Log('g_norm', 'g_norm'),
+        #tch.callbacks.Log('match_g_norm', 'match_g_norm'),
     ])
     recipe.G_loop.callbacks.add_callbacks([
         tch.callbacks.Optimizer(
             tch.optim.Lookahead(
-                tch.optim.RAdamW(Gy.parameters(),
-                                 lr=2e-3,
-                                 betas=(0., 0.99),
-                                 weight_decay=0))),
-        tch.callbacks.Optimizer(
-            tch.optim.Lookahead(
-                tch.optim.RAdamW(Gx.parameters(),
+                tch.optim.RAdamW(G.parameters(),
                                  lr=2e-3,
                                  betas=(0., 0.99),
                                  weight_decay=0))),
@@ -357,6 +403,9 @@ def train(rank, world_size, opts):
     recipe.to(rank)
     if opts.from_ckpt is not None:
         recipe.load_state_dict(torch.load(opts.from_ckpt, map_location='cpu'))
+        tu.unfreeze(D)
+        tu.unfreeze(G)
+        tu.unfreeze(M)
     recipe.run(200)
 
 
