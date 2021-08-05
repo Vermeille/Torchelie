@@ -127,6 +127,8 @@ class RandAugment(torch.nn.Module):
         self.add_perspective()
         self.add_subsampling()
         self.add_jpeg()
+        if Canny.is_available:
+            self.add_transform(Canny())
         return self
 
     def add_perspective(self) -> 'RandAugment':

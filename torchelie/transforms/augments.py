@@ -179,14 +179,15 @@ class Canny:
         thresh_high (int): upper threshold (default: 200)
     """
 
-    def __init__(self, thresh_low=100, thresh_high=200):
+    is_available: bool = HAS_CV
+
+    def __init__(self, thresh_low: int = 100, thresh_high: int = 200):
         self.thresh_low = thresh_low
         self.thresh_high = thresh_high
-        self.available = HAS_CV
         if not HAS_CV:
             print("Can't import OpenCV. Canny will notwork properly")
 
-    def __call__(self, img):
+    def __call__(self, img: PILImage) -> PILImage:
         """
         Detect edges
 
@@ -202,3 +203,6 @@ class Canny:
         img = np.array(img)
         img = cv2.Canny(img, self.thresh_low, self.thresh_high)
         return PIL.Image.fromarray(img)
+
+    def __repr__(self) -> str:
+        return 'Canny()'
