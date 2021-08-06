@@ -139,8 +139,12 @@ class Pix2PixDataset(SideBySideImagePairsDataset):
             'night2day'
         ], f'{which} is not a valid dataset for pix2pix'
         root = root
-        if download:
+        if not self._check_integrity(f'{root}/{which}') and download:
             download_and_extract_archive(
                 f'http://efrosgans.eecs.berkeley.edu/pix2pix/datasets/{which}.tar.gz',
-                root)
+                root,
+                remove_finished=True)
         super().__init__(f'{root}/{which}/{split}', transform=transform)
+
+    def _check_integrity(self, path):
+        return os.path.exists(os.path.expanduser(path))

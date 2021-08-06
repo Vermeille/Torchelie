@@ -15,6 +15,8 @@ Debug datasets
    ColoredRows
    MS1M
    Pix2PixDataset
+   Imagenette
+   Imagewoof
 
 Loaders
 ~~~~~~~
