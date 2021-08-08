@@ -10,26 +10,30 @@ directory with a folder per class, you can run it with a command line.
 `python3 -m torchelie.recipes.classification --trainset path/to/train --testset
 path/to/test`
 """
+from typing import List, Optional, Callable, Iterable, Any
+
 import torch
 import torchvision.models as tvmodels
 
 import torchelie.callbacks as tcb
 import torchelie.utils as tu
+from torchelie.lr_scheduler import FlatAndCosineEnd
+from torchelie.transforms.randaugment import RandAugment
 from torchelie.recipes.trainandtest import TrainAndTest
-from torchelie.optim import RAdamW
+from torchelie.optim import RAdamW, Lookahead
 
 
 def Classification(model,
-                   train_fun,
-                   test_fun,
-                   train_loader,
-                   test_loader,
-                   classes,
+                   train_fun: Callable,
+                   test_fun: Callable,
+                   train_loader: Iterable[Any],
+                   test_loader: Iterable[Any],
+                   classes: List[str],
                    *,
-                   visdom_env=None,
-                   checkpoint=None,
-                   test_every=1000,
-                   log_every=100):
+                   visdom_env: Optional[str] = None,
+                   checkpoint: Optional[str] = None,
+                   test_every: int = 1000,
+                   log_every: int = 100):
     """
     Classification training and testing loop. Both forward functions must
     return a per-batch loss and logits predictions. It expands from
@@ -96,8 +100,8 @@ def Classification(model,
             100)
     """
 
-    key_best = (lambda state: -state['test_loop']['callbacks']['state']
-                ['metrics']['loss'])
+    key_best = (lambda state: -state['test_loop']['callbacks']['state'][
+        'metrics']['loss'])
 
     loop = TrainAndTest(model,
                         train_fun,
@@ -126,10 +130,9 @@ def Classification(model,
             loop.callbacks.add_epilogues([
                 tcb.ConfusionMatrix(classes),
             ])
-        loop.callbacks.add_epilogues([
-            tcb.ClassificationInspector(30, classes),
-            tcb.MetricsTable()
-        ])
+        loop.callbacks.add_epilogues(
+            [tcb.ClassificationInspector(30, classes),
+             tcb.MetricsTable()])
 
     if len(classes) <= 50:
         loop.test_loop.callbacks.add_callbacks([
@@ -144,16 +147,18 @@ def Classification(model,
 
 
 def CrossEntropyClassification(model,
-                               train_loader,
-                               test_loader,
-                               classes,
-                               lr=3e-3,
-                               beta1=0.9,
-                               wd=1e-2,
-                               visdom_env='main',
-                               test_every=1000,
-                               log_every=100,
-                               checkpoint='model'):
+                               train_loader: Iterable[Any],
+                               test_loader: Iterable[Any],
+                               classes: List[str],
+                               lr: float = 3e-3,
+                               beta1: float = 0.9,
+                               beta2: float = 0.999,
+                               wd: float = 1e-2,
+                               visdom_env: Optional[str] = 'main',
+                               test_every: int = 1000,
+                               log_every: int = 100,
+                               checkpoint: Optional[str] = 'model',
+                               n_iters: Optional[int] = None):
     """
     Extends Classification with default cross entropy forward passes. Also adds
     RAdamW and ReduceLROnPlateau.
@@ -196,6 +201,7 @@ def CrossEntropyClassification(model,
         classes (list of str): classes name, in order
         lr (float): the learning rate
         beta1 (float): RAdamW's beta1
+        beta2 (float): RAdamW's beta2
         wd (float): weight decay
         visdom_env (str): name of the visdom environment to use, or None for
             not using Visdom (default: None)
@@ -203,6 +209,8 @@ def CrossEntropyClassification(model,
             1000)
         log_every (int): logging frequency, in number of iterations (default:
             1000)
+        n_iters (optional, int): the number of iterations to train for. If
+            provided, switch to a FlatAndCosineEnd scheduler
     """
 
     def train_step(batch):
@@ -231,26 +239,35 @@ def CrossEntropyClassification(model,
 
     opt = RAdamW(model.parameters(),
                  lr=lr,
-                 betas=(beta1, 0.999),
+                 betas=(beta1, beta2),
                  weight_decay=wd)
     loop.callbacks.add_callbacks([
-        tcb.Optimizer(opt, log_lr=True),
-        tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(opt))
+        tcb.Optimizer(Lookahead(opt), log_lr=True),
     ])
+    if n_iters is not None:
+        loop.callbacks.add_callbacks([
+            tcb.LRSched(FlatAndCosineEnd(opt, n_iters),
+                        step_each_batch=True,
+                        metric=None)
+        ])
+    else:
+        loop.callbacks.add_callbacks(
+            [tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(opt))])
     return loop
 
 
 def MixupClassification(model,
-                        train_loader,
-                        test_loader,
-                        classes,
+                        train_loader: Iterable[Any],
+                        test_loader: Iterable[Any],
+                        classes: List[str],
                         *,
-                        lr=3e-3,
-                        beta1=0.9,
-                        wd=1e-2,
-                        visdom_env='main',
-                        test_every=1000,
-                        log_every=100):
+                        lr: float = 3e-3,
+                        beta1: float = 0.9,
+                        beta2: float = 0.999,
+                        wd: float = 1e-2,
+                        visdom_env: Optional[str] = 'main',
+                        test_every: int = 1000,
+                        log_every: int = 100):
     """
     A Classification recipe with a default froward training / testing pass
     using cross entropy and mixup, and extended with RAdamW and
@@ -266,6 +283,7 @@ def MixupClassification(model,
         classes (list of str): classes name, in order
         lr (float): the learning rate
         beta1 (float): RAdamW's beta1
+        beta2 (float): RAdamW's beta2
         wd (float): weight decay
         visdom_env (str): name of the visdom environment to use, or None for
             not using Visdom (default: None)
@@ -310,9 +328,7 @@ def MixupClassification(model,
     ])
 
     if visdom_env is not None:
-        loop.callbacks.add_epilogues([
-            tcb.MetricsTable()
-        ])
+        loop.callbacks.add_epilogues([tcb.MetricsTable()])
 
     if len(classes) <= 25:
         loop.test_loop.callbacks.add_callbacks([
@@ -326,10 +342,10 @@ def MixupClassification(model,
 
     opt = RAdamW(model.parameters(),
                  lr=lr,
-                 betas=(beta1, 0.999),
+                 betas=(beta1, beta2),
                  weight_decay=wd)
     loop.callbacks.add_callbacks([
-        tcb.Optimizer(opt, log_lr=True),
+        tcb.Optimizer(Lookahead(opt), log_lr=True),
         tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(opt))
     ])
     return loop
@@ -350,6 +366,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--lr', type=float, default=0.01)
     parser.add_argument('--beta1', type=float, default=0.9)
+    parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--wd', type=float, default=1e-2)
     parser.add_argument('--im-size', type=int, default=64)
     parser.add_argument('--device', type=str, default='cuda')
@@ -360,10 +377,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     tfm = TF.Compose([
-        TF.RandomResizedCrop(args.im_size, (0.7, 1.1)),
-        TF.ColorJitter(0.5, 0.5, 0.4, 0.05),
-        TF.RandomHorizontalFlip(),
+        RandAugment(2, 10),
         TF.ToTensor(),
+        TF.RandomResizedCrop(args.im_size, (0.3, 1.)),
+        TF.RandomHorizontalFlip(),
         TF.Normalize([0.5] * 3, [0.5] * 3, True),
     ])
     tfm_test = TF.Compose([
@@ -410,6 +427,7 @@ if __name__ == '__main__':
                                          test_every=50,
                                          lr=args.lr,
                                          beta1=args.beta1,
+                                         beta2=args.beta2,
                                          wd=args.wd,
                                          visdom_env=args.visdom_env)
     else:
@@ -421,6 +439,7 @@ if __name__ == '__main__':
                                                 test_every=50,
                                                 lr=args.lr,
                                                 beta1=args.beta1,
+                                                beta2=args.beta2,
                                                 wd=args.wd,
                                                 visdom_env=args.visdom_env)
 
