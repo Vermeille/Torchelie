@@ -1,6 +1,10 @@
+import torch
 import math
 import torchelie.utils as tu
 from typing import List, Tuple
+
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import _LRScheduler
 
 
 class CurriculumScheduler:
@@ -15,6 +19,7 @@ class CurriculumScheduler:
             interpolated linearly between neighboring keypoints
         last_iter (int): starting iteration
     """
+
     def __init__(self,
                  optimizer,
                  schedule: List[Tuple[float, float, float]],
@@ -72,6 +77,7 @@ class OneCycle(CurriculumScheduler):
         mom (2-tuple): momentum range
         last_iter (int): last_iteration index
     """
+
     def __init__(self,
                  opt,
                  lr: Tuple[float, float],
@@ -86,11 +92,12 @@ class OneCycle(CurriculumScheduler):
             mom = math.log(mom[0]), math.log(mom[1])
 
         third = num_iters // 3
-        super(OneCycle, self).__init__(
-            opt, [(0, lr[0], mom[0]), (third, lr[1], mom[1]),
-                  (2 * third, lr[0], mom[0]),
-                  (num_iters, lr[0] / (lr[1] / lr[0] * 10000), mom[0])],
-            last_iter=last_iter)
+        super(OneCycle, self).__init__(opt, [(0, lr[0], mom[0]),
+                                             (third, lr[1], mom[1]),
+                                             (2 * third, lr[0], mom[0]),
+                                             (num_iters, lr[0] /
+                                              (lr[1] / lr[0] * 10000), mom[0])],
+                                       last_iter=last_iter)
 
     def step(self, *unused):
         super(OneCycle, self).step()
