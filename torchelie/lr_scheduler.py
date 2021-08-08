@@ -115,3 +115,38 @@ class OneCycle(CurriculumScheduler):
 
     def __repr__(self):
         return 'OneCycle({})'.format(self.schedule)
+
+
+class FlatAndCosineEnd(_LRScheduler):
+    """
+    The ranger optimizer (Lookahead+RadamW) works best when using a flat LR for
+    75% of the training then anneal the lr with a cosine slope down to zero.
+
+    Args:
+        optimizer (Optimizer): the model's optimizer to schedule
+        n_iters_total (int): how many iterations is the total schedule
+        last_epoch (int): the starting iteration number (default: -1)
+        verbose (bool): print more details
+    """
+
+    def __init__(self,
+                 optimizer: Optimizer,
+                 n_iters_total: int,
+                 last_epoch: int = -1,
+                 verbose: bool = False):
+        self.n_iters_total = n_iters_total
+        super().__init__(optimizer, last_epoch, verbose)
+
+    def get_lr(self) -> List[float]:
+        first_part = int(self.n_iters_total * 0.75)
+
+        if self.last_epoch < first_part:
+            return self.base_lrs
+
+        if self.last_epoch > self.n_iters_total:
+            return [0] * len(self.base_lrs)
+
+        t = self.last_epoch - first_part
+        total = self.n_iters_total - first_part
+        angle = math.pi * t / total
+        return [b_lr * 0.5 * (1 + math.cos(angle)) for b_lr in self.base_lrs]
