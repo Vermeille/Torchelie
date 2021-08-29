@@ -180,11 +180,12 @@ class MixUpDataset(_Wrap):
             which the blending factor is sampled
     """
 
-    def __init__(self, dataset, alpha=0.4):
+    def __init__(self, dataset, alpha=0.4, transform=None):
         super(MixUpDataset, self).__init__(dataset)
         self.ds = dataset
         alpha = torch.tensor([alpha])
         self.mixer = torch.distributions.Beta(alpha, alpha)
+        self.transform = transform
 
     def __len__(self):
         return len(self.ds)
@@ -193,7 +194,10 @@ class MixUpDataset(_Wrap):
         x1, y1 = self.ds[i]
         x2, y2 = random.choice(self.ds)
 
-        return mixup(x1, x2, y1, y2, len(self.ds.classes), self.mixer)
+        x, y = mixup(x1, x2, y1, y2, len(self.ds.classes), self.mixer)
+        if self.transform is not None:
+            x = self.transform(x)
+        return x, y
 
     def __repr__(self):
         return f"MixUpDataset({self.mixer}):\n" + tu.indent(repr(self.ds))
