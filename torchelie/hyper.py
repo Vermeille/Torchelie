@@ -27,8 +27,16 @@ import random
 import json
 import copy
 
+try:
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.gaussian_process.kernels import RBF, WhiteKernel, Matern
+    from scipy.stats import norm
+    HAS_SKLEARN = True
+except:
+    HAS_SKLEARN = False
 
-class Sampler:
+
+class UniformSampler:
     """
     Uniform sampler.
 
@@ -36,6 +44,7 @@ class Sampler:
         low (float): lower bound
         high (float): higher bound
     """
+
     def __init__(self, low: float, high: float) -> None:
         self.low = low
         self.high = high
@@ -47,10 +56,10 @@ class Sampler:
         return random.uniform(self.low, self.high)
 
     def inverse(self, x: float) -> float:
-        return x
+        return (x - self.low) / (self.high - self.low)
 
 
-class ExpSampler(Sampler):
+class ExpSampler(UniformSampler):
     """
     Exponential sampler (Uniform sampler over a log scale). Use it to sample
     the learning rate or the weight decay.
@@ -59,10 +68,11 @@ class ExpSampler(Sampler):
         low (float): lower bound
         high (float): higher bound
     """
+
     def __init__(self, low, high):
-        low = self.inverse(low)
-        high = self.inverse(high)
-        super(ExpSampler, self).__init__(low, high)
+        low = math.log10(low)
+        high = math.log10(high)
+        super(ExpSampler, self).__init__(min(low, high), max(low, high))
 
     def sample(self):
         """
@@ -71,7 +81,7 @@ class ExpSampler(Sampler):
         return 10**super(ExpSampler, self).sample()
 
     def inverse(self, x):
-        return math.log10(x)
+        return super(ExpSampler, self).inverse(math.log10(x))
 
 
 class DecaySampler(ExpSampler):
@@ -83,8 +93,9 @@ class DecaySampler(ExpSampler):
         low (float): lower bound
         high (float): higher bound
     """
+
     def __init__(self, low, high):
-        super(DecaySampler, self).__init__(low, high)
+        super(DecaySampler, self).__init__(1 - low, 1 - high)
 
     def sample(self):
         """
@@ -103,6 +114,7 @@ class ChoiceSampler:
     Args:
         choices (list): list of values
     """
+
     def __init__(self, choices):
         self.choices = choices
 
@@ -113,7 +125,10 @@ class ChoiceSampler:
         return random.choice(self.choices)
 
     def inverse(self, x):
-        return self.choices.index(x)
+        one_hot = [0] * len(self.choices)
+        i = self.choices.index(x)
+        one_hot[i] = 1
+        return one_hot
 
 
 class HyperparamSampler:
@@ -134,6 +149,7 @@ class HyperparamSampler:
     Args:
         hyperparams (kwargs): hyper params samplers. Names are arbitrary.
     """
+
     def __init__(self, **hyperparams):
         self.hyperparams = hyperparams
 
@@ -145,6 +161,84 @@ class HyperparamSampler:
             a dict containing sampled values for hyper parameters.
         """
         return {k: v.sample() for k, v in self.hyperparams.items()}
+
+    def inverse(self, samples):
+        return {k: self.hyperparams[k].inverse(v) for k, v in samples.items()}
+
+    def vectorize(self, samples):
+        invsamp = self.inverse(samples)
+        vec = []
+        for v in invsamp.values():
+            if isinstance(v, (list, tuple)):
+                vec += v
+            else:
+                vec.append(v)
+        return vec
+
+
+class GaussianSelector:
+    is_available = HAS_SKLEARN
+
+    def __init__(self, x, y):
+        assert self.is_available, 'Cant use GaussianSelector without scipy'
+        self.regressor = GaussianProcessRegressor(kernel=RBF() + WhiteKernel(),
+                                                  normalize_y=True)
+        cache = self.read_cache()
+        x += cache['x']
+        y_mean = sum(y) / len(y)
+        y += [y_mean] * len(cache['y'])
+        self.regressor.fit(x, y)
+        self.best = x[max(range(len(y)), key=lambda i: y[i])]
+
+    @staticmethod
+    def read_cache():
+        try:
+            with open('gp_cache.json', 'r') as f:
+                dat = json.load(f)
+            return {'x': [d['x'] for d in dat], 'y': [d['y'] for d in dat]}
+        except:
+            return {'x': [], 'y': []}
+
+    @staticmethod
+    def cache(x, y, id):
+        try:
+            with open('gp_cache.json', 'r') as f:
+                dat = json.load(f)
+        except:
+            dat = []
+        dat.append({'x': x, 'y': y, 'id': id})
+        with open('gp_cache.json', 'w') as f:
+            json.dump(dat, f)
+
+    @staticmethod
+    def clear_cache(id):
+        try:
+            with open('gp_cache.json', 'r') as f:
+                dat = json.load(f)
+        except:
+            dat = []
+        dat = [d for d in dat if d['id'] != id]
+        with open('gp_cache.json', 'w') as f:
+            json.dump(dat, f)
+
+    def predict(self, x):
+        mu, sigma = self.regressor.predict(x, return_std=True)
+
+        xi = 0.01
+        imp = mu - self.regressor.predict([self.best]) - xi
+        Z = imp / (sigma + 1e-8)
+        ei = imp * norm.cdf(Z) + sigma * norm.pdf(Z)
+        ei[sigma == 0.0] = 0.0
+        return ei, mu
+
+
+class SampledParams:
+
+    def __init__(self, params):
+        self.params = params
+        import time
+        self.tag = int(time.time() * 1000)
+        self.on_destroy = (lambda: None)
 
 
 class HyperparamSearch:
@@ -161,18 +255,42 @@ class HyperparamSearch:
     Args:
         hyperparameters (kwargs): named samplers (like for HyperparamSampler).
     """
+
     def __init__(self, **hyperparams):
         self.sampler = HyperparamSampler(**hyperparams)
+        self.fname = 'hpsearch.json'
 
-    def sample(self):
+    def sample(self, algorithm='random', target=None):
         """
         Sample a set of hyper parameters.
         """
-        return self.sampler.sample()
+        known = self.read_hpsearch()
+        if algorithm == 'random':
+            return SampledParams(self.sampler.sample())
+
+        if algorithm == 'gp':
+            if len(known) == 0:
+                return self.sample()
+
+            y = [k.pop('result_' + target) for k in known]
+
+            x = [self.sampler.vectorize(k) for k in known]
+
+            tries = [self.sampler.sample() for _ in range(100)]
+            inv_tries = [self.sampler.vectorize(t) for t in tries]
+
+            gp = GaussianSelector(x, y)
+            gain, expected = gp.predict(inv_tries)
+            proposed_id = max(range(len(tries)), key=lambda i: gain[i])
+            proposed = SampledParams(tries[proposed_id])
+            gp.cache(inv_tries[proposed_id], expected[proposed_id],
+                     proposed.tag)
+            proposed.on_destroy = (lambda: gp.clear_cache(proposed.tag))
+            return proposed
 
     def read_hpsearch(self):
         try:
-            with open('hpsearch.json', 'r') as f:
+            with open(self.fname, 'r') as f:
                 return json.load(f)
         except:
             return []
@@ -194,11 +312,12 @@ class HyperparamSearch:
         """
         Logs hyper parameters and results.
         """
+        hps.on_destroy()
         res = self.read_hpsearch()
-        full = copy.deepcopy(hps)
+        full = copy.deepcopy(hps.params)
         full.update({'result_' + k: self._str(v) for k, v in result.items()})
         res.append(full)
-        with open('hpsearch.json', 'w') as f:
+        with open(self.fname, 'w') as f:
             json.dump(res, f)
 
 
@@ -213,16 +332,11 @@ if __name__ == '__main__':
         with open(opts.file) as f:
             dat = json.load(f)
 
-        dat.sort(key=lambda x: x['result_lfw_loss'])
-        dat = dat
         dimensions = []
         for k in dat[0].keys():
             v = dat[0][k]
             if isinstance(v, float):
-                dimensions.append({
-                    'label': k,
-                    'values': [dd[k] for dd in dat]
-                })
+                dimensions.append({'label': k, 'values': [dd[k] for dd in dat]})
         print(json.dumps(dimensions))
         return """
         <html>
@@ -362,7 +476,7 @@ if __name__ == '__main__':
                     `<tr>${titles.map(t =>
                         `<td>
                             ${(typeof d[t] == 'number')
-                                ? d[t].toFixed(3)
+                                ? d[t].toFixed(5)
                                 : d[t]}
                         </td>`
                         ).join('')}
@@ -380,6 +494,7 @@ if __name__ == '__main__':
         """
 
     class Server(BaseHTTPRequestHandler):
+
         def do_GET(self):
             self.handle_http(200, 'text/html', make_html())
 
