@@ -248,6 +248,7 @@ class Optimizer(tu.AutoStateDict):
                  opt,
                  accumulation=1,
                  clip_grad_norm=None,
+                 centralize_grad=False,
                  log_lr=False,
                  log_mom=False):
         super(Optimizer, self).__init__()
@@ -256,6 +257,7 @@ class Optimizer(tu.AutoStateDict):
         self.log_lr = log_lr
         self.log_mom = log_mom
         self.clip_grad_norm = clip_grad_norm
+        self.centralize_grad = centralize_grad
 
     def on_batch_start(self, state):
         if state['iters'] % self.accumulation == 0:
@@ -277,17 +279,25 @@ class Optimizer(tu.AutoStateDict):
                     state['metrics']['mom_' + str(i)] = pg['betas'][0]
 
     def on_batch_end(self, state):
-        if (state['iters'] + 1) % self.accumulation == 0:
-            if self.accumulation != 1:
-                for pg in self.opt.param_groups:
-                    for p in pg['params']:
-                        if p.grad is not None:
-                            p.grad.data /= self.accumulation
-            if self.clip_grad_norm is not None:
-                state['metrics']['grad_norm'] = torch.nn.utils.clip_grad_norm_(
-                    (p for pg in self.opt.param_groups for p in pg['params']),
-                    self.clip_grad_norm)
-            self.opt.step()
+        if (state['iters'] + 1) % self.accumulation != 0:
+            return
+
+        if self.accumulation != 1:
+            for pg in self.opt.param_groups:
+                for p in pg['params']:
+                    if p.grad is not None:
+                        p.grad.data /= self.accumulation
+        if self.centralize_grad:
+            for pg in self.opt.param_groups:
+                for p in pg['params']:
+                    if p.dim() > 1:
+                        flat = p.grad.view(p.shape[0], -1)
+                        flat -= flat.mean(1, keepdim=True)
+        if self.clip_grad_norm is not None:
+            state['metrics']['grad_norm'] = torch.nn.utils.clip_grad_norm_(
+                (p for pg in self.opt.param_groups for p in pg['params']),
+                self.clip_grad_norm)
+        self.opt.step()
 
 
 class LRSched(tu.AutoStateDict):
