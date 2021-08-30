@@ -25,7 +25,7 @@ class RandAugment(torch.nn.Module):
 
     Args:
         n_transforms (int): how many transforms to apply
-        magnitude (int): magnitude of the transforms. 10 is base rate, can
+        magnitude (float): magnitude of the transforms. 10 is base rate, can
             be set to more.
         interpolation: interpolation to use for suitable transforms
         fill: fill value to use for suitable transforms
@@ -33,8 +33,8 @@ class RandAugment(torch.nn.Module):
 
     def __init__(self,
                  n_transforms: int,
-                 magnitude: int,
-                 interpolation: InterpolationMode = InterpolationMode.NEAREST,
+                 magnitude: float,
+                 interpolation: InterpolationMode = InterpolationMode.BILINEAR,
                  fill: Optional[List[float]] = None):
         super().__init__()
         self.interpolation = interpolation
@@ -65,7 +65,7 @@ class RandAugment(torch.nn.Module):
                             shear=(0, 0, -15 * magnitude, 15 * magnitude),
                             interpolation=self.interpolation,
                             fill=self.fill),
-            Cutout(magnitude * 0.5),
+            Cutout(0.1, 0.1 + magnitude * 0.5),
             TF.RandomAffine(0,
                             translate=(0.45 * magnitude, 0),
                             interpolation=self.interpolation,
@@ -101,7 +101,7 @@ class RandAugment(torch.nn.Module):
         return self
 
     def add_scale(self) -> 'RandAugment':
-        s = 0.9 * self.magnitude
+        s = 0.3 * self.magnitude
         return self.add_transform(
             TF.RandomAffine(0,
                             scale=(max(0, 1 - s), 1 + s),
@@ -127,13 +127,11 @@ class RandAugment(torch.nn.Module):
         self.add_perspective()
         self.add_subsampling()
         self.add_jpeg()
-        if Canny.is_available:
-            self.add_transform(Canny())
         return self
 
     def add_perspective(self) -> 'RandAugment':
         return self.add_transform(
-            TF.RandomPerspective(max(0, min(self.magnitude, 1)), 1.0,
+            TF.RandomPerspective(max(0, min(self.magnitude * 0.3, 1)), 1.0,
                                  self.interpolation, self.fill))
 
     def __repr__(self) -> str:

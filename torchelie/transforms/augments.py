@@ -1,7 +1,9 @@
+from typing import Optional
 import random
 import math
 from io import BytesIO
 
+import torch
 import numpy as np
 import PIL
 from PIL.Image import Image as PILImage
@@ -73,12 +75,13 @@ class Cutout:
             erasure, 1 means up to the whole image can be erased.
     """
 
-    def __init__(self, max_size: float):
+    def __init__(self, min_size: float, max_size: float):
+        self.min_size = min_size
         self.max_size = max_size
 
     def __call__(self, x: PILImage) -> PILImage:
         w, h = x.size
-        v = int(np.random.uniform(0, self.max_size) * min(w, h))
+        v = int(np.random.uniform(self.min_size, self.max_size) * min(w, h))
 
         x0 = np.random.uniform(0, w - v)
         y0 = np.random.uniform(0, h - v)
@@ -202,7 +205,61 @@ class Canny:
 
         img = np.array(img)
         img = cv2.Canny(img, self.thresh_low, self.thresh_high)
-        return PIL.Image.fromarray(img)
+        return PIL.Image.fromarray(img).convert('RGB')
 
     def __repr__(self) -> str:
         return 'Canny()'
+
+
+class SampleMixup:
+    last_img: Optional[PILImage]
+
+    def __init__(self, alpha=0.4):
+        self.last_img = None
+        self.mixer = torch.distributions.Beta(alpha, alpha)
+
+    def __call__(self, x):
+        if self.last_img is None:
+            self.last_img = x
+            return x
+
+        t = self.mixer.sample(torch.tensor([1])).item()
+        second = self.last_img.resize(x.size, PIL.Image.BICUBIC)
+        self.last_img = x
+        return PIL.Image.blend(x, second, alpha=min(t, 1 - t))
+
+    def __repr__(self):
+        return 'SampleMixup()'
+
+
+class SampleCutmix:
+    last_img: Optional[PILImage]
+
+    def __init__(self, alpha=0.4):
+        self.last_img = None
+
+    def __call__(self, x):
+        if self.last_img is None:
+            self.last_img = x
+            return x
+
+        w, h = x.size
+        v = int(np.random.uniform(0.1, 0.5) * min(w, h))
+
+        x0 = int(max(0, np.random.uniform(0, w - v)))
+        y0 = int(max(0, np.random.uniform(0, h - v)))
+
+        x1 = int(min(w, x0 + v))
+        y1 = int(min(h, y0 + v))
+
+        xy = (x0, y0, x1, y1)
+        color = (125, 123, 114)
+        img = x.copy()
+        second = self.last_img.resize(x.size, PIL.Image.BICUBIC)
+        second = second.crop(xy)
+        img.paste(second, xy)
+        self.last_img = x
+        return img
+
+    def __repr__(self):
+        return 'SampleCutmix()'
