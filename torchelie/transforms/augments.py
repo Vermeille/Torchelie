@@ -12,7 +12,7 @@ try:
     import cv2
     HAS_CV = True
 except:
-    pass
+    HAS_CV = False
 
 __all__ = [
     'Posterize',
