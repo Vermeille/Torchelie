@@ -124,7 +124,62 @@ class EpochMetricAvg(tu.AutoStateDict):
         state['metrics'][self.name] = self.avg.get()
 
 
-class AccAvg(tu.AutoStateDict):
+class TopkAccAvg(tu.AutoStateDict):
+    """
+    Log the average topk accuracy to the metrics. The true classes is expected
+    in :code:`state['batch'][1]`, and the logits predictions are expected in
+    :code:`state['preds']`.
+
+    Args:
+        k (int): top k
+        post_each_batch (bool): whether to post on each batch or on epoch end.
+            Default: True.
+        avg_type (str): type of averaging. One of 'running' for a running
+            average over each epoch, 'moving' for an exponential  moving
+            average, 'window' for an average over the 100 last values.
+    """
+
+    def __init__(self,
+                 k: int = 5,
+                 post_each_batch: bool = True,
+                 avg_type: str = 'window'):
+        super(TopkAccAvg, self).__init__()
+        self.post_each_batch = post_each_batch
+        avg = {
+            'running': RunningAvg,
+            'moving': ExponentialAvg,
+            'window': WindowAvg
+        }
+        self.avg = avg[avg_type]()
+        self.k = k
+        self.name = 'top' + str(k) + '_acc'
+
+    def on_epoch_start(self, state):
+        if isinstance(self.avg, RunningAvg):
+            self.avg = RunningAvg()
+
+        if self.name in state['metrics']:
+            del state['metrics'][self.name]
+
+    @torch.no_grad()
+    def on_batch_end(self, state):
+        pred, y = state['pred'], state['batch'][1].unsqueeze(1)
+        pred = tu.as_multiclass_shape(pred)
+        batch_correct = pred.topk(self.k, 1, sorted=False)[1].eq(y).float()
+        batch_correct = batch_correct.sum(1)
+        if isinstance(self.avg, RunningAvg):
+            self.avg.log(batch_correct.sum(), pred.shape[0])
+        else:
+            self.avg.log(batch_correct.mean())
+
+        if self.post_each_batch:
+            state['metrics'][self.name] = self.avg.get()
+
+    def on_epoch_end(self, state):
+        state['metrics'][self.name] = self.avg.get()
+
+
+class AccAvg(TopkAccAvg):
     """
     Log the average accuracy to the metrics. The true classes is expected in
     :code:`state['batch'][1]`, and the logits predictions are expected in
@@ -133,40 +188,16 @@ class AccAvg(tu.AutoStateDict):
     Args:
         post_each_batch (bool): whether to post on each batch or on epoch end.
             Default: True.
+        avg_type (str): type of averaging. One of 'running' for a running
+            average over each epoch, 'moving' for an exponential  moving
+            average, 'window' for an average over the 100 last values.
     """
 
     def __init__(self, post_each_batch=True, avg_type='window'):
-        super(AccAvg, self).__init__()
-        self.post_each_batch = post_each_batch
-        avg = {
-            'running': RunningAvg,
-            'moving': ExponentialAvg,
-            'window': WindowAvg
-        }
-        self.avg = avg[avg_type]()
-
-    def on_epoch_start(self, state):
-        if isinstance(self.avg, RunningAvg):
-            self.avg = RunningAvg()
-
-        if 'acc' in state['metrics']:
-            del state['metrics']['acc']
-
-    @torch.no_grad()
-    def on_batch_end(self, state):
-        pred, y = state['pred'], state['batch'][1]
-        pred = tu.as_multiclass_shape(pred)
-        batch_correct = pred.argmax(1).eq(y).float()
-        if isinstance(self.avg, RunningAvg):
-            self.avg.log(batch_correct.sum(), pred.shape[0])
-        else:
-            self.avg.log(batch_correct.mean())
-
-        if self.post_each_batch:
-            state['metrics']['acc'] = self.avg.get()
-
-    def on_epoch_end(self, state):
-        state['metrics']['acc'] = self.avg.get()
+        super(AccAvg, self).__init__(k=1,
+                                     post_each_batch=post_each_batch,
+                                     avg_type=avg_type)
+        self.name = 'acc'
 
 
 class MetricsTable(tu.AutoStateDict):
@@ -645,9 +676,8 @@ class Checkpoint(tu.AutoStateDict):
     """
 
     def __init__(self, filename_base, objects, max_saves=10, key_best=None):
-        super(Checkpoint, self).__init__(except_names=[
-            'filename_base', 'objects', 'key_best', 'max_saves', 'key_best'
-        ])
+        super(Checkpoint, self).__init__(
+            except_names=['filename_base', 'objects', 'key_best', 'max_saves'])
         self.filename_base = filename_base
         self.objects = objects
         self.saved_fnames = []

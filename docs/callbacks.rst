@@ -13,6 +13,12 @@ Loggers
 Logging
 -------
 
+.. autoclass:: torchelie.callbacks.TopkAccAvg
+   :members:
+
+.. autoclass:: torchelie.callbacks.AccAvg
+   :members:
+
 .. autoclass:: torchelie.callbacks.EpochMetricAvg
    :members:
 
