@@ -711,8 +711,10 @@ class Checkpoint(tu.AutoStateDict):
             except Exception as e:
                 print(str(e))
             self.saved_fnames = self.saved_fnames[1:]
-        if self.key_best is not None and self.key_best(saved) >= self.best_save:
-            self.best_save = self.key_best(saved)
+        if self.key_best is None:
+            return
+        if self.key_best(saved).item() >= self.best_save:
+            self.best_save = self.key_best(saved).item()
             self.detach_save()
 
 
