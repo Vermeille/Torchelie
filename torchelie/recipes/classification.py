@@ -248,19 +248,20 @@ def CrossEntropyClassification(model,
                           log_every=log_every,
                           checkpoint=checkpoint)
 
-    opt = RAdamW(model.parameters(),
-                 lr=lr,
-                 betas=(beta1, beta2),
-                 weight_decay=wd)
+    opt = Lookahead(
+        RAdamW(model.parameters(), lr=lr, betas=(beta1, beta2),
+               weight_decay=wd))
+
+    loop.register('opt', opt)
     loop.callbacks.add_callbacks([
-        tcb.Optimizer(Lookahead(opt), log_lr=True),
+        tcb.Optimizer(opt, log_lr=True),
     ])
     if n_iters is not None:
-        loop.callbacks.add_callbacks([
-            tcb.LRSched(FlatAndCosineEnd(opt, n_iters),
-                        step_each_batch=True,
-                        metric=None)
-        ])
+        sched = FlatAndCosineEnd(opt, n_iters)
+        loop.register('sched', sched)
+
+        loop.callbacks.add_callbacks(
+            [tcb.LRSched(sched, step_each_batch=True, metric=None)])
     else:
         loop.callbacks.add_callbacks(
             [tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(opt))])
@@ -351,59 +352,41 @@ def MixupClassification(model,
         tcb.MetricsTable(False)
     ])
 
-    opt = RAdamW(model.parameters(),
-                 lr=lr,
-                 betas=(beta1, beta2),
-                 weight_decay=wd)
+    opt = Lookahead(
+        RAdamW(model.parameters(), lr=lr, betas=(beta1, beta2),
+               weight_decay=wd))
+    loop.register('opt', opt)
     loop.callbacks.add_callbacks([
-        tcb.Optimizer(Lookahead(opt), log_lr=True),
-        tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(opt))
+        tcb.Optimizer(opt, log_lr=True),
+        tcb.LRSched(torch.optim.lr_scheduler.ReduceLROnPlateau(opt)),
     ])
     return loop
 
 
-if __name__ == '__main__':
-    import argparse
-
+def train(args, rank, world_size):
     from torchelie.datasets import CachedDataset
     from torchvision.datasets import ImageFolder
     from torch.utils.data import DataLoader
     import torchvision.transforms as TF
     import torchelie.transforms as TTF
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--trainset', type=str, required=True)
-    parser.add_argument('--testset', type=str, required=True)
-    parser.add_argument('--batch-size', type=int, default=32)
-    parser.add_argument('--lr', type=float, default=0.01)
-    parser.add_argument('--beta1', type=float, default=0.9)
-    parser.add_argument('--beta2', type=float, default=0.999)
-    parser.add_argument('--wd', type=float, default=1e-2)
-    parser.add_argument('--im-size', type=int, default=64)
-    parser.add_argument('--device', type=str, default='cuda')
-    parser.add_argument('--visdom-env', type=str)
-    parser.add_argument('--no-cache', action='store_false')
-    parser.add_argument('--epochs', type=int, default=5)
-    parser.add_argument('--mixup', action='store_true')
-    args = parser.parse_args()
-
     tfm = TF.Compose([
-        RandAugment(2, 10),
-        TF.ToTensor(),
         TF.RandomResizedCrop(args.im_size, (0.3, 1.)),
         TF.RandomHorizontalFlip(),
-        TF.Normalize([0.5] * 3, [0.5] * 3, True),
+        #RandAugment(2, 10),
+        TF.ToTensor(),
+        TF.Normalize([0.5] * 3, [0.5] * 3),
     ])
     tfm_test = TF.Compose([
         TTF.ResizedCrop(args.im_size, scale=1),
         TF.Resize(args.im_size),
         TF.ToTensor(),
-        TF.Normalize([0.5] * 3, [0.5] * 3, True)
+        TF.Normalize([0.5] * 3, [0.5] * 3)
     ])
 
-    if args.no_cache:
-        trainset = ImageFolder(args.trainset, transform=tfm)
-        testset = ImageFolder(args.testset, transform=tfm_test)
+    if not args.cache:
+        trainset = tch.datasets.FastImageFolder(args.trainset, transform=tfm)
+        testset = tch.datasets.FastImageFolder(args.testset, transform=tfm_test)
     else:
         trainset = ImageFolder(args.trainset)
         testset = ImageFolder(args.testset)
@@ -424,35 +407,85 @@ if __name__ == '__main__':
     testloader = DataLoader(testset,
                             args.batch_size,
                             num_workers=8,
-                            pin_memory=True)
+                            pin_memory=True,
+                            persistent_workers=True,
+                            prefetch_factor=10)
 
-    model = tvmodels.resnet18(pretrained=False)
-    model.fc = tu.kaiming(torch.nn.Linear(512, len(testset.classes)))
+    model = tch.models.preact_resnet18(len(trainset.classes))
+    #kkhhmodel = tch.models.preact_resnet20_cifar(len(trainset.classes))
+    if rank == 0:
+        print('trainset')
+        print(trainset)
+        print()
+        print('testset')
+        print(testset)
+        print()
+        print(model)
+
+    if args.from_ckpt is not None:
+        model.load_state_dict(
+            torch.load(args.from_ckpt, map_location='cuda:' +
+            str(rank))['model'])
+    if world_size > 1:
+        model = torch.nn.parallel.DistributedDataParallel(model.to(rank),
+                                                          device_ids=[rank],
+                                                          output_device=rank)
 
     if args.mixup:
-        clf_recipe = MixupClassification(model,
-                                         trainloader,
-                                         testloader,
-                                         testset.classes,
-                                         log_every=10,
-                                         test_every=50,
-                                         lr=args.lr,
-                                         beta1=args.beta1,
-                                         beta2=args.beta2,
-                                         wd=args.wd,
-                                         visdom_env=args.visdom_env)
+        clf_recipe = MixupClassification(
+            model,
+            trainloader,
+            testloader,
+            testset.classes,
+            log_every=50,
+            test_every=min(5000,
+                           len(trainloader) // 3),
+            lr=args.lr,
+            beta1=args.beta1,
+            beta2=args.beta2,
+            wd=args.wd,
+            visdom_env=args.visdom_env if rank == 0 else None)
     else:
-        clf_recipe = CrossEntropyClassification(model,
-                                                trainloader,
-                                                testloader,
-                                                testset.classes,
-                                                log_every=10,
-                                                test_every=50,
-                                                lr=args.lr,
-                                                beta1=args.beta1,
-                                                beta2=args.beta2,
-                                                wd=args.wd,
-                                                visdom_env=args.visdom_env)
+        clf_recipe = CrossEntropyClassification(
+            model,
+            trainloader,
+            testloader,
+            testset.classes,
+            log_every=100,
+            test_every=min(5000,
+                           len(trainloader) // 3),
+            lr=args.lr,
+            beta1=args.beta1,
+            beta2=args.beta2,
+            wd=args.wd,
+            checkpoint='model' if rank == 0 else None,
+            visdom_env=args.visdom_env if rank == 0 else None,
+            n_iters=len(trainloader) * args.epochs)
 
-    clf_recipe.to(args.device)
+    if rank == 0:
+        print(clf_recipe)
+
+    clf_recipe.to(rank)
     clf_recipe.run(args.epochs)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--trainset', type=str, required=True)
+    parser.add_argument('--testset', type=str, required=True)
+    parser.add_argument('--batch-size', type=int, default=32)
+    parser.add_argument('--lr', type=float, default=0.001)
+    parser.add_argument('--beta1', type=float, default=0.9)
+    parser.add_argument('--beta2', type=float, default=0.999)
+    parser.add_argument('--wd', type=float, default=1e-2)
+    parser.add_argument('--im-size', type=int, default=64)
+    parser.add_argument('--visdom-env', type=str)
+    parser.add_argument('--from-ckpt', type=str)
+    parser.add_argument('--cache', action='store_true', default=False)
+    parser.add_argument('--epochs', type=int, default=5)
+    parser.add_argument('--mixup', action='store_true', default=False)
+    args = parser.parse_args()
+
+    tu.parallel_run(train, args)
