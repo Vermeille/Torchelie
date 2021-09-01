@@ -164,14 +164,14 @@ class ResNet(nn.Module):
 #
 
 
-def resnet20_cifar() -> ResNet:
+def resnet20_cifar(num_classes: int = 10) -> ResNet:
     return ResNet([
         '16:1', '16:1', '16:1', '32:2', '32:1', '32:1', '64:2', '64:1', '64:1'
-    ], 10).set_input_specs(input_size=32)
+    ], num_classes).set_input_specs(input_size=32)
 
 
-def preact_resnet20_cifar() -> ResNet:
-    return resnet20_cifar().to_preact()
+def preact_resnet20_cifar(num_classes: int = 10) -> ResNet:
+    return resnet20_cifar(num_classes).to_preact()
 
 
 #
