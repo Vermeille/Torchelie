@@ -98,7 +98,7 @@ class Cutout:
         return img
 
     def __repr__(self) -> str:
-        return f'Cutout(max_size={self.max_size})'
+        return f'Cutout(min_size={self.min_size}, max_size={self.max_size})'
 
 
 class Identity:
