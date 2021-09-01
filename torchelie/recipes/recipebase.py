@@ -4,6 +4,7 @@ import torchelie.utils as tu
 
 
 class CallbacksRunner:
+
     def __init__(self):
         self.cbs = [[], [], []]
         self.reset()
@@ -77,14 +78,25 @@ class CallbacksRunner:
 
 
 class RecipeBase:
+
     def __init__(self):
         self._modules = set()
         self._savable = set()
         self.device = 'cpu'
 
+    def __repr__(self) -> str:
+        return self.__class__.__name__ + ':\n' + tu.indent(
+            'Modules:\n' + tu.indent('\n'.join([
+                m + ':\n' + tu.indent(repr(getattr(self, m)))
+                for m in self._modules
+            ])) + '\n' + 'Savables:\n' + tu.indent('\n'.join([
+                m + ':\n' + tu.indent(repr(getattr(self, m)))
+                for m in self._savable
+            ])))
+
     def _check_init(self):
         if '_modules' not in self.__dict__:
-            raise AttributeError('You forgot to call ModulesAware.__init__()')
+            raise AttributeError('You forgot to call RecipeBase.__init__()')
 
     def register(self, name, value):
         """
@@ -212,6 +224,7 @@ class Recipe(RecipeBase):
             returns a dict of value to feed the state
         loader (Iterable): any iterable (most likely a DataLoader)
     """
+
     def __init__(self, call_fun, loader):
         super(Recipe, self).__init__()
         self.call_fun = call_fun
@@ -235,9 +248,7 @@ class Recipe(RecipeBase):
             self.callbacks('on_epoch_start')
             for batch in self.loader:
                 self.callbacks.update_state({'batch': batch})
-                batch = tu.send_to_device(batch,
-                                          self.device,
-                                          non_blocking=True)
+                batch = tu.send_to_device(batch, self.device, non_blocking=True)
                 self.callbacks.update_state({'batch_gpu': batch})
 
                 self.callbacks('on_batch_start')
