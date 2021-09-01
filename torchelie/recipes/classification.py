@@ -15,6 +15,7 @@ from typing import List, Optional, Callable, Iterable, Any
 import torch
 import torchvision.models as tvmodels
 
+import torchelie as tch
 import torchelie.callbacks as tcb
 import torchelie.utils as tu
 from torchelie.lr_scheduler import FlatAndCosineEnd
@@ -130,6 +131,10 @@ def Classification(model,
             loop.callbacks.add_epilogues([
                 tcb.ConfusionMatrix(classes),
             ])
+        else:
+            loop.callbacks.add_callbacks([
+                tcb.TopkAccAvg(),
+            ])
         loop.callbacks.add_epilogues(
             [tcb.ClassificationInspector(30, classes),
              tcb.MetricsTable()])
@@ -138,11 +143,17 @@ def Classification(model,
         loop.test_loop.callbacks.add_callbacks([
             tcb.ConfusionMatrix(classes),
         ])
+    else:
+        loop.test_loop.callbacks.add_callbacks([
+            tcb.TopkAccAvg(post_each_batch=False, avg_type='running'),
+        ])
 
     loop.test_loop.callbacks.add_callbacks([
         tcb.ClassificationInspector(30, classes, False),
         tcb.MetricsTable(False)
     ])
+
+    loop.callbacks.add_epilogues([tcb.Throughput()])
     return loop
 
 
