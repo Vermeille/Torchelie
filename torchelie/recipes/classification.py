@@ -422,9 +422,9 @@ def train(args, rank, world_size):
         print()
         print(model)
 
-    if args.from_ckpt is not None:
+    if args.from_weights is not None:
         model.load_state_dict(
-            torch.load(args.from_ckpt, map_location='cuda:' +
+            torch.load(args.from_weights, map_location='cuda:' +
             str(rank))['model'])
     if world_size > 1:
         model = torch.nn.parallel.DistributedDataParallel(model.to(rank),
@@ -450,10 +450,9 @@ def train(args, rank, world_size):
             model,
             trainloader,
             testloader,
-            testset.classes,
+            trainset.classes,
             log_every=100,
-            test_every=min(5000,
-                           len(trainloader) // 3),
+            test_every=min(5000, len(trainloader) // 3),
             lr=args.lr,
             beta1=args.beta1,
             beta2=args.beta2,
@@ -465,6 +464,10 @@ def train(args, rank, world_size):
     if rank == 0:
         print(clf_recipe)
 
+    if args.from_ckpt is not None:
+        clf_recipe.load_state_dict(
+            torch.load(args.from_ckpt, map_location='cuda:' +
+            str(rank)))
     clf_recipe.to(rank)
     clf_recipe.run(args.epochs)
 
@@ -483,9 +486,11 @@ if __name__ == '__main__':
     parser.add_argument('--im-size', type=int, default=64)
     parser.add_argument('--visdom-env', type=str)
     parser.add_argument('--from-ckpt', type=str)
+    parser.add_argument('--from-weights', type=str)
     parser.add_argument('--cache', action='store_true', default=False)
     parser.add_argument('--epochs', type=int, default=5)
     parser.add_argument('--mixup', action='store_true', default=False)
     args = parser.parse_args()
 
     tu.parallel_run(train, args)
+    #train(args, 0, 1)
