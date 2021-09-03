@@ -71,9 +71,9 @@ class CallbacksRunner:
 
     def __repr__(self):
         return "Prologue:\n{}\nCallbacks:\n{}\nEpilogue:\n{}".format(
-            "\n".join(["  " + line for line in repr(self.cbs[0]).split("\n")]),
-            "\n".join(["  " + line for line in repr(self.cbs[1]).split("\n")]),
-            "\n".join(["  " + line for line in repr(self.cbs[2]).split("\n")]),
+            tu.indent("\n".join([repr(c) for c in self.cbs[0]])),
+            tu.indent("\n".join([repr(c) for c in self.cbs[1]])),
+            tu.indent("\n".join([repr(c) for c in self.cbs[2]])),
         )
 
 

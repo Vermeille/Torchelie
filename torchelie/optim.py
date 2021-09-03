@@ -283,9 +283,6 @@ class Lookahead(Optimizer):
 
         for group in self.optimizer.param_groups:
             for p in group['params']:
-                if p.grad is None:
-                    continue
-
                 if p not in self.state:
                     self.state[p] = p.detach().clone()
                     self.state[p].requires_grad = False

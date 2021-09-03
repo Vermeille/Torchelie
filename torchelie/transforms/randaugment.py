@@ -81,7 +81,7 @@ class RandAugment(torch.nn.Module):
             img (PIL Image or Tensor): Image to be transformed.
 
         Returns:
-            PIL Image or Tensor: AutoAugmented image.
+            PIL Image or Tensor: RandAugmented image.
         """
         fill = self.fill
         if isinstance(img, Tensor):
