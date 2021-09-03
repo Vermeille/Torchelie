@@ -67,11 +67,11 @@ class RandAugment(torch.nn.Module):
                             fill=self.fill),
             Cutout(0.1, 0.1 + magnitude * 0.5),
             TF.RandomAffine(0,
-                            translate=(0.45 * magnitude, 0),
+                            translate=(0.3 * magnitude, 0),
                             interpolation=self.interpolation,
                             fill=self.fill),
             TF.RandomAffine(0,
-                            translate=(0, 0.45 * magnitude),
+                            translate=(0, 0.3 * magnitude),
                             interpolation=self.interpolation,
                             fill=self.fill),
         ]
