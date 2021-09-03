@@ -158,3 +158,39 @@ class FlatAndCosineEnd(_LRScheduler):
                 for k, v in self.__dict__.items()
                 if k != 'optimizer'
             ])))
+
+
+class HyperbolicTangentDecay(_LRScheduler):
+    """
+    Very very similar to FlatAndCosineEnd, coming from Stochastic gradient
+    descent with hyperbolic-tangent decay on classification (Hsueh et al., 2019)
+    """
+
+    def __init__(self,
+                 optimizer: Optimizer,
+                 n_iters_total: int,
+                 tanh_lower_bound: int = -6,
+                 tanh_upper_bound: int = 3,
+                 last_epoch: int = -1,
+                 verbose: bool = False):
+        self.n_iters_total = n_iters_total
+        self.tanh_lower_bound = tanh_lower_bound
+        self.tanh_upper_bound = tanh_upper_bound
+        super().__init__(optimizer, last_epoch, verbose)
+
+    def get_lr(self) -> List[float]:
+        t = self.last_epoch / self.n_iters_total
+        L = self.tanh_lower_bound
+        U = self.tanh_upper_bound
+        return [
+            b_lr * 0.5 * (1 - math.tanh(L + (U - L) * t))
+            for b_lr in self.base_lrs
+        ]
+
+    def __repr__(self) -> str:
+        return 'HyperbolicTangentDecay({})'.format(
+            tu.indent("\n".join([
+                '{}={}'.format(k, v)
+                for k, v in self.__dict__.items()
+                if k != 'optimizer'
+            ])))
