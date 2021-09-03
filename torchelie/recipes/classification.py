@@ -18,7 +18,7 @@ import torchvision.models as tvmodels
 import torchelie as tch
 import torchelie.callbacks as tcb
 import torchelie.utils as tu
-from torchelie.lr_scheduler import FlatAndCosineEnd
+from torchelie.lr_scheduler import HyperbolicTangentDecay
 from torchelie.transforms.randaugment import RandAugment
 from torchelie.recipes.trainandtest import TrainAndTest
 from torchelie.optim import RAdamW, Lookahead
@@ -254,10 +254,10 @@ def CrossEntropyClassification(model,
 
     loop.register('opt', opt)
     loop.callbacks.add_callbacks([
-        tcb.Optimizer(opt, log_lr=True),
+        tcb.Optimizer(opt, log_lr=True, centralize_grad=True),
     ])
     if n_iters is not None:
-        sched = FlatAndCosineEnd(opt, n_iters)
+        sched = HyperbolicTangentDecay(opt, n_iters)
         loop.register('sched', sched)
 
         loop.callbacks.add_callbacks(
