@@ -562,8 +562,8 @@ def dist_setup(rank):
     initialize a NCCL process group with default port / address. For internal
     use.
     """
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
+    os.environ['MASTER_ADDR'] = os.environ.get('NCCL_MASTER_ADDR', 'localhost')
+    os.environ['MASTER_PORT'] = os.environ.get('NCCL_MASTER_PORT', '12355')
 
     # initialize the process group
     dist.init_process_group("nccl",
