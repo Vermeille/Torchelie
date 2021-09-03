@@ -54,6 +54,10 @@ class WindowedMetricAvg(tu.AutoStateDict):
     def on_epoch_end(self, state):
         state['metrics'][self.name] = self.avg.get()
 
+    def __repr__(self)->str:
+        return "{}({})".format(self.__class__.__name__, ", ".join([
+            "{}={}".format(k, v) for k, v in self.__dict__.items()]))
+
 
 class ExponentialMetricAvg(tu.AutoStateDict):
     """
@@ -703,6 +707,7 @@ class Checkpoint(tu.AutoStateDict):
     def filename(self, state):
         return self.filename_base.format(**state)
 
+    @torch.no_grad()
     def on_epoch_end(self, state):
         saved = self.save(state)
         while len(self.saved_fnames) > self.max_saves:

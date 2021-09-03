@@ -150,3 +150,11 @@ class FlatAndCosineEnd(_LRScheduler):
         total = self.n_iters_total - first_part
         angle = math.pi * t / total
         return [b_lr * 0.5 * (1 + math.cos(angle)) for b_lr in self.base_lrs]
+
+    def __repr__(self) -> str:
+        return 'FlatAndCosineEnd({})'.format(
+            tu.indent("\n".join([
+                '{}={}'.format(k, v)
+                for k, v in self.__dict__.items()
+                if k != 'optimizer'
+            ])))

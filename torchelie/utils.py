@@ -592,7 +592,7 @@ def parallel_run(fun, *args, n_gpus: int = torch.cuda.device_count(),
 
     Args:
         fun (callable): the function to start, with signature
-            :code:`fun(rank, world_size, *args, **kwargs)`. :code:`rank` is the
+            :code:`fun(*args, **kwargs, rank, world_size)`. :code:`rank` is the
             GPU id tu use on this thread, and :code:`world_size` is the total
             number of GPUs.
         *args: arguments passed to :code:`fun`
