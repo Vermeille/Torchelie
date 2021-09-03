@@ -24,6 +24,8 @@ __all__ = [
     'Subsample',
     'JPEGArtifacts',
     'Canny',
+    'SampleMixup',
+    'SampleCutmix',
 ]
 
 
@@ -81,10 +83,10 @@ class Cutout:
 
     def __call__(self, x: PILImage) -> PILImage:
         w, h = x.size
-        v = int(np.random.uniform(self.min_size, self.max_size) * min(w, h))
+        v = int(random.uniform(self.min_size, self.max_size) * min(w, h))
 
-        x0 = np.random.uniform(0, w - v)
-        y0 = np.random.uniform(0, h - v)
+        x0 = random.uniform(0, w - v)
+        y0 = random.uniform(0, h - v)
 
         x0 = int(max(0, x0))
         y0 = int(max(0, y0))
@@ -244,10 +246,10 @@ class SampleCutmix:
             return x
 
         w, h = x.size
-        v = int(np.random.uniform(0.1, 0.5) * min(w, h))
+        v = int(random.uniform(0.1, 0.5) * min(w, h))
 
-        x0 = int(max(0, np.random.uniform(0, w - v)))
-        y0 = int(max(0, np.random.uniform(0, h - v)))
+        x0 = int(max(0, random.uniform(0, w - v)))
+        y0 = int(max(0, random.uniform(0, h - v)))
 
         x1 = int(min(w, x0 + v))
         y1 = int(min(h, y0 + v))
