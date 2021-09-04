@@ -55,7 +55,42 @@ class ResNetInput(nn.Module):
         return self
 
 
+class ResNetInputImproved(tnn.CondSeq):
+    conv1: tnn.ConvBlock
+    conv2: tnn.ConvBlock
+    conv3: tnn.ConvBlock
+    pool: nn.MaxPool2d
+
+    def __init__(self, in_channels: int = 3, out_channels: int = 64):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.conv1 = tnn.ConvBlock(in_channels, out_channels //2, 3, stride=2)
+        self.conv2 = tnn.ConvBlock(out_channels//2, out_channels//2, 3, stride=2)
+        self.conv3 = tnn.ConvBlock(out_channels//2, out_channels, 3, stride=1)
+        #self.pool = nn.MaxPool2d(3, 2, 1)
+
+    def set_input_specs(self, input_size: int, in_channels=3) -> 'ResNetInput':
+        self.in_channels = in_channels
+        in_ch = self.in_channels
+        out_ch = self.out_channels
+
+        if input_size <= 64:
+            self.conv1.conv.stride = (1, 1)
+            self.pool = nn.Identity()
+        elif input_size <= 128:
+            self.conv1.conv.stride = (2, 2)
+            self.pool = nn.Identity()
+        else:
+            self.conv1.conv.stride = (2, 2)
+            self.pool = nn.MaxPool2d(3, 2, 1)
+
+        return self
+
+
 class ResNet(nn.Module):
+
     def __init__(self, arch: List[str], num_classes: int) -> None:
         super().__init__()
 
@@ -65,7 +100,8 @@ class ResNet(nn.Module):
         self.arch = list(map(parse, arch))
 
         self.features = tnn.CondSeq()
-        self.features.add_module('input', ResNetInput(3, self.arch[0][0]))
+        self.features.add_module('input',
+                ResNetInputImproved(3, self.arch[0][0]))
 
         self._change_block_type('basic')
         self.classifier = ClassificationHead(self.arch[-1][0], num_classes)
@@ -95,7 +131,8 @@ class ResNet(nn.Module):
         arch = self.arch
 
         feats = tnn.CondSeq()
-        assert isinstance(self.features.input, ResNetInput)
+        assert isinstance(self.features.input,
+                          (ResNetInput, ResNetInputImproved))
         feats.add_module('input', self.features.input)
         in_ch = arch[0][0]
         self.in_channels = in_ch
@@ -112,6 +149,10 @@ class ResNet(nn.Module):
             feats.add_module('final_bn', nn.BatchNorm2d(self.out_channels))
             feats.add_module('final_relu', nn.ReLU(True))
         self.features = feats
+
+    def use_standard_input(self):
+        inp = self.features.inpuy
+        self.features.input = ResNetInput(inp.in_channels, inp.out_channels)
 
     def to_bottleneck(self) -> 'ResNet':
         self._change_block_type('bottleneck')

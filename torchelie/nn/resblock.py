@@ -36,10 +36,11 @@ class SEBlock(nn.Module):
 
 def _make_resnet_shortcut(in_channels: int, out_channels: int,
                           stride: int) -> CondSeq:
+    assert stride in [1, 2]
     shortcut = CondSeq()
     if stride != 1:
         shortcut.add_module(
-            'pool', nn.AvgPool2d(1 + (stride - 1) * 2, stride, stride // 2))
+            'pool', nn.AvgPool2d(2, 2, ceil_mode=True))
 
     if in_channels != out_channels:
         shortcut.add_module(
@@ -227,10 +228,11 @@ class ResBlock(nn.Module):
 
 def make_preact_resnet_shortcut(in_ch: int, out_ch: int,
                                 stride: int) -> CondSeq:
+    assert stride in [1, 2]
     sc: List[Tuple[str, nn.Module]] = []
     if stride != 1:
         sc.append(
-            ('pool', nn.AvgPool2d(1 + (stride - 1) * 2, stride, stride // 2)))
+            ('pool', nn.AvgPool2d(2, 2, ceil_mode=True)))
 
     if in_ch != out_ch:
         sc.append(('conv', kaiming(Conv1x1(in_ch, out_ch))))
