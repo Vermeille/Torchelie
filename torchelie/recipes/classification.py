@@ -23,6 +23,8 @@ from torchelie.transforms.randaugment import RandAugment
 from torchelie.recipes.trainandtest import TrainAndTest
 from torchelie.optim import RAdamW, Lookahead
 
+from torch.cuda.amp import autocast
+
 
 def Classification(model,
                    train_fun: Callable,
@@ -226,10 +228,11 @@ def CrossEntropyClassification(model,
 
     def train_step(batch):
         x, y = batch
-        pred = model(x)
-        loss = torch.nn.functional.cross_entropy(pred, y)
+        with autocast():
+            pred = model(x)
+            loss = torch.nn.functional.cross_entropy(pred, y)
         loss.backward()
-        return {'loss': loss, 'pred': pred}
+        return {'loss': loss, 'pred': pred.float()}
 
     def validation_step(batch):
         x, y = batch
