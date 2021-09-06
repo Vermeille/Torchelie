@@ -51,17 +51,18 @@ class ResNetInputImproved(tnn.CondSeq):
     conv1: tnn.ConvBlock
     conv2: tnn.ConvBlock
     conv3: tnn.ConvBlock
-    pool: nn.MaxPool2d
 
     def __init__(self, in_channels: int = 3, out_channels: int = 64):
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
 
-        self.conv1 = tnn.ConvBlock(in_channels, out_channels //2, 3, stride=2)
-        self.conv2 = tnn.ConvBlock(out_channels//2, out_channels//2, 3, stride=2)
-        self.conv3 = tnn.ConvBlock(out_channels//2, out_channels, 3, stride=1)
-        #self.pool = nn.MaxPool2d(3, 2, 1)
+        self.conv1 = tnn.ConvBlock(in_channels, out_channels // 2, 3, stride=2)
+        self.conv2 = tnn.ConvBlock(out_channels // 2,
+                                   out_channels // 2,
+                                   3,
+                                   stride=2)
+        self.conv3 = tnn.ConvBlock(out_channels // 2, out_channels, 3, stride=1)
 
     def set_input_specs(self, input_size: int, in_channels=3) -> 'ResNetInput':
         self.in_channels = in_channels
@@ -70,13 +71,13 @@ class ResNetInputImproved(tnn.CondSeq):
 
         if input_size <= 64:
             self.conv1.conv.stride = (1, 1)
-            self.pool = nn.Identity()
+            self.conv2.conv.stride = (1, 1)
         elif input_size <= 128:
             self.conv1.conv.stride = (2, 2)
-            self.pool = nn.Identity()
+            self.conv2.conv.stride = (1, 1)
         else:
             self.conv1.conv.stride = (2, 2)
-            self.pool = nn.MaxPool2d(3, 2, 1)
+            self.conv2.conv.stride = (2, 2)
 
         return self
 
@@ -92,8 +93,7 @@ class ResNet(nn.Module):
         self.arch = list(map(parse, arch))
 
         self.features = tnn.CondSeq()
-        self.features.add_module('input',
-                ResNetInputImproved(3, self.arch[0][0]))
+        self.features.add_module('input', ResNetInput(3, self.arch[0][0]))
 
         self._change_block_type('basic')
         self.classifier = ClassificationHead(self.arch[-1][0], num_classes)
