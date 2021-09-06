@@ -428,3 +428,13 @@ class CachedDataset(_Wrap):
 
     def __repr__(self):
         return "CachedDataset:\n{}".format(tu.indent(repr(self.ds)))
+
+
+@tu.experimental
+def StratifiedSampler(dataset):
+    weights = torch.tensor([0.0] * len(dataset.classes))
+    for s in dataset.samples:
+        weights[s[1]] += 1
+
+    return torch.utils.data.WeightedRandomSampler(
+        [1 / weights[klass] for _, klass in dataset.samples], len(dataset))
