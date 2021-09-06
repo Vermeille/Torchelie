@@ -240,6 +240,7 @@ class Lookahead(Optimizer):
     """
 
     def __init__(self, base_optimizer, alpha=0.5, k=5):
+        super().__init__({}, {})
         if not 0.0 <= alpha <= 1.0:
             raise ValueError('Invalid slow update rate: ' + str(alpha))
         if not 1 <= k:
