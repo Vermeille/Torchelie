@@ -204,26 +204,27 @@ class RAdamW(Optimizer):
                 # Decay the first and second moment running average coefficient
                 exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
                 if adabelief:
-                    exp_avg_sq.mul_(beta2).addcmul_(grad - exp_avg,
-                                                    grad - exp_avg,
-                                                    value=1 - beta2).add_(eps)
+                    belief = grad - exp_avg
+                    exp_avg_sq.mul_(beta2).addcmul_(belief,
+                                                    belief,
+                                                    value=1 - beta2)
                 else:
                     exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
-                exp_avg_no_bias = exp_avg / (1 - beta1**t)
                 rho_t = rho_inf - ((2 * t * (beta2**t)) / (1 - beta2**t))
-                var = exp_avg_sq / (1 - beta2**t)
 
                 # Perform stepweight decay
                 p.data.mul_(1 - group['lr'] * group['weight_decay'])
 
                 if rho_t >= 5:
-                    var.sqrt_()
+                    var = exp_avg_sq / (1 - beta2**t)
+                    var.sqrt_().add_(eps)
                     r = math.sqrt(((rho_t - 4) * (rho_t - 2) * rho_inf) /
                                   ((rho_inf - 4) * (rho_inf - 2) * rho_t))
 
-                    p.data.addcdiv_(exp_avg_no_bias, var + eps, value=-lr * r)
+                    p.data.addcdiv_(exp_avg, var,
+                            value=-lr * r / (1 - beta1**t))
                 else:
-                    p.data.add_(exp_avg_no_bias, alpha=-lr)
+                    p.data.add_(exp_avg, alpha=-lr/ (1 - beta1**t))
 
         return loss
 
