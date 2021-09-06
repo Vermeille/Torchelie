@@ -18,7 +18,7 @@ import torchvision.models as tvmodels
 import torchelie as tch
 import torchelie.callbacks as tcb
 import torchelie.utils as tu
-from torchelie.lr_scheduler import HyperbolicTangentDecay
+from torchelie.lr_scheduler import HyperbolicTangentDecay, CurriculumScheduler
 from torchelie.transforms.randaugment import RandAugment
 from torchelie.recipes.trainandtest import TrainAndTest
 from torchelie.optim import RAdamW, Lookahead
@@ -138,7 +138,7 @@ def Classification(model,
                 tcb.TopkAccAvg(),
             ])
         loop.callbacks.add_epilogues(
-            [tcb.ClassificationInspector(30, classes),
+            [#tcb.ClassificationInspector(30, classes),
              tcb.MetricsTable()])
 
     if len(classes) <= 50:
@@ -251,16 +251,23 @@ def CrossEntropyClassification(model,
                           log_every=log_every,
                           checkpoint=checkpoint)
 
-    opt = Lookahead(
-        RAdamW(model.parameters(), lr=lr, betas=(beta1, beta2),
-               weight_decay=wd))
+    #opt = (RAdamW(model.parameters(), lr=lr, betas=(beta1, beta2), weight_decay=wd, adabelief=True))
+    opt = torch.optim.SGD(model.parameters(),
+                          lr=0,
+                          weight_decay=wd,
+                          momentum=beta1, nesterov=True)
 
     loop.register('opt', opt)
+    #loop.callbacks.add_prologue(ProgressiveUncropping(n_iters))
     loop.callbacks.add_callbacks([
-        tcb.Optimizer(opt, log_lr=True, centralize_grad=True),
+        tcb.Optimizer(opt, log_lr=True, centralize_grad=False),
+        tcb.Throughput(),
     ])
     if n_iters is not None:
-        sched = HyperbolicTangentDecay(opt, n_iters)
+        #sched = HyperbolicTangentDecay(opt, n_iters)
+        sched = CurriculumScheduler(opt, [(0, 0, beta1),
+                                          (len(train_loader) * 2, lr, beta1),
+                                          (n_iters, 0, beta1)])
         loop.register('sched', sched)
 
         loop.callbacks.add_callbacks(
@@ -374,17 +381,17 @@ def train(args, rank, world_size):
     import torchelie.transforms as TTF
 
     tfm = TF.Compose([
-        TF.RandomResizedCrop(args.im_size, (0.3, 1.)),
+        TF.RandomResizedCrop(args.im_size),
         TF.RandomHorizontalFlip(),
-        #RandAugment(2, 10),
+        RandAugment(2, 5).berserk_mode(),
         TF.ToTensor(),
-        TF.Normalize([0.5] * 3, [0.5] * 3),
+        TF.Normalize([0.5] * 3, [0.2] * 3),
     ])
     tfm_test = TF.Compose([
-        TTF.ResizedCrop(args.im_size, scale=1),
-        TF.Resize(args.im_size),
+        TTF.ResizedCrop(args.im_size),
+        #TTF.ResizedCrop(int(args.im_size*1.14), scale=1),
         TF.ToTensor(),
-        TF.Normalize([0.5] * 3, [0.5] * 3)
+        TF.Normalize([0.5] * 3, [0.2] * 3)
     ])
 
     if not args.cache:
@@ -401,21 +408,28 @@ def train(args, rank, world_size):
         from torchelie.datasets import MixUpDataset
         trainset = MixUpDataset(trainset)
 
-    trainloader = DataLoader(trainset,
-                             args.batch_size,
-                             num_workers=8,
-                             pin_memory=True,
-                             shuffle=True,
-                             drop_last=True)
+    trainloader = DataLoader(
+        trainset,
+        args.batch_size,
+        num_workers=4,
+        pin_memory=True,
+        #shuffle=True, # BECAUSE WEIRD FUCKIN BUG
+        sampler=torch.utils.data.RandomSampler(trainset,
+                                               replacement=True,
+                                               num_samples=len(trainset)),
+        persistent_workers=True,
+        prefetch_factor=2,
+        drop_last=True)
     testloader = DataLoader(testset,
                             args.batch_size,
-                            num_workers=8,
-                            pin_memory=True,
+                            num_workers=4,
+                            pin_memory=False,
                             persistent_workers=True,
-                            prefetch_factor=10)
+                            prefetch_factor=2)
 
-    model = tch.models.preact_resnet18(len(trainset.classes))
-    #kkhhmodel = tch.models.preact_resnet20_cifar(len(trainset.classes))
+    model = tch.models.preact_resnet18(len(trainset.classes)).set_input_specs(
+        args.im_size)
+
     if rank == 0:
         print('trainset')
         print(trainset)
@@ -426,9 +440,10 @@ def train(args, rank, world_size):
         print(model)
 
     if args.from_weights is not None:
-        model.load_state_dict(
-            torch.load(args.from_weights, map_location='cuda:' +
-            str(rank))['model'])
+        tu.load_state_dict_forgiving(
+            model,
+            torch.load(args.from_weights,
+                       map_location='cuda:' + str(rank))['model'])
     if world_size > 1:
         model = torch.nn.parallel.DistributedDataParallel(model.to(rank),
                                                           device_ids=[rank],
@@ -454,23 +469,22 @@ def train(args, rank, world_size):
             trainloader,
             testloader,
             trainset.classes,
-            log_every=100,
-            test_every=min(5000, len(trainloader) // 3),
+            log_every=max(10, min(len(trainloader) // 50, 1000)),
+            test_every=10000,#max(100, min(len(trainloader) // 3, 5000)),
             lr=args.lr,
             beta1=args.beta1,
             beta2=args.beta2,
             wd=args.wd,
             checkpoint='model' if rank == 0 else None,
             visdom_env=args.visdom_env if rank == 0 else None,
-            n_iters=len(trainloader) * args.epochs)
+            n_iters=len(trainloader) * (args.epochs - 1))
 
     if rank == 0:
         print(clf_recipe)
 
     if args.from_ckpt is not None:
         clf_recipe.load_state_dict(
-            torch.load(args.from_ckpt, map_location='cuda:' +
-            str(rank)))
+            torch.load(args.from_ckpt, map_location='cuda:' + str(rank)))
     clf_recipe.to(rank)
     clf_recipe.run(args.epochs)
 
