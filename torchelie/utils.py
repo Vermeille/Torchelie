@@ -374,6 +374,18 @@ def load_recursive_state_dict(x: Any, obj: Any) -> None:
             load_recursive_state_dict(xx[k], oo[k])
 
 
+def load_state_dict_forgiving(dst, state_dict: dict):
+    """
+    Loads a state dict, but don't crash if shapes don't match.
+    """
+    dst_dict = dst.state_dict()
+    for name, val in state_dict.items():
+        try:
+            dst_dict[name].copy_(val)
+        except Exception as e:
+            print('error in', name, ':', val.shape, '->', dst_dict[name].shape)
+
+
 class FrozenModule(nn.Module):
     """
     Wrap a module to eval model, can't be turned back to training mode
