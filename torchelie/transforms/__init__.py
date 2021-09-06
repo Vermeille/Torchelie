@@ -111,7 +111,8 @@ class ResizedCrop(object):
         interpolation: Default: PIL.Image.BILINEAR
     """
 
-    def __init__(self, size, scale=0.54, ratio=1, interpolation=Image.BILINEAR):
+    def __init__(self, size, scale=0.54, ratio=1,
+            interpolation=TF.InterpolationMode.BILINEAR):
         if isinstance(size, tuple):
             self.size = size
         else:
