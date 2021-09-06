@@ -13,7 +13,7 @@ BOTTLENECKS_BLOCKS = (tnn.PreactResBlockBottleneck, tnn.ResBlockBottleneck)
 
 
 class ResNetInput(nn.Module):
-    relu: Optional[nn.ReLU]
+    conv: tnn.ConvBlock
     pool: Optional[nn.Module]
 
     def __init__(self, in_channels: int = 3, out_channels: int = 64) -> None:
@@ -21,17 +21,12 @@ class ResNetInput(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
 
-        self.conv = tu.kaiming(
-            tnn.Conv2d(in_channels, out_channels, 7, stride=2))
-        self.relu = nn.ReLU(True)
+        self.conv = tnn.ConvBlock(in_channels, out_channels, 7, stride=2)
         self.pool = nn.MaxPool2d(3, 2, 1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv(x)
-        if self.relu is not None:
-            x = self.relu(x)
-        if self.pool is not None:
-            x = self.pool(x)
+        x = self.pool(x)
         return x
 
     def set_input_specs(self, input_size: int, in_channels=3) -> 'ResNetInput':
@@ -40,17 +35,14 @@ class ResNetInput(nn.Module):
         out_ch = self.out_channels
 
         if input_size <= 64:
-            self.conv = tu.kaiming(tnn.Conv2d(in_ch, out_ch, ks=3))
-            del self.pool
-            self.pool = None
+            self.conv = tnn.ConvBlock(in_ch, out_ch, 3)
+            self.pool = nn.Identity()
         elif input_size <= 128:
-            self.conv = tu.kaiming(tnn.Conv2d(in_ch, out_ch, 5, stride=2))
-            del self.pool
-            self.pool = None
+            self.conv = tnn.ConvBlock(in_ch, out_ch, 5, stride=2)
+            self.pool = nn.Identity()
         else:
-            self.conv = tu.kaiming(tnn.Conv2d(in_ch, out_ch, 7, stride=2))
-            if self.pool is None:
-                self.pool = nn.MaxPool2d(3, 2, 1)
+            self.conv = tnn.ConvBlock(in_ch, out_ch, 7, stride=2)
+            self.pool = nn.MaxPool2d(3, 2, 1)
 
         return self
 
