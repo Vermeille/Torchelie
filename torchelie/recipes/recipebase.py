@@ -152,9 +152,9 @@ class RecipeBase:
                     if isinstance(val,
                                   (torch.nn.parallel.DistributedDataParallel,
                                    torch.nn.parallel.DataParallel)):
-                        print(val.module.load_state_dict(state, strict=False))
+                        tu.load_state_dict_forgiving(val.module, state)
                     else:
-                        print(val.load_state_dict(state, strict=False))
+                        tu.load_state_dict_forgiving(val, state)
                 else:
                     val.load_state_dict(state)
             else:
