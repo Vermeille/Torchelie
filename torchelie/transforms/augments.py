@@ -239,6 +239,7 @@ class SampleCutmix:
 
     def __init__(self, alpha=0.4):
         self.last_img = None
+        self.alpha = alpha
 
     def __call__(self, x):
         if self.last_img is None:
@@ -246,7 +247,7 @@ class SampleCutmix:
             return x
 
         w, h = x.size
-        v = int(random.uniform(0.1, 0.5) * min(w, h))
+        v = int(random.uniform(0, self.alpha) * min(w, h))
 
         x0 = int(max(0, random.uniform(0, w - v)))
         y0 = int(max(0, random.uniform(0, h - v)))

@@ -37,10 +37,11 @@ class RandAugment(torch.nn.Module):
                  interpolation: InterpolationMode = InterpolationMode.BILINEAR,
                  fill: Optional[List[float]] = None):
         super().__init__()
+        assert 0 <= magnitude and magnitude <= 30
         self.interpolation = interpolation
         self.fill = fill
         self.n_transforms = n_transforms
-        magnitude /= 10
+        magnitude /= 30
         self.magnitude = magnitude
 
         self.transforms = [
@@ -51,7 +52,7 @@ class RandAugment(torch.nn.Module):
             TF.RandomAffine(degrees=magnitude * 30,
                             interpolation=self.interpolation,
                             fill=self.fill),
-            Posterize(min_bits=8 - magnitude * 4, max_bits=8),
+            Posterize(min_bits=8 - magnitude * 6, max_bits=8),
             Solarize(magnitude * 256),
             TF.ColorJitter(saturation=0.9 * magnitude),
             TF.ColorJitter(contrast=0.9 * magnitude),
@@ -65,7 +66,7 @@ class RandAugment(torch.nn.Module):
                             shear=(0, 0, -15 * magnitude, 15 * magnitude),
                             interpolation=self.interpolation,
                             fill=self.fill),
-            Cutout(0.1, 0.1 + magnitude * 0.5),
+            Cutout(0., 0.1 + magnitude * 0.6),
             TF.RandomAffine(0,
                             translate=(0.3 * magnitude, 0),
                             interpolation=self.interpolation,
