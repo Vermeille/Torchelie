@@ -233,12 +233,19 @@ class Subset:
         remap_unused_classes (boolean): if True, classes not represented in the
             subset will not be considered. Remaining classes will be numbered
             from 0 to N.
+        seed (int, optional): if provided, sampling will be made
+            deterministically from this seed.
     """
 
-    def __init__(self, ds, ratio, remap_unused_classes=False):
+    def __init__(self, ds, ratio, remap_unused_classes=False, seed=None):
         self.ratio = ratio
         self.ds = ds
-        indices = [i for i in range(len(ds)) if random.uniform(0, 1) < ratio]
+
+        generator = torch.Generator()
+        if seed is not None:
+            generator.manual_seed(seed)
+        indices = torch.randperm(len(ds))
+        indices = indices[:int(len(indices) * ratio)]
         self.indices = indices
 
         self.remap_classes = remap_unused_classes
