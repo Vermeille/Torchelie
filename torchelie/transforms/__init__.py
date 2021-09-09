@@ -39,6 +39,24 @@ class ResizeNoCrop:
             return x.resize((int(size * width / height), size), self.mode)
 
 
+class PadToSquare:
+    def __init__(self, padding_mode='reflect', fill=0):
+        self.padding_mode = padding_mode
+        self.fill = fill
+
+    def __call__(self, img):
+        w, h = img.width, img.height
+
+        sz = max(h, w)
+
+        ph = (sz - w) // 2
+
+        pv = (sz - h) // 2
+
+        return TF.functional.pad(img, (ph, pv, ph, pv),
+                                 padding_mode=self.padding_mode,
+                                 fill=self.fill)
+
 class AdaptPad:
     """
     Pad an input image so that it reaches size `size`
