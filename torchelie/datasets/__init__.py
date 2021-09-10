@@ -229,23 +229,62 @@ class Subset:
     Args:
         ds (Dataset): the dataset to sample from. Must have a :code:`.samples`
             member like torchvision's datasets.
-        ratio (float): a value between 0 and 1, the subsampling ratio.
+        ratio (float, optional): a value between 0 and 1, the subsampling
+            ratio. Can't be specified if num_indices is already set.
+        num_indices (int, optional): how many indices to include/exclude. Can't
+            be set if ratio is set.
         remap_unused_classes (boolean): if True, classes not represented in the
             subset will not be considered. Remaining classes will be numbered
             from 0 to N.
         seed (int, optional): if provided, sampling will be made
             deterministically from this seed.
+        include (bool): if True, keep sampled indices, otherwise, exclude
+            sampled indices. Can be used  for creating mutually exclusive sets
+            if seed is provided.
+
+
+    Take 10% of a dataset:
+
+    :code:`set_10pct = Subset(dataset, ratio=0.1)`
+
+
+    Take a deterministic 10% of a dataset:
+
+    :code:`set_10pct = Subset(dataset, ratio=0.1, seed=42)`
+
+
+    Split a dataset in 10%/90% (mutually exclusive):
+
+    :code:```
+    set_90pct = Subset(dataset, ratio=0.9, seed=42, include=True)
+    set_10pct = Subset(dataset, ratio=0.9, seed=42, include=False)
+    ```
     """
 
-    def __init__(self, ds, ratio, remap_unused_classes=False, seed=None):
-        self.ratio = ratio
+    def __init__(self,
+                 ds,
+                 ratio=None,
+                 num_indices=None,
+                 remap_unused_classes=False,
+                 seed=None,
+                 include=True):
+        assert 0 <= ratio and ratio <= 1, "ratio must be in [0, 1]"
+        assert (ratio is not None) != (num_indices is not None), (
+            "(only) one of ratio or num_indices must be provided")
         self.ds = ds
 
         generator = torch.Generator()
         if seed is not None:
             generator.manual_seed(seed)
         indices = torch.randperm(len(ds))
-        indices = indices[:int(len(indices) * ratio)]
+        if num_indices is None:
+            num_indices = int(len(indices) * ratio)
+
+        if include:
+            indices = indices[:num_indices]
+        else:
+            indices = indices[num_indices:]
+
         self.indices = indices
 
         self.remap_classes = remap_unused_classes
