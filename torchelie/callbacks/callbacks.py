@@ -55,9 +55,10 @@ class WindowedMetricAvg(tu.AutoStateDict):
     def on_epoch_end(self, state):
         state['metrics'][self.name] = self.avg.get()
 
-    def __repr__(self)->str:
-        return "{}({})".format(self.__class__.__name__, ", ".join([
-            "{}={}".format(k, v) for k, v in self.__dict__.items()]))
+    def __repr__(self) -> str:
+        return "{}({})".format(
+            self.__class__.__name__,
+            ", ".join(["{}={}".format(k, v) for k, v in self.__dict__.items()]))
 
 
 class ExponentialMetricAvg(tu.AutoStateDict):
@@ -970,6 +971,9 @@ class Throughput:
         self.b_start = None
         self.forward_avg = WindowAvg(10)
         self.it_avg = WindowAvg()
+        self.n_workers = 1
+        if torch.distributed.is_initialized():
+            self.n_workers = torch.distributed.get_world_size()
 
     def on_batch_start(self, state):
         now = time.time()
@@ -978,7 +982,7 @@ class Throughput:
             self.it_avg.log(t)
             state['metrics']['iter_time'] = self.it_avg.get()
             state['metrics']['iter_throughput'] = len(
-                state['batch'][0]) / self.it_avg.get()
+                state['batch'][0]) * self.n_workers / self.it_avg.get()
         self.b_start = now
 
     def on_batch_end(self, state):
@@ -986,7 +990,7 @@ class Throughput:
         self.forward_avg.log(t)
         state['metrics']['forward_time'] = self.forward_avg.get()
         state['metrics']['forward_throughput'] = len(
-            state['batch'][0]) / self.forward_avg.get()
+            state['batch'][0]) * self.n_workers / self.forward_avg.get()
 
 
 class GANMetrics:
