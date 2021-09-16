@@ -31,6 +31,7 @@ Normalization
    ConditionalBN2d
    Spade2d
    AttenNorm2d
+   GhostBatchNorm2d
 
 Misc
 ~~~~

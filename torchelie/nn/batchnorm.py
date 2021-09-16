@@ -241,3 +241,81 @@ class AttenNorm2d(nn.BatchNorm2d):
 
 
 __all__.append('AttenNorm2d')
+
+
+class GhostBatchNorm2d(nn.Module):
+
+    def __init__(self,
+                 num_features,
+                 ghost_batch_size,
+                 eps=1e-05,
+                 affine=True,
+                 momentum=0.8):
+        """
+        BatchNorm2d with virtual batch size for greater regularization effect
+        and / or greater reproducibility.
+
+        Args:
+            num_features (int): number of input features
+            ghost_batch_size (int): batch size to consider when computing
+                statistics and normalizing at train time. Must be able to
+                divide the actual batch size when training.
+            eps (float): epsilon for numerical stability
+            affine (bool): whether to add an affine transformation after
+                statistics normalization or not
+            momentum (float): exponential moving average coefficient for
+                tracking batch statistics used at test time.
+        """
+        nn.BatchNorm2d
+        super().__init__()
+        self.num_features = num_features
+        if affine:
+            self.weight = nn.Parameter(torch.ones(num_features))
+            self.bias = nn.Parameter(torch.zeros(num_features))
+        else:
+            self.weight = None
+            self.bias = None
+        self.momentum = momentum
+        self.ghost_batch_size = ghost_batch_size
+        self.register_buffer('running_mean', torch.zeros(num_features))
+        self.register_buffer('running_var', torch.ones(num_features))
+        self.register_buffer('num_batches_tracked',
+                             torch.zeros(1, dtype=torch.int32))
+        self.eps = eps
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        if self.training:
+            assert B % self.ghost_batch_size == 0, (
+                f'Batch size {B} cannot be '
+                f'divided by ghost size {self.ghost_batch_size}')
+
+            x = x.reshape(-1, self.ghost_batch_size, C, H, W)
+            mean = x.mean([1, 3, 4])
+            var = x.var([1, 3, 4], unbiased=False)
+            self.running_mean.mul_(self.momentum).add_(mean.detach().mean(0),
+                                                       alpha=1 - self.momentum)
+            self.running_var.mul_(self.momentum).add_(var.detach().mean(0),
+                                                      alpha=1 - self.momentum)
+            mean = mean[:, None, :, None, None]
+            var = var[:, None, :, None, None]
+        else:
+            x = x.reshape(1, B, C, H, W)
+            mean = self.running_mean[:, None, None]
+            var = self.running_var[:, None, None]
+
+        if self.weight is not None:
+            weight = self.weight[:, None, None] / var.sqrt().add(self.eps)
+            bias = -mean * weight + self.bias[:, None, None]
+            x = x * weight + bias
+        else:
+            x = (x - mean) / torch.sqrt(var + self.eps)
+        x = x.reshape(B, C, H, W)
+        return x
+
+    def extra_repr(self):
+        return (f'num_features={self.num_features}, '
+                f'ghost_batch_size={self.ghost_batch_size}')
+
+
+__all__.append('GhostNorm2d')
