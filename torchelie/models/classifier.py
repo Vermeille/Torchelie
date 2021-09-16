@@ -28,6 +28,13 @@ class ClassificationHead(tnn.CondSeq):
 
         self.to_resnet_style()
 
+    def to_concat_pool(self) -> 'ClassificationHead':
+        self.pool = tnn.AdaptiveConcatPool2d(1)
+        self.reshape = tnn.Reshape(self.in_channels * 2)
+        self.linear1 = kaiming(nn.Linear(self.in_channels * 2,
+            self.num_classes))
+        return self
+
     def to_resnet_style(self) -> 'ClassificationHead':
         """
         Set the classifier architecture to avgpool-flatten-linear.
