@@ -213,7 +213,7 @@ class RAdamW(Optimizer):
                 rho_t = rho_inf - ((2 * t * (beta2**t)) / (1 - beta2**t))
 
                 # Perform stepweight decay
-                p.data.mul_(1 - group['lr'] * group['weight_decay'])
+                p.data.mul_(1 - lr * group['weight_decay'])
 
                 if rho_t >= 5:
                     var = exp_avg_sq / (1 - beta2**t)
@@ -221,10 +221,11 @@ class RAdamW(Optimizer):
                     r = math.sqrt(((rho_t - 4) * (rho_t - 2) * rho_inf) /
                                   ((rho_inf - 4) * (rho_inf - 2) * rho_t))
 
-                    p.data.addcdiv_(exp_avg, var,
-                            value=-lr * r / (1 - beta1**t))
+                    p.data.addcdiv_(exp_avg,
+                                    var,
+                                    value=-lr * r / (1 - beta1**t))
                 else:
-                    p.data.add_(exp_avg, alpha=-lr/ (1 - beta1**t))
+                    p.data.add_(exp_avg, alpha=-lr / (1 - beta1**t))
 
         return loss
 
