@@ -318,4 +318,4 @@ class GhostBatchNorm2d(nn.Module):
                 f'ghost_batch_size={self.ghost_batch_size}')
 
 
-__all__.append('GhostNorm2d')
+__all__.append('GhostBatchNorm2d')
