@@ -53,7 +53,7 @@ class PadToSquare:
 
         pv = (sz - h) // 2
 
-        return TF.functional.pad(img, (ph, pv, ph, pv),
+        return TF.functional.pad(img, (ph, pv, sz - w - ph, sz - h - pv),
                                  padding_mode=self.padding_mode,
                                  fill=self.fill)
 
