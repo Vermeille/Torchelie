@@ -291,23 +291,27 @@ class GhostBatchNorm2d(nn.Module):
                 f'divided by ghost size {self.ghost_batch_size}')
 
             x = x.reshape(-1, self.ghost_batch_size, C, H, W)
-            mean = x.mean([1, 3, 4])
-            var = x.var([1, 3, 4], unbiased=False)
-            self.running_mean.mul_(self.momentum).add_(mean.detach().mean(0),
-                                                       alpha=1 - self.momentum)
-            self.running_var.mul_(self.momentum).add_(var.detach().mean(0),
-                                                      alpha=1 - self.momentum)
+            var, mean = torch.var_mean(x, [1, 3, 4], unbiased=False)
+            with torch.no_grad():
+                self.running_mean.mul_(self.momentum).add_(
+                        mean.mean(0), alpha=1 - self.momentum)
+                self.running_var.mul_(self.momentum).add_(
+                        var.mean(0), alpha=1 - self.momentum)
             mean = mean[:, None, :, None, None]
             var = var[:, None, :, None, None]
         else:
-            x = x.reshape(1, B, C, H, W)
-            mean = self.running_mean[:, None, None]
-            var = self.running_var[:, None, None]
+            x = x.reshape(B, C, H, W)
+            mean = self.running_mean[:, None, None].to(dtype=x.dtype)
+            var = self.running_var[:, None, None].to(dtype=x.dtype)
 
         if self.weight is not None:
-            weight = self.weight[:, None, None] / var.sqrt().add(self.eps)
-            bias = -mean * weight + self.bias[:, None, None]
-            x = x * weight + bias
+            weight = self.weight[:, None, None].to(dtype=x.dtype)
+            bias = self.bias[:, None, None].to(dtype=x.dtype)
+
+            weight = weight / var.sqrt().add(self.eps)
+            bias = bias.addcmul(mean, weight, value=-1)
+
+            x = bias.addcmul(x, weight)
         else:
             x = (x - mean) / torch.sqrt(var + self.eps)
         x = x.reshape(B, C, H, W)
