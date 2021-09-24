@@ -666,7 +666,7 @@ class ImageGradientVis:
 
 class Checkpoint(tu.AutoStateDict):
     """
-    Save object to disk every so often.
+    Save object to disk on epoch end
 
     Args:
         filename_base (str): a format string that is the filename. The format
