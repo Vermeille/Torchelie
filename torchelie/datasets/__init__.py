@@ -276,7 +276,7 @@ class Subset:
         generator = torch.Generator()
         if seed is not None:
             generator.manual_seed(seed)
-        indices = torch.randperm(len(ds))
+        indices = torch.randperm(len(ds), generator=generator)
         if num_indices is None:
             num_indices = int(len(indices) * ratio)
 
