@@ -436,14 +436,13 @@ def train(args, rank, world_size):
         print()
         print('testset')
         print(testset)
-        print()
-        print(model)
 
     if args.from_weights is not None:
         tu.load_state_dict_forgiving(
             model,
             torch.load(args.from_weights,
                        map_location='cuda:' + str(rank))['model'])
+
     if world_size > 1:
         model = torch.nn.parallel.DistributedDataParallel(model.to(rank),
                                                           device_ids=[rank],
