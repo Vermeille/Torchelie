@@ -266,7 +266,6 @@ class GhostBatchNorm2d(nn.Module):
             momentum (float): exponential moving average coefficient for
                 tracking batch statistics used at test time.
         """
-        nn.BatchNorm2d
         super().__init__()
         self.num_features = num_features
         if affine:
