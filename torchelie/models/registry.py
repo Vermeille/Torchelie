@@ -30,7 +30,7 @@ class Registry:
         technical debt
         """
 
-        def _f(*args, pretrained: Optional[str], **kwargs):
+        def _f(*args, pretrained: Optional[str] = None, **kwargs):
             model = f(*args, **kwargs)
             if pretrained:
                 ckpt = self.fetch(f'{pretrained}/{f.__name__}.pth')
