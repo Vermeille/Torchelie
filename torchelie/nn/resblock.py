@@ -18,6 +18,7 @@ class SEBlock(nn.Module):
         reduction (int): channels reduction factor for the hidden number of
             channels
     """
+
     def __init__(self, in_ch: int, reduction: int = 16) -> None:
         super(SEBlock, self).__init__()
         reduc = in_ch // reduction
@@ -26,8 +27,7 @@ class SEBlock(nn.Module):
                                      ('squeeze', kaiming(Conv1x1(in_ch,
                                                                  reduc))),
                                      ('relu', nn.ReLU(True)),
-                                     ('excite', kaiming(Conv1x1(reduc,
-                                                                in_ch))),
+                                     ('excite', kaiming(Conv1x1(reduc, in_ch))),
                                      ('attn', nn.Sigmoid())]))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -39,8 +39,7 @@ def _make_resnet_shortcut(in_channels: int, out_channels: int,
     assert stride in [1, 2]
     shortcut = CondSeq()
     if stride != 1:
-        shortcut.add_module(
-            'pool', nn.AvgPool2d(2, 2, ceil_mode=True))
+        shortcut.add_module('pool', nn.AvgPool2d(2, 2, ceil_mode=True))
 
     if in_channels != out_channels:
         shortcut.add_module(
@@ -59,6 +58,7 @@ class ResBlockBottleneck(nn.Module):
         out_ch (int): output channels
         stride (int): stride
     """
+
     def __init__(self,
                  in_channels: int,
                  out_channels: int,
@@ -151,8 +151,7 @@ class ResBlockBottleneck(nn.Module):
                       'upsample')
 
         if hasattr(self.shortcut, 'pool'):
-            self.shortcut.pool = InterpolateBilinear2d(
-                scale_factor=self.stride)
+            self.shortcut.pool = InterpolateBilinear2d(scale_factor=self.stride)
         return self
 
 
@@ -166,6 +165,7 @@ class ResBlock(nn.Module):
         out_channels (int): output channels
         stride (int): stride
     """
+
     def __init__(self,
                  in_channels: int,
                  out_channels: int,
@@ -231,8 +231,7 @@ def make_preact_resnet_shortcut(in_ch: int, out_ch: int,
     assert stride in [1, 2]
     sc: List[Tuple[str, nn.Module]] = []
     if stride != 1:
-        sc.append(
-            ('pool', nn.AvgPool2d(2, 2, ceil_mode=True)))
+        sc.append(('pool', nn.AvgPool2d(2, 2, ceil_mode=True)))
 
     if in_ch != out_ch:
         sc.append(('conv', kaiming(Conv1x1(in_ch, out_ch))))
