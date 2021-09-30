@@ -5,6 +5,7 @@ import torchelie.utils as tu
 
 from typing import List, Optional
 from .classifier import ClassificationHead
+from .registry import pretrained as _pretrained
 
 PREACT_BLOCKS = (tnn.PreactResBlock, tnn.PreactResBlockBottleneck)
 STD_BLOCKS = (tnn.ResBlock, tnn.ResBlockBottleneck)
@@ -228,6 +229,7 @@ def preact_resnet20_cifar(num_classes: int = 10) -> ResNet:
 #
 
 
+@_pretrained
 def resnet18(num_classes: int) -> ResNet:
     return ResNet([
         '64:4', '64:1', '64:1', '128:2', '128:1', '256:2', '256:1', '512:2',
@@ -235,12 +237,14 @@ def resnet18(num_classes: int) -> ResNet:
     ], num_classes)
 
 
+@_pretrained
 def resnet34(num_classes: int) -> ResNet:
     return ResNet(['64:4'] + ['64:1'] * 3 + ['128:2'] + ['128:1'] * 3
                   + ['256:2'] + ['256:1'] * 5 + ['512:2', '512:1', '512:1'],
                   num_classes)
 
 
+@_pretrained
 def resnet50(num_classes: int) -> ResNet:
     net = ResNet(['64:4'] + ['256:1'] * 3 + ['512:2'] + ['512:1'] * 3
                  + ['1024:2'] + ['1024:1'] * 5 + ['2048:2', '2048:1', '2048:1'],
@@ -249,6 +253,7 @@ def resnet50(num_classes: int) -> ResNet:
     return net
 
 
+@_pretrained
 def resnet101(num_classes: int) -> ResNet:
     net = ResNet(['64:4'] + ['256:1'] * 3 + ['512:2'] + ['512:1'] * 3
                  + ['1024:2'] + ['1024:1'] * 22
@@ -257,6 +262,7 @@ def resnet101(num_classes: int) -> ResNet:
     return net
 
 
+@_pretrained
 def resnet152(num_classes: int) -> ResNet:
     net = ResNet(['64:4'] + ['256:1'] * 3 + ['512:2'] + ['512:1'] * 7
                  + ['1024:2'] + ['1024:1'] * 35
