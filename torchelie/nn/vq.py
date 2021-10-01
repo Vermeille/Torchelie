@@ -143,7 +143,8 @@ class MultiVQ(nn.Module):
                  dim: int = 1,
                  commitment: float = 0.25,
                  init_mode: str = 'normal',
-                 return_indices: bool = True):
+                 return_indices: bool = True,
+                 max_age: int = 1000):
         assert latent_dim % num_codebooks == 0, (
             "num_codebooks must divide evenly latent_dim")
         super(MultiVQ, self).__init__()
@@ -156,7 +157,8 @@ class MultiVQ(nn.Module):
                dim=dim,
                commitment=commitment,
                init_mode=init_mode,
-               return_indices=return_indices) for _ in range(num_codebooks)
+               return_indices=return_indices,
+               max_age=max_age) for _ in range(num_codebooks)
         ])
 
     def forward(
