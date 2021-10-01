@@ -57,9 +57,10 @@ class NeuralStyle(torch.nn.Module):
                 content
         """
         self.loss.to(self.device)
-        self.loss.set_style(to_tensor(style_img).to(self.device), style_ratio)
+        self.loss.set_style(
+            to_tensor(style_img)[None].to(self.device), style_ratio)
         self.loss.set_content(
-            to_tensor(content_img).to(self.device), content_layers)
+            to_tensor(content_img)[None].to(self.device), content_layers)
 
         self.loss2.to(self.device)
         self.loss2.set_style(
@@ -67,27 +68,28 @@ class NeuralStyle(torch.nn.Module):
                                             scale_factor=0.5,
                                             mode='bilinear',
                                             align_corners=False,
-                                            recompute_scale_factor=True)[0].to(
+                                            recompute_scale_factor=True).to(
                                                 self.device), style_ratio)
         self.loss2.set_content(
             torch.nn.functional.interpolate(to_tensor(content_img)[None],
                                             scale_factor=0.5,
                                             mode='bilinear',
                                             align_corners=False,
-                                            recompute_scale_factor=True)[0].to(
+                                            recompute_scale_factor=True).to(
                                                 self.device), content_layers)
 
         canvas = ParameterizedImg(1,
                                   3,
                                   content_img.height,
                                   content_img.width,
-                                  init_img=to_tensor(content_img).unsqueeze(0)
+                                  init_img=to_tensor(content_img)[None]
                                   if init_with_content else None)
 
-        self.opt = tch.optim.RAdamW(canvas.parameters(),
-                                    3e-2,
-                                    betas=(0.9, 0.99),
-                                    weight_decay=0)
+        self.opt = tch.optim.AdaBelief(canvas.parameters(),
+                                       3e-3,
+                                       eps=1e-16,
+                                       betas=(0.9, 0.99),
+                                       weight_decay=0)
 
         def forward(_):
             img = canvas()
