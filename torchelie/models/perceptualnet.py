@@ -1,9 +1,10 @@
 from collections import OrderedDict
 
 import torch.nn as nn
-import torchvision.models as M
+from .vgg import vgg19
 from torchelie.nn import WithSavedActivations
 from typing import List
+from torchelie.nn.utils import edit_model
 
 
 class PerceptualNet(WithSavedActivations):
@@ -19,7 +20,9 @@ class PerceptualNet(WithSavedActivations):
         remove_unused_layers (bool): whether to remove layers past the last one
             used (default: True)
     """
-    def __init__(self, layers: List[str],
+
+    def __init__(self,
+                 layers: List[str],
                  use_avg_pool: bool = True,
                  remove_unused_layers: bool = True) -> None:
         # yapf: disable
@@ -35,9 +38,13 @@ class PerceptualNet(WithSavedActivations):
         ]
         # yapf: enable
 
-        m = M.vgg19(pretrained=True).eval().features
+        m = vgg19(1, pretrained='perceptual/imagenet').features
+        flat_vgg = [
+            layer for layer in m.modules()
+            if isinstance(layer, (nn.Conv2d, nn.ReLU, nn.MaxPool2d))
+        ]
         m = nn.Sequential(
-            OrderedDict([(l_name, l) for l_name, l in zip(layer_names, m)]))
+            OrderedDict([(l, mod) for l, mod in zip(layer_names, flat_vgg)]))
         for nm, mod in m.named_modules():
             if 'relu' in nm:
                 setattr(m, nm, nn.ReLU(False))
