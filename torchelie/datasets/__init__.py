@@ -268,7 +268,8 @@ class Subset:
                  remap_unused_classes=False,
                  seed=None,
                  include=True):
-        assert 0 <= ratio and ratio <= 1, "ratio must be in [0, 1]"
+        if ratio is not None:
+            assert 0 <= ratio and ratio <= 1, "ratio must be in [0, 1]"
         assert (ratio is not None) != (num_indices is not None), (
             "(only) one of ratio or num_indices must be provided")
         self.ds = ds
