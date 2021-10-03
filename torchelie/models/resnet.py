@@ -241,6 +241,11 @@ def resnet18(num_classes: int) -> ResNet:
 
 
 @register
+def seresnet18(num_classes: int) -> ResNet:
+    return resnet18(num_classes).add_se()
+
+
+@register
 def resnet34(num_classes: int) -> ResNet:
     return ResNet(['64:4'] + ['64:1'] * 3 + ['128:2'] + ['128:1'] * 3
                   + ['256:2'] + ['256:1'] * 5 + ['512:2', '512:1', '512:1'],
@@ -282,6 +287,11 @@ def resnet152(num_classes: int) -> ResNet:
 @register
 def preact_resnet18(num_classes: int) -> ResNet:
     return resnet18(num_classes).to_preact()
+
+
+@register
+def preact_seresnet18(num_classes: int) -> ResNet:
+    return preact_resnet18(num_classes).add_se()
 
 
 @register
