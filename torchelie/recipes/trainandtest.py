@@ -72,18 +72,11 @@ def TrainAndTest(model,
     train_loop.test_loop = test_loop
     train_loop.register('test_loop', test_loop)
 
-    def prepare_test(state):
-        test_loop.callbacks.update_state({
-            'epoch': state['epoch'],
-            'iters': state['iters'],
-            'epoch_batch': state['epoch_batch']
-        })
-
     train_loop.callbacks.add_prologues([tcb.Counter()])
     train_loop.callbacks.add_epilogues([
         tcb.VisdomLogger(visdom_env=visdom_env, log_every=log_every),
         tcb.StdoutLogger(log_every=log_every),
-        tcb.CallRecipe(test_loop, test_every, init_fun=prepare_test),
+        tcb.CallRecipe(test_loop, test_every),
     ])
 
     test_loop.callbacks.add_epilogues([
