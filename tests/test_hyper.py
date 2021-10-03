@@ -1,3 +1,6 @@
+import os
+from contextlib import suppress
+
 from torchelie.hyper import HyperparamSearch, UniformSampler
 
 
@@ -16,9 +19,6 @@ def rosen(x, y):
 
 hpsearch = HyperparamSearch(x=UniformSampler(-4.5, 4.5),
                             y=UniformSampler(-4.5, 4.5))
-
-import os
-from contextlib import suppress
 
 with suppress(FileNotFoundError):
     os.remove('hpsearch.json')
