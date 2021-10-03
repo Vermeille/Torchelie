@@ -34,12 +34,17 @@ class ResNetInput(nn.Module):
         assert stride in [1, 2, 4]
 
         self.pool = nn.Identity()
-        self.conv.stride = (1, 1)
+        self.conv.conv.stride = (1, 1)
 
+        if stride == 1:
+            self.conv.conv.stride = (1, 1)
+            self.pool = nn.Identity()
         if stride >= 2:
+            self.conv.conv.stride = (1, 1)
             self.pool = nn.MaxPool2d(3, 2, 1)
         if stride == 4:
-            self.conv.stride = (2, 2)
+            self.conv.conv.stride = (2, 2)
+            self.pool = nn.MaxPool2d(3, 2, 1)
         return self
 
     def set_input_specs(self, input_size: int, in_channels=3) -> 'ResNetInput':
