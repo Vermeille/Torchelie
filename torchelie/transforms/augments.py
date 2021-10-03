@@ -257,7 +257,6 @@ class SampleCutmix:
         y1 = int(min(h, y0 + v))
 
         xy = (x0, y0, x1, y1)
-        color = (125, 123, 114)
         img = x.copy()
         second = self.last_img.resize(x.size, PIL.Image.BICUBIC)
         second = second.crop(xy)
@@ -276,9 +275,9 @@ class Lighting(object):
         self.alphastd = alphastd
         self.eigval = torch.Tensor([0.2175, 0.0188, 0.0045])
         self.eigvec = torch.Tensor([
-            [-0.5675,  0.7192,  0.4009],
+            [-0.5675, 0.7192, 0.4009],
             [-0.5808, -0.0045, -0.8140],
-            [-0.5836, -0.6948,  0.4203],
+            [-0.5836, -0.6948, 0.4203],
         ])
 
         if eigval is not None:

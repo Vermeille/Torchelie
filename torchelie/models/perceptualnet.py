@@ -44,7 +44,7 @@ class PerceptualNet(WithSavedActivations):
             if isinstance(layer, (nn.Conv2d, nn.ReLU, nn.MaxPool2d))
         ]
         m = nn.Sequential(
-            OrderedDict([(l, mod) for l, mod in zip(layer_names, flat_vgg)]))
+            OrderedDict([(n, mod) for n, mod in zip(layer_names, flat_vgg)]))
         for nm, mod in m.named_modules():
             if 'relu' in nm:
                 setattr(m, nm, nn.ReLU(False))

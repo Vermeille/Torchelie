@@ -3,6 +3,7 @@ import torchelie.nn as tnn
 import torch.nn as nn
 
 from .registry import register
+from .classifier import ClassificationHead
 
 __all__ = ['AlexNet', 'alexnet', 'alexnet_bn', 'ZFNet', 'zfnet', 'zfnet_bn']
 
@@ -83,4 +84,4 @@ def zfnet(num_classes):
 
 @register
 def zfnet_bn(num_classes):
-    return ZNet(num_classes)
+    return ZFNet(num_classes)

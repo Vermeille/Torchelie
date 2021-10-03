@@ -12,8 +12,10 @@ class Registry:
     def from_source(self, src: str, model: str) -> dict:
         uri = f'{src}/{model}'
         if uri.lower().startswith('http'):
-            return torch.hub.load_state_dict_from_url(uri, map_location='cpu',
-                    file_name=model.replace('/', '.'))
+            return torch.hub.load_state_dict_from_url(uri,
+                                                      map_location='cpu',
+                                                      file_name=model.replace(
+                                                          '/', '.'))
         else:
             return torch.load(uri, map_location='cpu')
 
@@ -26,6 +28,7 @@ class Registry:
         raise Exception(f'No source contains pretrained model {model}')
 
     def register_decorator(self, f):
+
         def _f(*args, pretrained: Optional[str] = None, **kwargs):
             model = f(*args, **kwargs)
             if pretrained:
@@ -38,7 +41,7 @@ class Registry:
         return _f
 
     def get_model(self, name, *args, **kwargs):
-        return self.known_models[name](*args, ** kwargs)
+        return self.known_models[name](*args, **kwargs)
 
 
 registry = Registry()

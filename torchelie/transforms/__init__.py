@@ -40,6 +40,7 @@ class ResizeNoCrop:
 
 
 class PadToSquare:
+
     def __init__(self, padding_mode='reflect', fill=0):
         self.padding_mode = padding_mode
         self.fill = fill
@@ -56,6 +57,7 @@ class PadToSquare:
         return TF.functional.pad(img, (ph, pv, sz - w - ph, sz - h - pv),
                                  padding_mode=self.padding_mode,
                                  fill=self.fill)
+
 
 class AdaptPad:
     """
@@ -125,12 +127,15 @@ class ResizedCrop(object):
 
     Args:
         size: expected output size of each edge
-        scale: size of the origin size cropped
+        scale: zoom factor
         interpolation: Default: PIL.Image.BILINEAR
     """
 
-    def __init__(self, size, scale=0.54, ratio=1,
-            interpolation=TF.InterpolationMode.BILINEAR):
+    def __init__(self,
+                 size,
+                 scale=1,
+                 ratio=1,
+                 interpolation=TF.InterpolationMode.BILINEAR):
         if isinstance(size, tuple):
             self.size = size
         else:

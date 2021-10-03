@@ -383,7 +383,8 @@ def load_state_dict_forgiving(dst, state_dict: dict):
         try:
             dst_dict[name].copy_(val)
         except Exception as e:
-            print('error in', name, ':', val.shape, '->', dst_dict[name].shape)
+            print('error in', name, ': checkpoint has ', val.shape, '-> model',
+                  dst_dict[name].shape, '(', str(e), ')')
 
 
 class FrozenModule(nn.Module):
