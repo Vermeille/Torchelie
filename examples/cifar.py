@@ -1,5 +1,5 @@
 """
-This example demonstrates how to learn MNIST with Torchelie. It can be
+This example demonstrates how to learn CIFAR-10 with Torchelie. It can be
 trivially modified to fit another dataset or model.
 
 Better than that, make sure to check the Classification Recipe's builtin
@@ -75,8 +75,7 @@ def train():
     dlt = torch.utils.data.DataLoader(dst,
                                       num_workers=4,
                                       batch_size=256,
-                                      pin_memory=True
-                                      )
+                                      pin_memory=True)
     recipe = CrossEntropyClassification(model,
                                         dl,
                                         dlt,
@@ -86,12 +85,12 @@ def train():
                                         beta1=0.9,
                                         log_every=100,
                                         test_every=len(dl),
-                                        visdom_env='cifar_'+m,
+                                        visdom_env='cifar_' + m,
                                         n_iters=len(dl) * opts.epochs)
 
     recipe.to(opts.device)
     print(recipe)
-    recipe.run(opts.epochs+1)
+    recipe.run(opts.epochs + 1)
 
 
 if __name__ == '__main__':

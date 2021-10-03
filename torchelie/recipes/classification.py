@@ -10,7 +10,8 @@ directory with a folder per class, you can run it with a command line.
 `python3 -m torchelie.recipes.classification --trainset path/to/train --testset
 path/to/test`
 """
-from typing import List, Optional, Callable, Iterable, Any, Literal
+from typing import List, Optional, Callable, Iterable, Any
+from typing_extensions import Literal
 
 import torch
 import torchvision.models as tvmodels
@@ -19,7 +20,6 @@ import torchelie as tch
 import torchelie.callbacks as tcb
 import torchelie.utils as tu
 from torchelie.lr_scheduler import HyperbolicTangentDecay, CurriculumScheduler
-from torchelie.transforms.randaugment import RandAugment
 from torchelie.recipes.trainandtest import TrainAndTest
 from torchelie.optim import Lookahead, AdaBelief
 
@@ -133,10 +133,6 @@ def Classification(model,
             loop.callbacks.add_epilogues([
                 tcb.ConfusionMatrix(classes),
             ])
-        else:
-            loop.callbacks.add_callbacks([
-                tcb.TopkAccAvg(),
-            ])
         loop.callbacks.add_epilogues(
             [tcb.ClassificationInspector(30, classes),
              tcb.MetricsTable()])
@@ -146,6 +142,9 @@ def Classification(model,
             tcb.ConfusionMatrix(classes),
         ])
     else:
+        loop.callbacks.add_callbacks([
+            tcb.TopkAccAvg(),
+        ])
         loop.test_loop.callbacks.add_callbacks([
             tcb.TopkAccAvg(post_each_batch=False, avg_type='running'),
         ])
@@ -394,9 +393,10 @@ def train(args, rank, world_size):
     import torchelie.transforms as TTF
 
     tfm = TF.Compose([
+        TF.RandomApply([TTF.PadToSquare()]),
         TF.RandomResizedCrop(args.im_size),
         TF.RandomHorizontalFlip(),
-        RandAugment(2, 5).berserk_mode(),
+        TTF.RandAugment(1, 30),
         TF.ToTensor(),
         TF.Normalize([0.5] * 3, [0.2] * 3),
     ])

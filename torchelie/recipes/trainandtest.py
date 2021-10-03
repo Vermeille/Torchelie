@@ -26,6 +26,7 @@ def TrainAndTest(model,
     - Counter for counting iterations, connected to the testing loop as well
     - VisdomLogger
     - StdoutLogger
+    - SeedDistributedSampler
 
     Testing:
 
@@ -77,6 +78,7 @@ def TrainAndTest(model,
         tcb.VisdomLogger(visdom_env=visdom_env, log_every=log_every),
         tcb.StdoutLogger(log_every=log_every),
         tcb.CallRecipe(test_loop, test_every),
+        tcb.SeedDistributedSampler(),
     ])
 
     test_loop.callbacks.add_epilogues([
