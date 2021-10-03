@@ -10,7 +10,7 @@ directory with a folder per class, you can run it with a command line.
 `python3 -m torchelie.recipes.classification --trainset path/to/train --testset
 path/to/test`
 """
-from typing import List, Optional, Callable, Iterable, Any
+from typing import List, Optional, Callable, Iterable, Any, Literal
 
 import torch
 import torchvision.models as tvmodels
@@ -21,7 +21,7 @@ import torchelie.utils as tu
 from torchelie.lr_scheduler import HyperbolicTangentDecay, CurriculumScheduler
 from torchelie.transforms.randaugment import RandAugment
 from torchelie.recipes.trainandtest import TrainAndTest
-from torchelie.optim import RAdamW, Lookahead
+from torchelie.optim import Lookahead, AdaBelief
 
 from torch.cuda.amp import autocast
 
@@ -138,7 +138,7 @@ def Classification(model,
                 tcb.TopkAccAvg(),
             ])
         loop.callbacks.add_epilogues(
-            [#tcb.ClassificationInspector(30, classes),
+            [tcb.ClassificationInspector(30, classes),
              tcb.MetricsTable()])
 
     if len(classes) <= 50:
@@ -163,7 +163,8 @@ def CrossEntropyClassification(model,
                                train_loader: Iterable[Any],
                                test_loader: Iterable[Any],
                                classes: List[str],
-                               lr: float = 3e-3,
+                               *,
+                               lr: float = 1e-3,
                                beta1: float = 0.9,
                                beta2: float = 0.999,
                                wd: float = 1e-2,
@@ -171,6 +172,8 @@ def CrossEntropyClassification(model,
                                test_every: int = 1000,
                                log_every: int = 100,
                                checkpoint: Optional[str] = 'model',
+                               optimizer: Literal['sgd',
+                                                  'adabelief'] = 'adabelief',
                                n_iters: Optional[int] = None):
     """
     Extends Classification with default cross entropy forward passes. Also adds
@@ -225,15 +228,17 @@ def CrossEntropyClassification(model,
         n_iters (optional, int): the number of iterations to train for. If
             provided, switch to a FlatAndCosineEnd scheduler
     """
+    assert optimizer in ['sgd', 'adabelief']
 
     def train_step(batch):
         x, y = batch
         with autocast():
             pred = model(x)
             loss = torch.nn.functional.cross_entropy(pred, y)
-        loss.backward()
+            loss.backward()
         return {'loss': loss, 'pred': pred.float()}
 
+    @torch.no_grad()
     def validation_step(batch):
         x, y = batch
         pred = model(x)
@@ -251,23 +256,29 @@ def CrossEntropyClassification(model,
                           log_every=log_every,
                           checkpoint=checkpoint)
 
-    #opt = (RAdamW(model.parameters(), lr=lr, betas=(beta1, beta2), weight_decay=wd, adabelief=True))
-    opt = torch.optim.SGD(model.parameters(),
-                          lr=0,
-                          weight_decay=wd,
-                          momentum=beta1, nesterov=True)
+    if optimizer == 'adabelief':
+        opt = AdaBelief(model.parameters(),
+                        lr=lr,
+                        betas=(beta1, beta2),
+                        weight_decay=wd)
+        if n_iters is not None:
+            sched = HyperbolicTangentDecay(opt, n_iters)
+    else:
+        opt = torch.optim.SGD(model.parameters(),
+                              lr=0,
+                              weight_decay=wd,
+                              momentum=beta1)
+        if n_iters is not None:
+            pct5 = int(0.05 * n_iters)
+            sched = CurriculumScheduler(opt, [(0, 0, beta1), (pct5, lr, beta1),
+                                              (n_iters, 0, beta1)])
 
     loop.register('opt', opt)
-    #loop.callbacks.add_prologue(ProgressiveUncropping(n_iters))
     loop.callbacks.add_callbacks([
         tcb.Optimizer(opt, log_lr=True, centralize_grad=False),
         tcb.Throughput(),
     ])
     if n_iters is not None:
-        #sched = HyperbolicTangentDecay(opt, n_iters)
-        sched = CurriculumScheduler(opt, [(0, 0, beta1),
-                                          (len(train_loader) * 2, lr, beta1),
-                                          (n_iters, 0, beta1)])
         loop.register('sched', sched)
 
         loop.callbacks.add_callbacks(
