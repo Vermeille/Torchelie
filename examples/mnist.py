@@ -9,6 +9,7 @@ dataset is to learn by fitting a default model with default transforms and
 hyperparameters.
 """
 import argparse
+from contextlib import suppress
 
 import torch
 import torch.nn as nn
@@ -24,8 +25,10 @@ from torchelie.recipes.classification import CrossEntropyClassification
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', choices=['cpu', 'cuda'], default='cpu')
-    parser.add_argument('--epochs', default=1, type=int)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--epochs', default=200, type=int)
+    parser.add_argument('--lr', type=float, default=0.1)
+    parser.add_argument('--wd', type=float, default=5e-4)
+    parser.add_argument('--network', required=True)
     return parser.parse_args()
 
 
@@ -57,8 +60,13 @@ def get_datasets():
 def train():
     opts = get_args()
     ds, dst = get_datasets()
-    model = tch.models.preact_resnet20_cifar(num_classes=10)
-    print(model)
+    m = opts.network
+    model = tch.models.get_model(m, num_classes=10)
+
+    with suppress(AttributeError):
+        # Use a stem suitable for cifar10
+        model.features.input.set_input_specs(32)
+
     dl = torch.utils.data.DataLoader(ds,
                                      num_workers=4,
                                      batch_size=128,
@@ -74,14 +82,16 @@ def train():
                                         dlt,
                                         ds.classes,
                                         lr=opts.lr,
-                                        wd=0.1,
+                                        wd=opts.wd,
                                         beta1=0.9,
                                         log_every=100,
-                                        test_every=500,
-                                        visdom_env='cifar_preactresnet20')
+                                        test_every=len(dl),
+                                        visdom_env='cifar_'+m,
+                                        n_iters=len(dl) * opts.epochs)
 
     recipe.to(opts.device)
-    recipe.run(opts.epochs)
+    print(recipe)
+    recipe.run(opts.epochs+1)
 
 
 if __name__ == '__main__':
