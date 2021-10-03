@@ -177,7 +177,7 @@ def CrossEntropyClassification(model,
                                n_iters: Optional[int] = None):
     """
     Extends Classification with default cross entropy forward passes. Also adds
-    RAdamW and ReduceLROnPlateau.
+    AdaBelief/SGD and HTC/LinearSchedule
 
     Inherited training callbacks:
 
@@ -192,7 +192,7 @@ def CrossEntropyClassification(model,
 
     Training callbacks:
 
-    - Optimizer with RAdamW
+    - Optimizer with AdaBelief/SGD
     - LRSched with ReduceLROnPlateau
 
     Testing:
@@ -216,8 +216,8 @@ def CrossEntropyClassification(model,
         test_loader (DataLoader): Testing set dataloader
         classes (list of str): classes name, in order
         lr (float): the learning rate
-        beta1 (float): RAdamW's beta1
-        beta2 (float): RAdamW's beta2
+        beta1 (float): AdaBelief's beta1 / SGD's momentum
+        beta2 (float): AdaBelief's beta2
         wd (float): weight decay
         visdom_env (str): name of the visdom environment to use, or None for
             not using Visdom (default: None)
@@ -303,7 +303,7 @@ def MixupClassification(model,
                         log_every: int = 100):
     """
     A Classification recipe with a default froward training / testing pass
-    using cross entropy and mixup, and extended with RAdamW and
+    using cross entropy and mixup, and extended with AdaBelief and
     ReduceLROnPlateau.
 
     Args:
@@ -315,8 +315,8 @@ def MixupClassification(model,
             categorical targets.
         classes (list of str): classes name, in order
         lr (float): the learning rate
-        beta1 (float): RAdamW's beta1
-        beta2 (float): RAdamW's beta2
+        beta1 (float): AdaBelief's beta1
+        beta2 (float): AdaBelief's beta2
         wd (float): weight decay
         visdom_env (str): name of the visdom environment to use, or None for
             not using Visdom (default: None)
@@ -374,8 +374,10 @@ def MixupClassification(model,
     ])
 
     opt = Lookahead(
-        RAdamW(model.parameters(), lr=lr, betas=(beta1, beta2),
-               weight_decay=wd))
+        AdaBelief(model.parameters(),
+                  lr=lr,
+                  betas=(beta1, beta2),
+                  weight_decay=wd))
     loop.register('opt', opt)
     loop.callbacks.add_callbacks([
         tcb.Optimizer(opt, log_lr=True),
@@ -520,4 +522,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     tu.parallel_run(train, args)
-    #train(args, 0, 1)
