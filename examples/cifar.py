@@ -80,6 +80,7 @@ def train():
                                         dl,
                                         dlt,
                                         ds.classes,
+                                        optimizer='sgd',
                                         lr=opts.lr,
                                         wd=opts.wd,
                                         beta1=0.9,
