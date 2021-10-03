@@ -78,9 +78,12 @@ class ResNetInputImproved(tnn.CondSeq):
         self.conv3 = tnn.ConvBlock(out_channels // 2, out_channels, 3, stride=1)
 
     def set_input_specs(self, input_size: int, in_channels=3) -> 'ResNetInput':
-        self.in_channels = in_channels
-        in_ch = self.in_channels
         out_ch = self.out_channels
+
+        if self.in_channels != in_channels:
+            self.conv1 = tnn.ConvBlock(in_channels, out_ch // 2, 3, stride=2)
+
+        self.in_channels = in_channels
 
         if input_size <= 64:
             self.conv1.conv.stride = (1, 1)

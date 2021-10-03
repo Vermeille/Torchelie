@@ -84,7 +84,7 @@ def smoothed_cross_entropy(pred: torch.Tensor,
     n_classes = pred.shape[1]
     wrong_prob = (1 - smoothing) / (n_classes - 1)
 
-    wrong_sum = pred.sum(1) * wrong_prob
+    wrong_sum = prob.sum(1) * wrong_prob
     good = pred.gather(0, targets.unsqueeze(0)).squeeze(0)
     good *= (smoothing - wrong_prob)
     return -torch.mean(wrong_sum + good)

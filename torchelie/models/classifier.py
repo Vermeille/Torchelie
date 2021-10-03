@@ -32,7 +32,7 @@ class ClassificationHead(tnn.CondSeq):
         self.pool = tnn.AdaptiveConcatPool2d(1)
         self.reshape = tnn.Reshape(self.in_channels * 2)
         self.linear1 = kaiming(nn.Linear(self.in_channels * 2,
-            self.num_classes))
+                                         self.num_classes))
         return self
 
     def to_resnet_style(self) -> 'ClassificationHead':
@@ -42,8 +42,7 @@ class ClassificationHead(tnn.CondSeq):
         self._modules = OrderedDict([
             ('pool', nn.AdaptiveAvgPool2d(1)),
             ('reshape', tnn.Reshape(self.in_channels)),
-            ('linear1', kaiming(nn.Linear(self.in_channels,
-                                          self.num_classes))),
+            ('linear1', kaiming(nn.Linear(self.in_channels, self.num_classes))),
         ])
 
         return self
@@ -93,6 +92,7 @@ class ClassificationHead(tnn.CondSeq):
             if isinstance(m, nn.Linear):
                 return tnn.Conv1x1(m.in_features, m.out_features)
             return m
+
         tnn.utils.edit_model(self, _do)
         return self
 
@@ -156,6 +156,7 @@ class ProjectionDiscr(nn.Module):
             feature extractor
         num_classes (int): the number of output classes
     """
+
     def __init__(self, in_channels: int, num_classes: int) -> None:
         super().__init__()
         self.head = nn.Sequential(
