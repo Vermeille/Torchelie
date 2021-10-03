@@ -14,3 +14,4 @@ from .attention import Attention56Bone, attention56
 from .stylegan2 import StyleGAN2Generator, StyleGAN2Discriminator
 from .efficient import EfficientNet
 from .registry import *
+from .alexnet import *
