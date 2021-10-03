@@ -1,6 +1,93 @@
 torchelie.models
 ================
 
+We provide trained models. Use the argument :code:`pretrained=task` in order to
+use them. Example: :code:`torchelie.models.resnet18(1000, pretrained='classification/imagenet')`.
+
+Alternatively: :code:`torchelie.models.get_model('resnet_18', 1000, pretrained='classification/imagenet')`
+
+.. list-table:: Pretrained models
+   :header-rows: 1
+   * - model
+     - task
+     - notes
+     - source
+
+   * - resnet18
+     - classification/imagenet
+     - top1: 69.75%
+     - torchvision
+
+   * - resnet34
+     - classification/imagenet
+     - top1: 73.31%
+     - torchvision
+
+   * - resnet50
+     - classification/imagenet
+     - top1: 76.13%
+     - torchvision
+
+   * - resnet101
+     - classification/imagenet
+     - top1: 77.37%
+     - torchvision
+
+   * - resnet152
+     - classification/imagenet
+     - top1: 78.31%
+     - torchvision
+
+   * - **preact_resnet18**
+     - **classification/imagenet**
+     - top1: 68.41% (192x192 crop)
+     - **torchelie**
+
+   * - vgg11
+     - classification/imagenet
+     - top1: 69.02%
+     - torchvision
+
+   * - vgg13
+     - classification/imagenet
+     - top1: 69.92%
+     - torchvision
+
+   * - vgg16
+     - classification/imagenet
+     - top1: 71.59%
+     - torchvision
+
+   * - vgg19
+     - classification/imagenet
+     - top1: 72.37%
+     - torchvision
+
+   * - vgg11_bn
+     - classification/imagenet
+     - top1: 70.37%
+     - torchvision
+
+   * - vgg13_bn
+     - classification/imagenet
+     - top1: 71.58%
+     - torchvision
+
+   * - vgg16_bn
+     - classification/imagenet
+     - top1: 73.36%
+     - torchvision
+
+   * - vgg19_bn
+     - classification/imagenet
+     - top1: 74.21%
+     - torchvision
+
+   * - **vgg19**
+     - **perceptual/imagenet**
+     - activations normalized to have mean 1 for perceptual losses
+     - **torchelie**
+
 .. currentmodule:: torchelie.models
 
 VGG
