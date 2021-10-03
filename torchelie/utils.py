@@ -86,7 +86,7 @@ def kaiming_gain(m: T_Module,
 def kaiming(m: T_Module,
             a: float = 0,
             nonlinearity: str = 'leaky_relu',
-            mode: str = 'fan_in',
+            mode: str = 'fan_out',
             dynamic: bool = False) -> T_Module:
     """
     Initialize a module with kaiming normal init
