@@ -81,9 +81,9 @@ def TrainAndTest(model,
 
     train_loop.callbacks.add_prologues([tcb.Counter()])
     train_loop.callbacks.add_epilogues([
-        tcb.CallRecipe(test_loop, test_every, init_fun=prepare_test),
         tcb.VisdomLogger(visdom_env=visdom_env, log_every=log_every),
         tcb.StdoutLogger(log_every=log_every),
+        tcb.CallRecipe(test_loop, test_every, init_fun=prepare_test),
     ])
 
     test_loop.callbacks.add_epilogues([
