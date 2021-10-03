@@ -2,6 +2,7 @@ from typing import Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchelie.utils import experimental
 
 
 def ortho(w: torch.Tensor) -> torch.Tensor:
@@ -65,3 +66,25 @@ def continuous_cross_entropy(pred: torch.Tensor,
     if reduction == 'none':
         return ce
     assert False, f'{reduction} not a valid reduction method'
+
+
+@experimental
+def smoothed_cross_entropy(pred: torch.Tensor,
+                           targets: torch.tensor,
+                           smoothing: float = 0.9):
+    """
+    Cross entropy with label smoothing
+
+    Args:
+        pred (FloatTensor): a 2D logits prediction
+        targets (LongTensor): 1D indices
+        smoothing (float): target probability value for the correct class
+    """
+    prob = F.log_softmax(pred)
+    n_classes = pred.shape[1]
+    wrong_prob = (1 - smoothing) / (n_classes - 1)
+
+    wrong_sum = pred.sum(1) * wrong_prob
+    good = pred.gather(0, targets.unsqueeze(0)).squeeze(0)
+    good *= (smoothing - wrong_prob)
+    return -torch.mean(wrong_sum + good)
