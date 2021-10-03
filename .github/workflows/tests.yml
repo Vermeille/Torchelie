@@ -30,6 +30,7 @@ jobs:
       - name: "Install dependencies"
         run: |
           pip install -r requirements.txt
+          pip install -r requirements-full.txt
       - name: "Run tests with pytest (without OpenCV)"
         run: |
           python -m pytest -m "not require_opencv and not require_tensorboard"
