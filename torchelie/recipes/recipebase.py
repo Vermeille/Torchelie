@@ -36,7 +36,10 @@ class CallbacksRunner:
         for nm, cb in self.named_callbacks():
             if hasattr(cb, 'state_dict'):
                 serial_cb[nm] = cb.state_dict()
-        return {'state': self.state, 'callbacks': serial_cb}
+        return {
+            'state': {k: v for k, v in self.state.items() if k[0] != '_'},
+            'callbacks': serial_cb
+        }
 
     def load_state_dict(self, dicc):
         self.state = dicc['state']
@@ -232,6 +235,7 @@ class Recipe(RecipeBase):
 
         self.callbacks = CallbacksRunner()
         self.register('callbacks', self.callbacks)
+        self.callbacks.update_state({'_loader': loader})
 
     def run(self, epochs):
         """
@@ -249,7 +253,7 @@ class Recipe(RecipeBase):
             for batch in self.loader:
                 self.callbacks.update_state({'batch': batch})
                 batch = tu.send_to_device(batch, self.device, non_blocking=True)
-                self.callbacks.update_state({'batch_gpu': batch})
+                self.callbacks.update_state({'_batch_gpu': batch})
 
                 self.callbacks('on_batch_start')
                 out = self.call_fun(batch)

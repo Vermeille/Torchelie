@@ -637,14 +637,14 @@ class ImageGradientVis:
     """
 
     def on_batch_start(self, state):
-        state['batch_gpu'][0].requires_grad = True
+        state['_batch_gpu'][0].requires_grad = True
 
     @torch.no_grad()
     def on_batch_end(self, state):
         if not state.get('visdom_will_log', False):
             return
 
-        x = state['batch_gpu'][0]
+        x = state['_batch_gpu'][0]
         img = self.compute_image(x).cpu()
         state['metrics']['feature_vis'] = img
 
@@ -1175,3 +1175,17 @@ class GANMetrics:
         closest = torch.cdist(query_, base_).min(dim=1)
         is_included = (knn_radius[closest.indices] > closest.values).float()
         return torch.mean(is_included).item()
+
+
+class SeedDistributedSampler:
+    """
+    If the current DataLoader uses DistributedSampler, it has to be seeded
+    every epoch with the epoch number. This callback takes care of that.
+    """
+
+    def on_epoch_end(self, state):
+        DDP = torch.nn.parallel.DistributedDataParallel
+
+        loader = state.get('_loader', None)
+        if loader is not None and isinstance(loader.sampler, DDP):
+            loader.sampler.set_epoch(state['epoch'] + 1)
