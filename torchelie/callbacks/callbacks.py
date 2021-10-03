@@ -917,6 +917,19 @@ class ConfusionMatrix:
         state['metrics']['cm'] = html
 
 
+class _PrepareTest:
+
+    def __init__(self, loop):
+        self.loop = loop
+
+    def __call__(self, state):
+        self.loop.callbacks.update_state({
+            'epoch': state['epoch'],
+            'iters': state['iters'],
+            'epoch_batch': state['epoch_batch']
+        })
+
+
 class CallRecipe:
     """
     Call another recipe.
@@ -932,6 +945,10 @@ class CallRecipe:
         self.loop = loop
         self.run_every = run_every
         self.prefix = prefix
+
+        if hasattr(loop, 'callbacks') and init_fun is None:
+            init_fun = _PrepareTest(loop)
+
         self.init_fun = init_fun
 
     def on_batch_end(self, state):
