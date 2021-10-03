@@ -139,10 +139,7 @@ class AdaBelief(Optimizer):
         if not 0.0 <= betas[1] < 1.0:
             raise ValueError("Invalid beta parameter at index 1: {}".format(
                 betas[1]))
-        defaults = dict(lr=lr,
-                        betas=betas,
-                        eps=eps,
-                        weight_decay=weight_decay)
+        defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
         super(AdaBelief, self).__init__(params, defaults)
 
     def step(self, closure=None):
@@ -189,9 +186,7 @@ class AdaBelief(Optimizer):
                 # Decay the first and second moment running average coefficient
                 exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
                 belief = grad - exp_avg
-                exp_avg_sq.mul_(beta2).addcmul_(belief,
-                                                belief,
-                                                value=1 - beta2)
+                exp_avg_sq.mul_(beta2).addcmul_(belief, belief, value=1 - beta2)
                 # This is everything. See EAdam.
                 exp_avg_sq = exp_avg_sq + eps
 
@@ -201,9 +196,7 @@ class AdaBelief(Optimizer):
                 # Perform stepweight decay
                 p.data.mul_(1 - lr * group['weight_decay'])
 
-                p.data.addcdiv_(exp_avg,
-                                var,
-                                value=-lr / (1 - beta1**t))
+                p.data.addcdiv_(exp_avg, var, value=-lr / (1 - beta1**t))
 
         return loss
 
@@ -250,10 +243,7 @@ class RAdamW(Optimizer):
         if not 0.0 <= betas[1] < 1.0:
             raise ValueError("Invalid beta parameter at index 1: {}".format(
                 betas[1]))
-        defaults = dict(lr=lr,
-                        betas=betas,
-                        eps=eps,
-                        weight_decay=weight_decay)
+        defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
         super(RAdamW, self).__init__(params, defaults)
 
     def step(self, closure=None):
@@ -310,9 +300,9 @@ class RAdamW(Optimizer):
 
                 if rho_t >= 5:
                     var = exp_avg_sq.sqrt().add_(eps)
-                    r = math.sqrt((1 - beta2**t)*
-                            ((rho_t - 4) * (rho_t - 2) * rho_inf) /
-                                  ((rho_inf - 4) * (rho_inf - 2) * rho_t))
+                    r = math.sqrt(
+                        (1 - beta2**t) * ((rho_t - 4) * (rho_t - 2) * rho_inf) /
+                        ((rho_inf - 4) * (rho_inf - 2) * rho_t))
 
                     p.data.addcdiv_(exp_avg,
                                     var,
@@ -335,23 +325,28 @@ class Lookahead(Optimizer):
     """
 
     def __init__(self, base_optimizer, alpha=0.5, k=5):
-        super().__init__({}, {})
         if not 0.0 <= alpha <= 1.0:
             raise ValueError('Invalid slow update rate: ' + str(alpha))
         if not 1 <= k:
             raise ValueError('Invalid lookahead steps: ' + str(k))
 
-        self.alpha = alpha
-        self.k = k
+        pgroups = [{'params': p['params']} for p in base_optimizer.param_groups]
+        super().__init__(pgroups, dict(la_alpha=alpha, la_k=k))
         self.optimizer = base_optimizer
-        self.state: dict = defaultdict(dict)
-        self.param_groups = base_optimizer.param_groups
+
+        with torch.no_grad():
+            for group in pgroups:
+                for p in group['params']:
+                    self.state[p]['la_slow'] = p.clone()
 
     def state_dict(self):
-        return {'lookahead': self.state, 'opt': self.optimizer.state_dict()}
+        return {
+            'lookahead': super().state_dict(),
+            'opt': self.optimizer.state_dict()
+        }
 
     def load_state_dict(self, state):
-        self.state = state['lookahead']
+        super().load_state_dict(state['lookahead'])
         self.optimizer.load_state_dict(state['opt'])
 
     def zero_grad(self):
@@ -368,26 +363,24 @@ class Lookahead(Optimizer):
         if closure is not None:
             loss = closure()
         loss = self.optimizer.step()
-        if 'steps' not in self.state:
-            self.state['steps'] = 0
-        steps = self.state['steps']
 
-        self.state['steps'] += 1
+        for group in self.param_groups:
+            k = group['la_k']
+            alpha = group['la_alpha']
 
-        if steps % self.k != 0:
-            return loss
-
-        for group in self.optimizer.param_groups:
             for p in group['params']:
-                if p not in self.state:
-                    self.state[p] = p.detach().clone()
-                    self.state[p].requires_grad = False
+                state = self.state[p]
 
-                q = self.state[p]
-                q.data.add_(p.data - q.data, alpha=self.alpha)
+                steps = state.get('la_steps', 0)
+                state['la_steps'] = steps + 1
+
+                if steps % k != 0:
+                    continue
+
+                q = state['la_slow']
+                # q = q + alpha (p - q)
+                # q = q + alpha p - alpha q
+                # q = alpha p + (1 - alpha) q
+                q.data.add_(p.data - q.data, alpha=alpha)
                 p.data.copy_(q.data)
         return loss
-
-    def __repr__(self):
-        return "Lookahead({}, alpha={}, k={})".format(repr(self.optimizer),
-                                                      self.alpha, self.k)
