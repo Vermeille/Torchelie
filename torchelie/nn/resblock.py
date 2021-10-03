@@ -72,11 +72,10 @@ class ResBlockBottleneck(nn.Module):
 
         self.wide(divisor=4)
 
-        self.relu = nn.ReLU(True)
-
         self.shortcut = _make_resnet_shortcut(in_channels, out_channels, stride)
 
         self.post = CondSeq()
+        self.post.relu = nn.ReLU(True)
 
     def condition(self, z: torch.Tensor) -> None:
         self.branch.condition(z)
@@ -91,7 +90,7 @@ class ResBlockBottleneck(nn.Module):
             self.condition(z)
 
         x = self.pre(x)
-        x = self.relu(self.branch(x).add_(self.shortcut(x)))
+        x = self.branch(x).add_(self.shortcut(x))
         return self.post(x)
 
     def remove_batchnorm(self) -> 'ResBlockBottleneck':
@@ -193,7 +192,6 @@ class ResBlock(nn.Module):
             ]))
 
         self.shortcut = _make_resnet_shortcut(in_channels, out_channels, stride)
-
 
         self.post = CondSeq()
         self.post.relu = nn.ReLU(True)
@@ -306,8 +304,9 @@ class PreactResBlock(nn.Module):
             self.preact.add_module('bn1', cast(nn.Module, self.branch.bn1))
             del self.branch.bn1
 
-        self.preact.add_module('relu', cast(nn.Module, self.branch.relu))
-        del self.branch.relu
+        if hasattr(self.branch, 'relu'):
+            self.preact.add_module('relu', cast(nn.Module, self.branch.relu))
+            del self.branch.relu
 
         return self
 
@@ -385,8 +384,9 @@ class PreactResBlockBottleneck(nn.Module):
             self.preact.add_module('bn1', cast(nn.Module, self.branch.bn1))
             del self.branch.bn1
 
-        self.preact.add_module('relu', cast(nn.Module, self.branch.relu))
-        del self.branch.relu
+        if hasattr(self.branch, 'relu'):
+            self.preact.add_module('relu', cast(nn.Module, self.branch.relu))
+            del self.branch.relu
 
         return self
 

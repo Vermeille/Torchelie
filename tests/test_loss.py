@@ -71,8 +71,8 @@ def test_funcs():
 
 def test_neural_style():
     ns = NeuralStyleLoss()
-    ns.set_content(torch.randn(3, 128, 128))
-    ns.set_style(torch.randn(3, 128, 128), 1)
+    ns.set_content(torch.randn(1, 3, 128, 128))
+    ns.set_style(torch.randn(1, 3, 128, 128), 1)
     ns(torch.randn(1, 3, 128, 128))
 
 
