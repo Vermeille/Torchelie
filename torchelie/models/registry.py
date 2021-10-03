@@ -7,6 +7,7 @@ class Registry:
 
     def __init__(self):
         self.sources = ['https://s3.eu-west-3.amazonaws.com/torchelie.models']
+        self.known_models = {}
 
     def from_source(self, src: str, model: str) -> dict:
         uri = f'{src}/{model}'
@@ -24,12 +25,7 @@ class Registry:
                 print(f'{model} not found in source {source}, next', str(e))
         raise Exception(f'No source contains pretrained model {model}')
 
-    def pretrained_decorator(self, f):
-        """
-        FIXME: early optimization is the root of all evil but this is clearly
-        technical debt
-        """
-
+    def register_decorator(self, f):
         def _f(*args, pretrained: Optional[str] = None, **kwargs):
             model = f(*args, **kwargs)
             if pretrained:
@@ -37,8 +33,16 @@ class Registry:
                 tu.load_state_dict_forgiving(model, ckpt)
             return model
 
+        self.known_models[f.__name__] = _f
+
         return _f
+
+    def get_model(self, name, *args, **kwargs):
+        return self.known_models[name](*args, ** kwargs)
 
 
 registry = Registry()
-pretrained = registry.pretrained_decorator
+register = registry.register_decorator
+get_model = registry.get_model
+
+__all__ = ['Registry', 'register', 'get_model']

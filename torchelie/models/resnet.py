@@ -5,7 +5,7 @@ import torchelie.utils as tu
 
 from typing import List, Optional
 from .classifier import ClassificationHead
-from .registry import pretrained as _pretrained
+from .registry import register
 
 PREACT_BLOCKS = (tnn.PreactResBlock, tnn.PreactResBlockBottleneck)
 STD_BLOCKS = (tnn.ResBlock, tnn.ResBlockBottleneck)
@@ -157,7 +157,7 @@ class ResNet(nn.Module):
         self.features = feats
 
     def use_standard_input(self):
-        inp = self.features.inpuy
+        inp = self.features.input
         self.features.input = ResNetInput(inp.in_channels, inp.out_channels)
         self.features.input.set_stride(self.arch[0][1])
 
@@ -229,7 +229,7 @@ def preact_resnet20_cifar(num_classes: int = 10) -> ResNet:
 #
 
 
-@_pretrained
+@register
 def resnet18(num_classes: int) -> ResNet:
     return ResNet([
         '64:4', '64:1', '64:1', '128:2', '128:1', '256:2', '256:1', '512:2',
@@ -237,14 +237,14 @@ def resnet18(num_classes: int) -> ResNet:
     ], num_classes)
 
 
-@_pretrained
+@register
 def resnet34(num_classes: int) -> ResNet:
     return ResNet(['64:4'] + ['64:1'] * 3 + ['128:2'] + ['128:1'] * 3
                   + ['256:2'] + ['256:1'] * 5 + ['512:2', '512:1', '512:1'],
                   num_classes)
 
 
-@_pretrained
+@register
 def resnet50(num_classes: int) -> ResNet:
     net = ResNet(['64:4'] + ['256:1'] * 3 + ['512:2'] + ['512:1'] * 3
                  + ['1024:2'] + ['1024:1'] * 5 + ['2048:2', '2048:1', '2048:1'],
@@ -253,7 +253,7 @@ def resnet50(num_classes: int) -> ResNet:
     return net
 
 
-@_pretrained
+@register
 def resnet101(num_classes: int) -> ResNet:
     net = ResNet(['64:4'] + ['256:1'] * 3 + ['512:2'] + ['512:1'] * 3
                  + ['1024:2'] + ['1024:1'] * 22
@@ -262,7 +262,7 @@ def resnet101(num_classes: int) -> ResNet:
     return net
 
 
-@_pretrained
+@register
 def resnet152(num_classes: int) -> ResNet:
     net = ResNet(['64:4'] + ['256:1'] * 3 + ['512:2'] + ['512:1'] * 7
                  + ['1024:2'] + ['1024:1'] * 35
@@ -276,22 +276,27 @@ def resnet152(num_classes: int) -> ResNet:
 #
 
 
+@register
 def preact_resnet18(num_classes: int) -> ResNet:
     return resnet18(num_classes).to_preact()
 
 
+@register
 def preact_resnet34(num_classes: int) -> ResNet:
     return resnet34(num_classes).to_preact()
 
 
+@register
 def preact_resnet50(num_classes: int) -> ResNet:
     return resnet50(num_classes).to_preact_bottleneck()
 
 
+@register
 def preact_resnet101(num_classes: int) -> ResNet:
     return resnet101(num_classes).to_preact_bottleneck()
 
 
+@register
 def preact_resnet152(num_classes: int) -> ResNet:
     return resnet152(num_classes).to_preact_bottleneck()
 

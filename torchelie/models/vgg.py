@@ -4,7 +4,7 @@ import torchelie.nn as tnn
 from torchelie.utils import kaiming
 from typing import cast
 from .classifier import ClassificationHead
-from .registry import pretrained as _pretrained
+from .registry import register
 
 
 class VGG(tnn.CondSeq):
@@ -62,20 +62,20 @@ class VGG(tnn.CondSeq):
         return self
 
 
-@_pretrained
+@register
 def vgg11(num_classes: int) -> 'VGG':
     return VGG([64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
                num_classes)
 
 
-@_pretrained
+@register
 def vgg13(num_classes: int) -> 'VGG':
     return VGG([
         64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'
     ], num_classes)
 
 
-@_pretrained
+@register
 def vgg16(num_classes: int) -> 'VGG':
     return VGG([
         64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512,
@@ -83,7 +83,7 @@ def vgg16(num_classes: int) -> 'VGG':
     ], num_classes)
 
 
-@_pretrained
+@register
 def vgg19(num_classes: int) -> 'VGG':
     return VGG([
         64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512,
@@ -91,21 +91,21 @@ def vgg19(num_classes: int) -> 'VGG':
     ], num_classes)
 
 
-@_pretrained
+@register
 def vgg11_bn(num_classes: int) -> 'VGG':
     return vgg11(num_classes).add_batchnorm()
 
 
-@_pretrained
+@register
 def vgg13_bn(num_classes: int) -> 'VGG':
     return vgg13(num_classes).add_batchnorm()
 
 
-@_pretrained
+@register
 def vgg16_bn(num_classes: int) -> 'VGG':
     return vgg16(num_classes).add_batchnorm()
 
 
-@_pretrained
+@register
 def vgg19_bn(num_classes: int) -> 'VGG':
     return vgg19(num_classes).add_batchnorm()
