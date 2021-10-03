@@ -194,9 +194,9 @@ class ResBlock(nn.Module):
 
         self.shortcut = _make_resnet_shortcut(in_channels, out_channels, stride)
 
-        self.relu = nn.ReLU(True)
 
         self.post = CondSeq()
+        self.post.relu = nn.ReLU(True)
 
     def condition(self, z: torch.Tensor) -> None:
         self.branch.condition(z)
@@ -211,7 +211,7 @@ class ResBlock(nn.Module):
             self.condition(z)
 
         x = self.pre(x)
-        x = self.relu(self.branch(x).add_(self.shortcut(x)))
+        x = self.branch(x).add_(self.shortcut(x))
         return self.post(x)
 
     def remove_batchnorm(self) -> 'ResBlock':
