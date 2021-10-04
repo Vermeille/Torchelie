@@ -402,7 +402,7 @@ def train(args, rank, world_size):
     ])
     tfm_test = TF.Compose([
         TTF.ResizedCrop(args.im_size),
-        #TTF.ResizedCrop(int(args.im_size*1.14), scale=1),
+        # TTF.ResizedCrop(int(args.im_size*1.14), scale=1),
         TF.ToTensor(),
         TF.Normalize([0.5] * 3, [0.2] * 3)
     ])
@@ -426,7 +426,7 @@ def train(args, rank, world_size):
         args.batch_size,
         num_workers=4,
         pin_memory=True,
-        #shuffle=True, # BECAUSE WEIRD FUCKIN BUG
+        # shuffle=True, # BECAUSE WEIRD FUCKIN BUG
         sampler=torch.utils.data.RandomSampler(trainset,
                                                replacement=True,
                                                num_samples=len(trainset)),
@@ -482,7 +482,7 @@ def train(args, rank, world_size):
             testloader,
             trainset.classes,
             log_every=max(10, min(len(trainloader) // 50, 1000)),
-            test_every=10000,#max(100, min(len(trainloader) // 3, 5000)),
+            test_every=len(trainloader),
             lr=args.lr,
             beta1=args.beta1,
             beta2=args.beta2,
