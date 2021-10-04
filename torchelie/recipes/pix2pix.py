@@ -406,6 +406,11 @@ def train(rank, world_size):
         tch.callbacks.Log('polyak_out', 'polyak_out'),
         tch.callbacks.Log('test_out', 'test_out'),
         tch.callbacks.Log('batch.0', 'test_x'),
+        tch.callbacks.GANMetrics('batch.1', 'polyak_out', device=rank),
+        tch.callbacks.Log('kid', 'kid'),
+        tch.callbacks.Log('fid', 'fid'),
+        tch.callbacks.Log('precision', 'precision'),
+        tch.callbacks.Log('recall', 'recall'),
     ])
     recipe.to(rank)
     if opts.from_ckpt is not None:
