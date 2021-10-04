@@ -402,7 +402,6 @@ def train(args, rank, world_size):
     ])
     tfm_test = TF.Compose([
         TTF.ResizedCrop(args.im_size),
-        # TTF.ResizedCrop(int(args.im_size*1.14), scale=1),
         TF.ToTensor(),
         TF.Normalize([0.5] * 3, [0.2] * 3)
     ])
@@ -421,27 +420,29 @@ def train(args, rank, world_size):
         from torchelie.datasets import MixUpDataset
         trainset = MixUpDataset(trainset)
 
+    sampler = torch.utils.data.RandomSampler(trainset,
+                                             replacement=True,
+                                             num_samples=len(trainset) //
+                                             world_size)
     trainloader = DataLoader(
         trainset,
         args.batch_size,
-        num_workers=4,
+        num_workers=8,
         pin_memory=True,
         # shuffle=True, # BECAUSE WEIRD FUCKIN BUG
-        sampler=torch.utils.data.RandomSampler(trainset,
-                                               replacement=True,
-                                               num_samples=len(trainset)),
+        sampler=sampler,
         persistent_workers=True,
         prefetch_factor=2,
         drop_last=True)
+
     testloader = DataLoader(testset,
                             args.batch_size,
-                            num_workers=4,
+                            num_workers=8,
                             pin_memory=False,
                             persistent_workers=True,
                             prefetch_factor=2)
 
-    model = tch.models.preact_resnet18(len(trainset.classes)).set_input_specs(
-        args.im_size)
+    model = tch.models.resnet18(len(trainset.classes))
 
     if rank == 0:
         print('trainset')
@@ -468,8 +469,7 @@ def train(args, rank, world_size):
             testloader,
             testset.classes,
             log_every=50,
-            test_every=min(5000,
-                           len(trainloader) // 3),
+            test_every=len(trainloader),
             lr=args.lr,
             beta1=args.beta1,
             beta2=args.beta2,
