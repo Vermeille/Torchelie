@@ -4,7 +4,7 @@ torchelie.models
 We provide trained models. Use the argument :code:`pretrained=task` in order to
 use them. Example: :code:`torchelie.models.resnet18(1000, pretrained='classification/imagenet')`.
 
-Alternatively: :code:`torchelie.models.get_model('resnet_18', 1000, pretrained='classification/imagenet')`
+Alternatively: :code:`torchelie.models.get_model('resnet18', 1000, pretrained='classification/imagenet')`
 
 .. list-table:: Pretrained models
    :header-rows: 1
