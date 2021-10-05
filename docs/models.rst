@@ -8,6 +8,7 @@ Alternatively: :code:`torchelie.models.get_model('resnet_18', 1000, pretrained='
 
 .. list-table:: Pretrained models
    :header-rows: 1
+
    * - model
      - task
      - notes
