@@ -85,11 +85,9 @@ class NeuralStyle(torch.nn.Module):
                                   init_img=to_tensor(content_img)[None]
                                   if init_with_content else None)
 
-        self.opt = tch.optim.AdaBelief(canvas.parameters(),
-                                       3e-3,
-                                       eps=1e-16,
-                                       betas=(0.9, 0.99),
-                                       weight_decay=0)
+        canvas.to(self.device)
+        self.opt = tch.optim.Lookahead(
+            torch.optim.Adam(canvas.parameters(), 5e-2, weight_decay=0.))
 
         def forward(_):
             img = canvas()
@@ -105,9 +103,8 @@ class NeuralStyle(torch.nn.Module):
 
             return {
                 'loss': loss,
-                'content_loss': losses['content_loss'],
-                'style_loss': losses['style_loss'],
-                'hists_loss': losses['hists_loss'],
+                'content': losses['content'],
+                'style': losses['style'],
                 'img': img,
             }
 
@@ -117,13 +114,12 @@ class NeuralStyle(torch.nn.Module):
         loop.callbacks.add_callbacks([
             tcb.Counter(),
             tcb.WindowedMetricAvg('loss'),
-            tcb.WindowedMetricAvg('content_loss'),
-            tcb.WindowedMetricAvg('style_loss'),
-            tcb.WindowedMetricAvg('hists_loss'),
+            tcb.WindowedMetricAvg('content'),
+            tcb.WindowedMetricAvg('style'),
             tcb.Log('img', 'img'),
             tcb.VisdomLogger(visdom_env=self.visdom_env, log_every=10),
             tcb.StdoutLogger(log_every=10),
-            tcb.Optimizer(self.opt, log_lr=True),
+            tcb.Optimizer(self.opt),
         ])
         loop.to(self.device)
         loop.run(1)
