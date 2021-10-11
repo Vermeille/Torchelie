@@ -22,18 +22,16 @@ class NeuralStyle(torch.nn.Module):
     First instantiate the recipe then call `recipe(n_iter, img)`
 
     Args:
-        lr (float, optional): the learning rate
         device (device): where to run the computation
         visdom_env (str or None): the name of the visdom env to use, or None
             to disable Visdom
     """
 
-    def __init__(self, lr=0.01, device="cpu", visdom_env='style'):
+    def __init__(self, device="cpu", visdom_env='style'):
         super(NeuralStyle, self).__init__()
         self.loss = NeuralStyleLoss()
         self.loss2 = NeuralStyleLoss()
         self.device = device
-        self.lr = lr
         self.visdom_env = visdom_env
 
     def fit(self,
