@@ -7,7 +7,7 @@ from typing_extensions import Literal
 
 def _rfft2d_freqs(h, w):
     fy = torch.fft.fftfreq(h)[:, None]
-    fx = torch.fft.fftfreq(w)[:w // 2 + (1 if w % 2 == 0 else 1)]
+    fx = torch.fft.fftfreq(w)[:w // 2 + (2 if w % 2 == 1 else 1)]
     return np.sqrt(fx * fx + fy * fy)
 
 
@@ -99,10 +99,9 @@ class SpectralImage(LearnableImage):
         spectrum_var = torch.nn.Parameter(init_val)
         self.spectrum_var = spectrum_var
 
-        spertum_scale = 1.0 / np.maximum(freqs,
-                                         1.0 / max(h, w))**self.decay_power
-        spertum_scale *= np.sqrt(w * h)
-        self.register_buffer('spertum_scale', spertum_scale)
+        spectrum_scale = 1.0 / np.maximum(freqs,
+                                          1.0 / max(h, w))**self.decay_power
+        self.register_buffer('spectrum_scale', spectrum_scale)
 
         if init_img is not None:
             self.init_img(init_img)
@@ -112,19 +111,18 @@ class SpectralImage(LearnableImage):
 
         fft = torch.fft.rfft2(init_img[0] * 4, s=(self.shape[2], self.shape[3]))
         with torch.no_grad():
-            self.spectrum_var.copy_(fft / self.spertum_scale)
+            self.spectrum_var.copy_(fft / self.spectrum_scale)
 
     def forward(self) -> torch.Tensor:
         """
         Return the image
         """
-        # return self.bite[0].to(self.spectrum_var.device)
         n, ch, h, w = self.shape
 
-        scaled_spectrum = self.spectrum_var * self.spertum_scale
-        img = torch.fft.irfft2(scaled_spectrum, s=(h, w))
+        scaled_spectrum = self.spectrum_var * self.spectrum_scale
+        img = torch.fft.irfft2(scaled_spectrum, norm='ortho', s=(h, w))
 
-        return img / 4.
+        return img / 4
 
 
 class CorrelateColors(ColorTransform):
