@@ -12,15 +12,6 @@ from torchelie.nn import ImageNetInputNorm, WithSavedActivations
 from torchelie.models import PerceptualNet
 
 
-def normalize(x):
-    var, mean = torch.var_mean(x, dim=(2, 3), unbiased=False, keepdim=True)
-    return (x - mean) / torch.sqrt(var + 1e-4)
-
-
-def normalize_(x):
-    return torch.utils.checkpoint.checkpoint(normalize, x)
-
-
 class NeuralStyleLoss(nn.Module):
     """
     Style Transfer loss by Leon Gatys
@@ -55,7 +46,9 @@ class NeuralStyleLoss(nn.Module):
         _, activations = self.net(self.norm(img), detach=detach)
 
         # this ain't a bug. This normalization is freakin *everything*.
-        activations = {k: normalize(a.float()) for k, a in activations.items()}
+        activations = {
+            k: F.instance_norm(a.float()) for k, a in activations.items()
+        }
 
         return activations
 
