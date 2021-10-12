@@ -272,8 +272,9 @@ def bgram(m: torch.Tensor) -> torch.Tensor:
     Returns:
         The batch of Gram matrix
     """
+    assert m.dim() == 4
     m = m.view(m.shape[0], m.shape[1], -1)
-    g = torch.einsum('bik,bjk->bij', m, m) / (m.shape[1] * m.shape[2])
+    g = torch.einsum('bik,bjk->bij', m, m) / m.shape[2]
     return g
 
 
