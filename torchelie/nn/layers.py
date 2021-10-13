@@ -37,15 +37,17 @@ class ModulatedConv(nn.Conv2d):
                  noise_channels: int,
                  *args,
                  demodulate: bool = True,
+                 gain: float = 1,
                  **kwargs):
         super(ModulatedConv, self).__init__(in_channels, *args, **kwargs)
         with torch.no_grad():
             self.make_s = tu.xavier(nn.Linear(noise_channels, in_channels))
             self.make_s.bias.data.fill_(1)
         self.demodulate = demodulate
+        self.gain = gain
 
     def to_equal_lr(self, leak: float = 0.2) -> 'ModulatedConv':
-        tu.kaiming(self, a=leak, dynamic=True)
+        self.weight.data.normal_(0, 1)
         tu.xavier(self.make_s, dynamic=True)
         self.make_s.bias.data.fill_(1)
         return self
@@ -67,6 +69,8 @@ class ModulatedConv(nn.Conv2d):
             w = w_prime * w_prime_prime[..., None, None, None]
         else:
             w = w_prime
+
+        w = self.gain * w
 
         w = w.view(-1, *w.shape[2:])
         x = F.conv2d(x.view(1, -1, H, W), w, None, self.stride, self.padding,
@@ -215,7 +219,7 @@ class Const(nn.Module):
     def __init__(self, *size: int) -> None:
         super().__init__()
         self.size = size
-        self.weight = nn.Parameter(torch.randn(1, *size))
+        self.weight = nn.Parameter(torch.randn(1, *size) / math.sqrt(size[0]))
 
     def extra_repr(self):
         return repr(self.size)
@@ -225,6 +229,8 @@ class Const(nn.Module):
         Args:
             n (int): batch size to use
         """
+        if isinstance(n, torch.Tensor):
+            n = n.shape[0]
         return self.weight.expand(n, *self.weight.shape[1:]).contiguous()
 
 

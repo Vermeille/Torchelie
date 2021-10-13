@@ -1,5 +1,6 @@
 import collections
 
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -255,6 +256,7 @@ class StyleGAN2Block(nn.Module):
                                  out_ch,
                                  kernel_size=3,
                                  padding=1,
+                                 gain=math.sqrt(2),
                                  bias=True)
 
             if dyn:
@@ -284,6 +286,7 @@ class StyleGAN2Block(nn.Module):
                                     3,
                                     kernel_size=1,
                                     padding=0,
+                                    gain=1 / math.sqrt(noise_size),
                                     bias=True,
                                     demodulate=False)
         if dyn:
