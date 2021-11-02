@@ -48,8 +48,7 @@ def img2html(img: Union[torch.Tensor, np.ndarray], opts: dict = None) -> str:
 
     b64encoded = b64.b64encode(buf.getvalue()).decode('utf-8')
 
-    return '<img src="data:image/{};base64,{}"/>'.format(
-        image_type, b64encoded)
+    return '<img src="data:image/{};base64,{}"/>'.format(image_type, b64encoded)
 
 
 class ClassificationInspector:
@@ -57,6 +56,7 @@ class ClassificationInspector:
     Visdom HTML display of classification results, with best, worst, and mode
     indecisive results.
     """
+
     def __init__(self,
                  topk: int,
                  labels: List[str],
@@ -103,10 +103,10 @@ class ClassificationInspector:
         self.confused = self.confused[:self.topk]
 
     def _report(self, dat):
+
         def prob_as_bar(cos, is_correct):
             return '<div style="width:{percents}%;background-color:{color};height:5px"></div>'.format(
-                percents=int(cos * 100),
-                color='green' if is_correct else 'red')
+                percents=int(cos * 100), color='green' if is_correct else 'red')
 
         html = ['<div style="display:flex;flex-wrap:wrap">']
         for img, p, cls, correct, path, pred_label, best_pred in dat:
@@ -122,7 +122,7 @@ class ClassificationInspector:
             plabel = plabel.replace('_', ' ').replace('-', ' ')
             html.append(
                 ('<div onclick="javascript:prompt(\'path\', \'{path}\')">'
-                 '<div style="padding:3px;width:{px_sz}px">'
+                 '<div style="margin:1px;width:{px_sz}px">'
                  '{img}{bar}{checkmark}{true_label} (pred: {pred_label})'
                  '</div>'
                  '</div>').format(path=path,
@@ -150,6 +150,7 @@ class ClassificationInspector:
 
 
 class SegmentationInspector(ClassificationInspector):
+
     @experimental
     def __init__(self, topk, labels, center_value=0):
         super().__init__(topk, labels, center_value=0)
