@@ -7,7 +7,7 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
 
-class CurriculumScheduler:
+class CurriculumScheduler(_LRScheduler):
     """
     Allow to pre-specify learning rate and momentum changes
 
@@ -15,50 +15,63 @@ class CurriculumScheduler:
         optimizer (torch.optim.Optimizer): the optimizer to schedule. Currently
             works only with SGD
         schedule (list): a schedule. It's a list of keypoints where each
-            element is a 3-tuple like (iteration number, lr, mom). Values are
-            interpolated linearly between neighboring keypoints
-        last_iter (int): starting iteration
+            element is a 3-tuple like (iteration number, lr multiplier, mom).
+            Values are interpolated linearly between neighboring keypoints
+        last_epoch (int): starting iteration
     """
 
     def __init__(self,
                  optimizer,
                  schedule: List[Tuple[float, float, float]],
-                 last_iter: int = -1):
-        self.optimizer = optimizer
+                 last_epoch: int = -1,
+                 verbose: bool = False):
         self.schedule = schedule
-        self.last_iter = last_iter
-
-    def state_dict(self):
-        return {'last_iter': self.last_iter}
-
-    def load_state_dict(self, state):
-        self.last_iter = state['last_iter']
+        super().__init__(optimizer, last_epoch, verbose)
 
     def step(self, *unused) -> None:
         """
         Step the scheduler to another iteration
         """
-        self.last_iter += 1
-        the_lr = self.schedule[-1][1]
+        self.last_epoch += 1
+        lr_mul = self.schedule[-1][1]
         the_mom = self.schedule[-1][2]
         for lo, hi in zip(self.schedule[:-1], self.schedule[1:]):
             limit_lo, lr_lo, mom_lo = lo
             lim_hi, lr_hi, mom_hi = hi
 
-            if limit_lo <= self.last_iter < lim_hi:
-                t = tu.ilerp(limit_lo, lim_hi, self.last_iter)
-                the_lr = tu.lerp(lr_lo, lr_hi, t)
-                the_mom = tu.lerp(mom_lo, mom_hi, t)
+            if limit_lo <= self.last_epoch < lim_hi:
+                t = tu.ilerp(limit_lo, lim_hi, self.last_epoch)
+                lr_mul = tu.lerp(lr_lo, lr_hi, t)
+                the_mom = None
+                if not (mom_lo is None or mom_hi is None):
+                    the_mom = tu.lerp(mom_lo, mom_hi, t)
 
         for group in self.optimizer.param_groups:
-            group['lr'] = the_lr
-            if 'momentum' in group:
-                group['momentum'] = the_mom
-            elif 'betas' in group:
-                group['betas'] = (the_mom, group['betas'][1])
+            group['lr'] = lr_mul * group['initial_lr']
+            if the_mom is not None:
+                if 'momentum' in group:
+                    group['momentum'] = the_mom
+                elif 'betas' in group:
+                    group['betas'] = (the_mom, group['betas'][1])
 
     def __repr__(self):
-        return "CurriculumScheduler({})".format(self.schedule)
+        return "{}({})".format(self.__class__.__name__, self.schedule)
+
+
+class LinearDecay(CurriculumScheduler):
+
+    def __init__(self,
+                 optimizer,
+                 total_iters: int,
+                 warmup_ratio: float = 0.05,
+                 last_epoch: int = -1,
+                 verbose: bool = False):
+        if warmup_ratio == 0:
+            sched = [(0, 1, None), (total_iters, 0, None)]
+        else:
+            sched = [(0, 0, None), (int(total_iters * warmup_ratio), 1, None),
+                     (total_iters, 0, None)]
+        super().__init__(optimizer, sched, last_epoch, verbose)
 
 
 class OneCycle(CurriculumScheduler):
@@ -117,53 +130,11 @@ class OneCycle(CurriculumScheduler):
         return 'OneCycle({})'.format(self.schedule)
 
 
-class FlatAndCosineEnd(_LRScheduler):
-    """
-    The ranger optimizer (Lookahead+RadamW) works best when using a flat LR for
-    75% of the training then anneal the lr with a cosine slope down to zero.
-
-    Args:
-        optimizer (Optimizer): the model's optimizer to schedule
-        n_iters_total (int): how many iterations is the total schedule
-        last_epoch (int): the starting iteration number (default: -1)
-        verbose (bool): print more details
-    """
-
-    def __init__(self,
-                 optimizer: Optimizer,
-                 n_iters_total: int,
-                 last_epoch: int = -1,
-                 verbose: bool = False):
-        self.n_iters_total = n_iters_total
-        super().__init__(optimizer, last_epoch, verbose)
-
-    def get_lr(self) -> List[float]:
-        first_part = int(self.n_iters_total * 0.75)
-
-        if self.last_epoch < first_part:
-            return self.base_lrs
-
-        if self.last_epoch > self.n_iters_total:
-            return [0] * len(self.base_lrs)
-
-        t = self.last_epoch - first_part
-        total = self.n_iters_total - first_part
-        angle = math.pi * t / total
-        return [b_lr * 0.5 * (1 + math.cos(angle)) for b_lr in self.base_lrs]
-
-    def __repr__(self) -> str:
-        return 'FlatAndCosineEnd({})'.format(
-            tu.indent("\n".join([
-                '{}={}'.format(k, v)
-                for k, v in self.__dict__.items()
-                if k != 'optimizer'
-            ])))
-
-
 class HyperbolicTangentDecay(_LRScheduler):
     """
-    Very very similar to FlatAndCosineEnd, coming from Stochastic gradient
-    descent with hyperbolic-tangent decay on classification (Hsueh et al., 2019)
+    Coming from Stochastic gradient descent with hyperbolic-tangent decay on
+    classification (Hsueh et al., 2019), keeps a flat LR for about 70% of the
+    training then decays following a hypertangent curve.
     """
 
     def __init__(self,
