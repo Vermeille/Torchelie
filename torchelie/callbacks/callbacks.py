@@ -1186,7 +1186,7 @@ class SeedDistributedSampler:
     """
 
     def on_epoch_end(self, state):
-        DDP = torch.nn.parallel.DistributedDataParallel
+        DDP = torch.utils.data.DistributedSampler
 
         loader = state.get('_loader', None)
         if loader is not None and isinstance(loader.sampler, DDP):
