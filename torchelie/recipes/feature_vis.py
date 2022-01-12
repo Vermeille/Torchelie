@@ -29,6 +29,7 @@ class FeatureVis(torch.nn.Module):
         layer (str): the layer to use on which activations will be maximized
         input_size (int, or (int, int)): the size of the image the model
             accepts as input
+        num_feature (int): the number of channels of the input image (e.g 1 for grey, 3 for RGB)
         lr (float, optional): the learning rate
         device (device): where to run the computation
         visdom_env (str or None): the name of the visdom env to use, or None
@@ -38,6 +39,8 @@ class FeatureVis(torch.nn.Module):
                  model,
                  layer,
                  input_size,
+                 *,
+                 num_feature=3,
                  lr=1e-3,
                  device='cpu',
                  visdom_env='feature_vis'):
@@ -49,6 +52,7 @@ class FeatureVis(torch.nn.Module):
             self.input_size = input_size
         else:
             self.input_size = (input_size, input_size)
+        self.num_feature = num_feature
         self.norm = tnn.ImageNetInputNorm()
         self.lr = lr
         self.visdom_env = visdom_env
@@ -64,7 +68,8 @@ class FeatureVis(torch.nn.Module):
         Returns:
             the optimized image
         """
-        canvas = ParameterizedImg(1, 3,
+        canvas = ParameterizedImg(1,
+                                  self.num_feature,
                                   self.input_size[0] + 10,
                                   self.input_size[1] + 10)
 
@@ -126,6 +131,7 @@ if __name__ == '__main__':
     parser.add_argument('--layer', required=True)
     parser.add_argument('--input-size')
     parser.add_argument('--neuron', required=True, type=int)
+    parser.add_argument('--feature', type=int, default=3)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--out', default='features.png')
     parser.add_argument('--device', default='cuda')
@@ -139,6 +145,7 @@ if __name__ == '__main__':
     fv = FeatureVis(model,
                     args.layer,
                     args.input_size or choice['sz'],
+                    num_feature=args.feature,
                     lr=args.lr,
                     device=args.device,
                     visdom_env=args.visdom_env)
