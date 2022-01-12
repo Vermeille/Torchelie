@@ -71,7 +71,8 @@ class FeatureVis(torch.nn.Module):
         canvas = ParameterizedImg(1,
                                   self.num_feature,
                                   self.input_size[0] + 10,
-                                  self.input_size[1] + 10)
+                                  self.input_size[1] + 10,
+                                  colors='corr' if self.num_feature != 3 else 'uncorr')
 
         def forward(_):
             cim = canvas()
