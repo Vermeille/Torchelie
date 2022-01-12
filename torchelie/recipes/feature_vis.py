@@ -53,7 +53,7 @@ class FeatureVis(torch.nn.Module):
         else:
             self.input_size = (input_size, input_size)
         self.num_feature = num_feature
-        self.norm = tnn.ImageNetInputNorm()
+        self.norm = tnn.ImageNetInputNorm() if num_feature == 3 else torch.nn.InstanceNorm2d(num_feature, momentum=0)
         self.lr = lr
         self.visdom_env = visdom_env
 
