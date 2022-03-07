@@ -512,6 +512,8 @@ class VisdomLogger:
                 else:
                     assert False, "incorrect tensor shape {} for {}".format(
                         repr(x.shape), name)
+            elif hasattr(x, 'to_visdom'):
+                x.to_visdom(self.vis, self.prefix)
             else:
                 assert False, "incorrect type {} for key {}".format(
                     x.__class__.__name__, name)
@@ -625,8 +627,6 @@ class StdoutLogger(tu.AutoStateDict):
                     assert False, "incorrect tensor dim"
             elif isinstance(x, str):
                 show[name] = x[:20]
-            else:
-                assert False, "incorrect tensor dim"
         print(self.prefix, '| Ep.', epoch, 'It', epoch_batch, '|', show)
 
 
