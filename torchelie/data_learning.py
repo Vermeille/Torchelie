@@ -109,7 +109,9 @@ class SpectralImage(LearnableImage):
     def init_img(self, init_img: torch.Tensor) -> None:
         assert init_img.dim() == 4 and init_img.shape == self.shape
 
-        fft = torch.fft.rfft2(init_img[0] * 4, s=(self.shape[2], self.shape[3]))
+        fft = torch.fft.rfft2(init_img[0] * 4,
+                              s=(self.shape[2], self.shape[3]),
+                              norm='ortho')
         with torch.no_grad():
             self.spectrum_var.copy_(fft / self.spectrum_scale)
 
