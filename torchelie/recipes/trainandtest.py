@@ -82,7 +82,10 @@ def TrainAndTest(model,
     ])
 
     test_loop.callbacks.add_epilogues([
-        tcb.VisdomLogger(visdom_env=visdom_env, log_every=-1, prefix='test_'),
+        tcb.VisdomLogger(visdom_env=visdom_env,
+                         log_every=-1,
+                         prefix='test_',
+                         post_epoch_ends=True),
         tcb.StdoutLogger(log_every=-1, prefix='Test'),
     ])
 

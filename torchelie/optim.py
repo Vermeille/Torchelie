@@ -191,7 +191,7 @@ class AdaBelief(Optimizer):
                 exp_avg_sq = exp_avg_sq + eps
 
                 var = exp_avg_sq.mul_(1 / (1 - beta2**t))
-                var.sqrt_().add_(eps)
+                var.sqrt_()
 
                 # Perform stepweight decay
                 p.data.mul_(1 - lr * group['weight_decay'])

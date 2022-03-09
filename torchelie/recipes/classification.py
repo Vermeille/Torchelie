@@ -19,7 +19,7 @@ import torchvision.models as tvmodels
 import torchelie as tch
 import torchelie.callbacks as tcb
 import torchelie.utils as tu
-from torchelie.lr_scheduler import HyperbolicTangentDecay, CurriculumScheduler
+from torchelie.lr_scheduler import HyperbolicTangentDecay, LinearDecay
 from torchelie.recipes.trainandtest import TrainAndTest
 from torchelie.optim import Lookahead, AdaBelief
 
@@ -264,13 +264,11 @@ def CrossEntropyClassification(model,
             sched = HyperbolicTangentDecay(opt, n_iters)
     else:
         opt = torch.optim.SGD(model.parameters(),
-                              lr=0,
+                              lr=lr,
                               weight_decay=wd,
                               momentum=beta1)
-        if n_iters is not None:
-            pct5 = int(0.05 * n_iters)
-            sched = CurriculumScheduler(opt, [(0, 0, beta1), (pct5, lr, beta1),
-                                              (n_iters, 0, beta1)])
+    if n_iters is not None:
+        sched = LinearDecay(opt, n_iters)
 
     loop.register('opt', opt)
     loop.callbacks.add_callbacks([
@@ -442,7 +440,8 @@ def train(args, rank, world_size):
                             persistent_workers=True,
                             prefetch_factor=2)
 
-    model = tch.models.resnet18(len(trainset.classes))
+    model = tch.models.resnet18(len(trainset.classes),
+                                pretrained='classification/imagenet')
 
     if rank == 0:
         print('trainset')
