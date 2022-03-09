@@ -375,7 +375,7 @@ def load_recursive_state_dict(x: Any, obj: Any) -> None:
             load_recursive_state_dict(xx[k], oo[k])
 
 
-def load_state_dict_forgiving(dst, state_dict: dict):
+def load_state_dict_forgiving(dst, state_dict: dict, silent: bool = False):
     """
     Loads a state dict, but don't crash if shapes don't match.
     """
@@ -384,8 +384,10 @@ def load_state_dict_forgiving(dst, state_dict: dict):
         try:
             dst_dict[name].copy_(val)
         except Exception as e:
-            print('error in', name, ': checkpoint has ', val.shape, '-> model',
-                  dst_dict[name].shape, '(', str(e), ')')
+            if silent:
+                continue
+            print('error in', name, ': checkpoint has ', val.shape,
+                  '-> model has', dst_dict[name].shape, '(', str(e), ')')
 
 
 class FrozenModule(nn.Module):
@@ -587,16 +589,41 @@ def dist_setup(rank):
 
 class _WrapFun:
 
-    def __init__(self, fun, *args, **kwargs):
+    def __init__(self, fun, *args, tmp_file=None, **kwargs):
         self.fun = fun
         self.args = args
         self.kwargs = kwargs
+        self.tmp_file = tmp_file
 
     def __call__(self, rank):
         dist_setup(rank)
         torch.cuda.set_device(rank)
         torch.backends.cudnn.benchmark = True
-        return self.fun(*self.args, **self.kwargs, rank=rank)
+        out = self.fun(*self.args, **self.kwargs, rank=rank)
+
+        import pickle
+        from contextlib import suppress
+
+        def filter_pickable(d):
+            if isinstance(d, (list, tuple)):
+                return [filter_pickable(v) for v in d]
+
+            if not isinstance(d, dict):
+                return d
+            out = {}
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    out[k] = filter_pickable(v)
+                elif isinstance(v, (str, int, float, list, torch.Tensor)):
+                    out[k] = v
+                else:
+                    with suppress(NotImplementedError):
+                        pickle.dumps(v)
+                        out[k] = v
+            return out
+
+        if rank == 0 and self.tmp_file is not None:
+            torch.save(filter_pickable(out), self.tmp_file)
 
 
 def parallel_run(fun, *args, n_gpus: int = torch.cuda.device_count(),
@@ -615,9 +642,15 @@ def parallel_run(fun, *args, n_gpus: int = torch.cuda.device_count(),
         **kwargs: kw arguments passed to :code:`fun`
     """
     import torch.multiprocessing as mp
-    mp.spawn(_WrapFun(fun, *args, **kwargs, world_size=n_gpus),
+    from tempfile import NamedTemporaryFile
+    f = NamedTemporaryFile()
+    mp.spawn(_WrapFun(fun, *args, **kwargs, world_size=n_gpus, tmp_file=f.name),
              nprocs=n_gpus,
              join=True)
+    f.seek(0)
+    out = torch.load(f, map_location='cpu')
+    f.close()
+    return out
 
 
 def indent(text: str, amount: int = 4) -> str:
