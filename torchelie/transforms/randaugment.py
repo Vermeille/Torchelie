@@ -44,20 +44,40 @@ class RandAugment(torch.nn.Module):
         magnitude /= 30
         self.magnitude = magnitude
 
-        self.transforms = [
-            Identity(),
-            TF.RandomAutocontrast(p=1),
-            TF.RandomEqualize(p=1),
-            TF.RandomInvert(p=1),
-            TF.RandomAffine(degrees=magnitude * 30,
-                            interpolation=self.interpolation,
-                            fill=self.fill),
-            Posterize(min_bits=8 - magnitude * 6, max_bits=8),
+        self.clear()
+        self.add_colors()
+        self.add_geometric()
+
+    def clear(self):
+        self.transforms = [Identity()]
+        return self
+
+    def add_extended_colors(self):
+        magnitude = self.magnitude
+        self.transforms += [
             Solarize(magnitude * 256),
+            TF.RandomEqualize(p=1),
+        ]
+        return self
+
+    def add_colors(self):
+        magnitude = self.magnitude
+        self.transforms += [
+            TF.RandomAutocontrast(p=1),
+            Posterize(min_bits=8 - magnitude * 6, max_bits=8),
             TF.ColorJitter(saturation=0.9 * magnitude),
             TF.ColorJitter(contrast=0.9 * magnitude),
             TF.ColorJitter(brightness=0.9 * magnitude),
             TF.RandomAdjustSharpness(0.9 * magnitude, p=1),
+        ]
+        return self
+
+    def add_geometric(self):
+        magnitude = self.magnitude
+        self.transforms += [
+            TF.RandomAffine(degrees=magnitude * 30,
+                            interpolation=self.interpolation,
+                            fill=self.fill),
             TF.RandomAffine(0,
                             shear=(-15 * magnitude, 15 * magnitude, 0, 0),
                             interpolation=self.interpolation,
@@ -76,6 +96,7 @@ class RandAugment(torch.nn.Module):
                             interpolation=self.interpolation,
                             fill=self.fill),
         ]
+        return self
 
     def forward(self, img: PILImage) -> PILImage:
         """
@@ -128,6 +149,8 @@ class RandAugment(torch.nn.Module):
         self.add_perspective()
         self.add_subsampling()
         self.add_jpeg()
+        #self.add_transform(SampleMixup())
+        #self.add_transform(SampleCutmix())
         return self
 
     def add_perspective(self) -> 'RandAugment':
