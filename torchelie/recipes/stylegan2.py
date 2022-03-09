@@ -65,6 +65,7 @@ class PPL:
 
     def compute_ppl(self, model, z):
         gen, w = model(z, get_w=True, mixing=False)
+        w.requires_grad_()
         B, C, H, W = gen.shape
         noise = torch.randn_like(gen) / math.sqrt(H * W)
         JwTy = torch.autograd.grad(outputs=torch.sum(gen * noise),
@@ -168,6 +169,8 @@ def StyleGAN2Recipe(G: nn.Module,
 
     def G_train(batch):
         tu.freeze(D)
+        G.train()
+        pl = 0
         if ppl_coef > 0:
             with G.no_sync():
                 pl = ppl(G, torch.randn(batch_size, noise_size, device=gpu_id))
@@ -176,16 +179,17 @@ def StyleGAN2Recipe(G: nn.Module,
         ##############
         imgs = G(torch.randn(batch_size, noise_size, device=gpu_id),
                  mixing=mixing)
-        pred = D(diffTF(imgs) * 2 - 1)
+        pred = D(diffTF(imgs) * 2 - 1).squeeze(1)
         score = gan_loss.generated(pred)
         score.backward()
 
         return {'G_loss': score.item(), 'ppl': pl}
 
-    gradient_penalty = GradientPenalty(0.1)
+    gradient_penalty = GradientPenalty(0.01)
 
     def D_train(batch):
         tu.unfreeze(D)
+        G.train()
         ###################
         #    Fake pass    #
         ###################
@@ -375,6 +379,7 @@ def train(rank, world_size):
     ])
     ds = tch.datasets.NoexceptDataset(
         UnlabeledImages(opts.img_dir, transform=tfm))
+
     dl = torch.utils.data.DataLoader(ds,
                                      num_workers=4,
                                      shuffle=True,
