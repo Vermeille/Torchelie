@@ -149,12 +149,11 @@ def Classification(model,
             tcb.TopkAccAvg(post_each_batch=False, avg_type='running'),
         ])
 
-    loop.test_loop.callbacks.add_callbacks([
+    loop.test_loop.callbacks.cbs[2] = [
         tcb.ClassificationInspector(30, classes, False),
         tcb.MetricsTable(False)
-    ])
+    ] + loop.test_loop.callbacks.cbs[2]
 
-    loop.callbacks.add_epilogues([tcb.Throughput()])
     return loop
 
 
