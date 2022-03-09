@@ -391,16 +391,20 @@ def train(args, rank, world_size):
 
     tfm = TF.Compose([
         TF.RandomApply([TTF.PadToSquare()]),
+        TTF.RandAugment(1, 30),
         TF.RandomResizedCrop(args.im_size),
         TF.RandomHorizontalFlip(),
-        TTF.RandAugment(1, 30),
+        TF.ColorJitter(0.4, 0.4, 0.4, 0.05),
+        TTF.Lighting(0.6),
         TF.ToTensor(),
-        TF.Normalize([0.5] * 3, [0.2] * 3),
+        tch.nn.ImageNetInputNorm(),
     ])
     tfm_test = TF.Compose([
-        TTF.ResizedCrop(args.im_size),
+        #TTF.ResizedCrop(args.im_size),
+        TF.Resize(256),
+        TF.CenterCrop(224),
         TF.ToTensor(),
-        TF.Normalize([0.5] * 3, [0.2] * 3)
+        tch.nn.ImageNetInputNorm(),
     ])
 
     if not args.cache:
