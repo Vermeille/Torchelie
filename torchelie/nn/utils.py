@@ -293,14 +293,13 @@ def insert_before(base: nn.Sequential, key: str, new: nn.Module,
 
 
 @torch.no_grad()
-def make_leaky(net: nn.Module) -> nn.Module:
+def make_leaky(net: nn.Module, leak: float = 0.2) -> nn.Module:
     """
     Change all relus into leaky relus for modules and submodules of net.
     """
-
     def do_it(m: nn.Module) -> nn.Module:
         if isinstance(m, nn.ReLU):
-            return nn.LeakyReLU(0.2, m.inplace)
+            return nn.LeakyReLU(leak, m.inplace)
         return m
 
     return edit_model(net, do_it)
