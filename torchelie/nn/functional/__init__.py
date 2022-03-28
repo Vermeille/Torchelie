@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Function
 from .vq import quantize
+from .transformer import local_attention_2d
 
 
 def laplacian(images, n_down=4):

@@ -17,3 +17,4 @@ from .encdec import *
 from .interpolate import *
 from .resblock import *
 import torchelie.nn.utils
+from .transformer import LocalSelfAttention2d
