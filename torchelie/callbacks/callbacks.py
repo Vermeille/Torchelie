@@ -34,7 +34,6 @@ class WindowedMetricAvg(tu.AutoStateDict):
         post_each_batch (bool): whether to post on each batch (True, default),
             or only on epoch ends (False)
     """
-
     def __init__(self, name, post_each_batch=True):
         super(WindowedMetricAvg, self).__init__()
         self.name = name
@@ -59,7 +58,8 @@ class WindowedMetricAvg(tu.AutoStateDict):
     def __repr__(self) -> str:
         return "{}({})".format(
             self.__class__.__name__,
-            ", ".join(["{}={}".format(k, v) for k, v in self.__dict__.items()]))
+            ", ".join(["{}={}".format(k, v)
+                       for k, v in self.__dict__.items()]))
 
 
 class ExponentialMetricAvg(tu.AutoStateDict):
@@ -72,7 +72,6 @@ class ExponentialMetricAvg(tu.AutoStateDict):
         post_each_batch (bool): whether to post on each batch (True, default),
             or only on epoch ends (False)
     """
-
     def __init__(self, name, beta: float = 0.9, post_each_batch: bool = True):
         super(ExponentialMetricAvg, self).__init__()
         self.name = name
@@ -105,7 +104,6 @@ class EpochMetricAvg(tu.AutoStateDict):
             or only on epoch ends (False). Notice that posting on each batch
             necessarily yields an approximate average.
     """
-
     def __init__(self, name, post_each_batch=True):
         super(EpochMetricAvg, self).__init__()
         self.name = name
@@ -144,7 +142,6 @@ class TopkAccAvg(tu.AutoStateDict):
             average over each epoch, 'moving' for an exponential  moving
             average, 'window' for an average over the 100 last values.
     """
-
     def __init__(self,
                  k: int = 5,
                  post_each_batch: bool = True,
@@ -198,7 +195,6 @@ class AccAvg(TopkAccAvg):
             average over each epoch, 'moving' for an exponential  moving
             average, 'window' for an average over the 100 last values.
     """
-
     def __init__(self, post_each_batch=True, avg_type='window'):
         super(AccAvg, self).__init__(k=1,
                                      post_each_batch=post_each_batch,
@@ -215,7 +211,6 @@ class MetricsTable(tu.AutoStateDict):
         post_each_batch (bool): whether to post on each batch or on epoch end.
             Default: True.
     """
-
     def __init__(self, post_each_batch=True, epoch_ends=True):
         super(MetricsTable, self).__init__()
         self.post_each_batch = post_each_batch
@@ -253,7 +248,8 @@ class MetricsTable(tu.AutoStateDict):
 
         for k, v in state['metrics'].items():
             if isinstance(v, float):
-                html += '<tr><th>{}</th><td>{}</td></tr>'.format(k, round(v, 6))
+                html += '<tr><th>{}</th><td>{}</td></tr>'.format(
+                    k, round(v, 6))
             elif isinstance(v, torch.Tensor) and v.numel() == 1:
                 html += '<tr><th>{}</th><td>{}</td></tr>'.format(
                     k, round(v.item(), 6))
@@ -281,7 +277,6 @@ class Optimizer(tu.AutoStateDict):
         log_mom (bool): whether to log the current momentum / beta1 in
             the metrics
     """
-
     def __init__(self,
                  opt,
                  accumulation=1,
@@ -350,7 +345,6 @@ class LRSched(tu.AutoStateDict):
         step_each_batch (bool): whether to call :code:`step()` on each batch or
             on each epoch.
     """
-
     def __init__(self, sched, metric='loss', step_each_batch=False):
         super(LRSched, self).__init__()
         self.sched = sched
@@ -395,7 +389,6 @@ class Log:
             :code:`torchelie.utils.dict_by_key()`
         to (str): metrics name
     """
-
     def __init__(self, from_k, to, post_each_batch=True):
         super(Log, self).__init__()
         self.from_k = from_k
@@ -429,7 +422,6 @@ class VisdomLogger:
         log_every (int): batch logging freq. -1 logs on epoch ends only.
         prefix (str): prefix for all metrics name
     """
-
     def __init__(self,
                  visdom_env='main',
                  log_every=10,
@@ -445,8 +437,8 @@ class VisdomLogger:
 
     def on_batch_start(self, state):
         iters = state['iters']
-        state['visdom_will_log'] = (self.log_every != -1 and
-                                    iters % self.log_every == 0)
+        state['visdom_will_log'] = (self.log_every != -1
+                                    and iters % self.log_every == 0)
 
     @torch.no_grad()
     def on_batch_end(self, state):
@@ -514,7 +506,7 @@ class VisdomLogger:
                     assert False, "incorrect tensor shape {} for {}".format(
                         repr(x.shape), name)
             elif hasattr(x, 'to_visdom'):
-                x.to_visdom(self.vis, self.prefix)
+                x.to_visdom(self.vis, name)
             else:
                 assert False, "incorrect type {} for key {}".format(
                     x.__class__.__name__, name)
@@ -530,7 +522,6 @@ class TensorboardLogger:
         log_every (int): batch logging freq. -1 logs on epoch ends only.
         prefix (str): prefix for all metrics name
     """
-
     def __init__(self,
                  log_dir=MISSING,
                  log_every=10,
@@ -538,8 +529,9 @@ class TensorboardLogger:
                  post_epoch_ends=True):
         self.log_dir = log_dir
         if log_dir is not None:
-            assert HAS_TS, ("Can't import Tensorboard. Some callbacks will not "
-                            "work properly")
+            assert HAS_TS, (
+                "Can't import Tensorboard. Some callbacks will not "
+                "work properly")
             if log_dir is MISSING:
                 self.writer = SummaryWriter(log_dir=None)
             else:
@@ -550,8 +542,8 @@ class TensorboardLogger:
 
     def on_batch_start(self, state):
         iters = state['iters']
-        state['visdom_will_log'] = (self.log_every != -1 and
-                                    iters % self.log_every == 0)
+        state['visdom_will_log'] = (self.log_every != -1
+                                    and iters % self.log_every == 0)
 
     @torch.no_grad()
     def on_batch_end(self, state):
@@ -600,7 +592,6 @@ class StdoutLogger(tu.AutoStateDict):
         log_every (int): batch logging freq. -1 logs on epoch ends only.
         prefix (str): prefix for all metrics name
     """
-
     def __init__(self, log_every=10, prefix=''):
         super(StdoutLogger, self).__init__()
         self.log_every = log_every
@@ -638,7 +629,6 @@ class ImageGradientVis:
     Log gradients backpropagated to the input as a feature visualization mean.
     Works only for image data.
     """
-
     def on_batch_start(self, state):
         state['_batch_gpu'][0].requires_grad = True
 
@@ -656,7 +646,8 @@ class ImageGradientVis:
         grad_img = x.grad.abs().sum(1, keepdim=True)
         b, c, h, w = grad_img.shape
         gi_flat = grad_img.view(b, c, -1)
-        cl = torch.kthvalue(gi_flat, int(grad_img[0].numel() * 0.99), dim=-1)[0]
+        cl = torch.kthvalue(gi_flat, int(grad_img[0].numel() * 0.99),
+                            dim=-1)[0]
         cl = cl.unsqueeze(-1).unsqueeze(-1)
         grad_img = torch.min(grad_img, cl) / cl
         x = x.detach()
@@ -682,7 +673,6 @@ class Checkpoint(tu.AutoStateDict):
             key parameter should be a function that takes a single argument
             and returns a key to use for sorting purposes.
     """
-
     def __init__(self, filename_base, objects, max_saves=10, key_best=None):
         super(Checkpoint, self).__init__(
             except_names=['filename_base', 'objects', 'key_best', 'max_saves'])
@@ -779,7 +769,6 @@ class Counter(tu.AutoStateDict):
     iteration within batch ('epoch_batch') and the overall iteration number
     ('iters'):
     """
-
     def __init__(self):
         super(Counter, self).__init__()
         self.epoch = -1
@@ -815,7 +804,6 @@ class ClassificationInspector:
         post_each_batch (bool) whether to generate a new report on each batch
             or only on epoch end.
     """
-
     def __init__(self, nb_show, classes, post_each_batch=True):
         self.vis = CIVis(nb_show, classes, 1. / len(classes))
         self.post_each_batch = post_each_batch
@@ -849,7 +837,6 @@ class SegmentationInspector:
         post_each_batch (bool) whether to generate a new report on each batch
             or only on epoch end.
     """
-
     def __init__(self, nb_show, classes, post_each_batch=True):
         self.vis = SIVis(nb_show, classes, 0.5)
         self.post_each_batch = post_each_batch
@@ -878,7 +865,6 @@ class ConfusionMatrix:
         labels (list of str): classes name
         normalize (bool): whether to show absolute or relative frequencies
     """
-
     def __init__(self, labels, normalize=False):
         self.labels = labels
         self.normalize = normalize
@@ -911,7 +897,8 @@ class ConfusionMatrix:
             else:
                 row_str = ''.join([
                     ('<td style="background-color:rgb({0}, {0}, {0})">{1}'
-                     '</td>').format(int(255 - x / total * 255), x) for x in row
+                     '</td>').format(int(255 - x / total * 255), x)
+                    for x in row
                 ])
             s += "<tr><th>{}</th>{}</tr>".format(label, row_str)
 
@@ -931,7 +918,6 @@ class ConfusionMatrix:
 
 
 class _PrepareTest:
-
     def __init__(self, loop):
         self.loop = loop
 
@@ -953,7 +939,6 @@ class CallRecipe:
         prefix (str): prefix of the metrics of the recipe
         init_fun (Callable or None): a fun to call before running the recipe
     """
-
     def __init__(self, loop, run_every=100, prefix='test', init_fun=None):
         self.loop = loop
         self.run_every = run_every
@@ -988,7 +973,6 @@ class Throughput:
     - :code:`forward_throughput` imgs/s for the forward pass as
         :code:`batch_size / forward_time`
     """
-
     def __init__(self):
         self.b_start = None
         self.forward_avg = WindowAvg(10)
@@ -1053,13 +1037,13 @@ class GANMetrics:
         batches.
 
     """
-
     def __init__(
             self,
             real_key: str = 'batch.0',
             fake_key: str = 'fake',
             device='cpu',
-            metrics: List[str] = ['fid', 'kid', 'precision', 'recall']) -> None:
+            metrics: List[str] = ['fid', 'kid', 'precision',
+                                  'recall']) -> None:
         from pytorch_fid.inception import InceptionV3
         self.model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]])
         self.model.eval()
@@ -1160,9 +1144,11 @@ class GANMetrics:
         m = min(min(feat_real.shape[0], feat_fake.shape[0]), max_subset_size)
         t = 0
         for _subset_idx in range(num_subsets):
-            x = feat_fake[np.random.choice(feat_fake.shape[0], m,
+            x = feat_fake[np.random.choice(feat_fake.shape[0],
+                                           m,
                                            replace=False)]
-            y = feat_real[np.random.choice(feat_real.shape[0], m,
+            y = feat_real[np.random.choice(feat_real.shape[0],
+                                           m,
                                            replace=False)]
             a = (x @ x.T / n + 1)**3 + (y @ y.T / n + 1)**3
             b = (x @ y.T / n + 1)**3
@@ -1187,7 +1173,6 @@ class SeedDistributedSampler:
     If the current DataLoader uses DistributedSampler, it has to be seeded
     every epoch with the epoch number. This callback takes care of that.
     """
-
     def on_epoch_end(self, state):
         DDP = torch.utils.data.DistributedSampler
 
