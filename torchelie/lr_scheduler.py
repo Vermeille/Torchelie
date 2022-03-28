@@ -19,7 +19,6 @@ class CurriculumScheduler(_LRScheduler):
             Values are interpolated linearly between neighboring keypoints
         last_epoch (int): starting iteration
     """
-
     def __init__(self,
                  optimizer,
                  schedule: List[Tuple[float, float, float]],
@@ -59,7 +58,6 @@ class CurriculumScheduler(_LRScheduler):
 
 
 class LinearDecay(CurriculumScheduler):
-
     def __init__(self,
                  optimizer,
                  total_iters: int,
@@ -72,6 +70,43 @@ class LinearDecay(CurriculumScheduler):
             sched = [(0, 0, None), (int(total_iters * warmup_ratio), 1, None),
                      (total_iters, 0, None)]
         super().__init__(optimizer, sched, last_epoch, verbose)
+
+
+class CosineDecay(_LRScheduler):
+    """
+    Allow to pre-specify learning rate and momentum changes
+
+    Args:
+        optimizer (torch.optim.Optimizer): the optimizer to schedule. Currently
+            works only with SGD
+        schedule (list): a schedule. It's a list of keypoints where each
+            element is a 3-tuple like (iteration number, lr multiplier, mom).
+            Values are interpolated linearly between neighboring keypoints
+        last_epoch (int): starting iteration
+    """
+    def __init__(self,
+                 optimizer,
+                 total_iters: int,
+                 warmup_ratio: float = 0.05,
+                 last_epoch: int = -1,
+                 verbose: bool = False):
+        self.total_iters = total_iters
+        self.warmup = warmup_ratio
+        super().__init__(optimizer, last_epoch, verbose)
+
+    def step(self, *unused) -> None:
+        """
+        Step the scheduler to another iteration
+        """
+        self.last_epoch += 1
+
+        lr_mul = min(self.last_epoch / (self.total_iters * self.warmup + 1), 1)
+        lr_mul *= math.cos(self.last_epoch / self.total_iters * math.pi)
+        for group in self.optimizer.param_groups:
+            group['lr'] = lr_mul * group['initial_lr']
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, self.total_iters)
 
 
 class OneCycle(CurriculumScheduler):
@@ -90,7 +125,6 @@ class OneCycle(CurriculumScheduler):
         mom (2-tuple): momentum range
         last_iter (int): last_iteration index
     """
-
     def __init__(self,
                  opt,
                  lr: Tuple[float, float],
@@ -105,12 +139,11 @@ class OneCycle(CurriculumScheduler):
             mom = math.log(mom[0]), math.log(mom[1])
 
         third = num_iters // 3
-        super(OneCycle, self).__init__(opt, [(0, lr[0], mom[0]),
-                                             (third, lr[1], mom[1]),
-                                             (2 * third, lr[0], mom[0]),
-                                             (num_iters, lr[0] /
-                                              (lr[1] / lr[0] * 10000), mom[0])],
-                                       last_iter=last_iter)
+        super(OneCycle, self).__init__(
+            opt, [(0, lr[0], mom[0]), (third, lr[1], mom[1]),
+                  (2 * third, lr[0], mom[0]),
+                  (num_iters, lr[0] / (lr[1] / lr[0] * 10000), mom[0])],
+            last_iter=last_iter)
 
     def step(self, *unused):
         super(OneCycle, self).step()
@@ -136,7 +169,6 @@ class HyperbolicTangentDecay(_LRScheduler):
     classification (Hsueh et al., 2019), keeps a flat LR for about 70% of the
     training then decays following a hypertangent curve.
     """
-
     def __init__(self,
                  optimizer: Optimizer,
                  n_iters_total: int,
@@ -161,7 +193,6 @@ class HyperbolicTangentDecay(_LRScheduler):
     def __repr__(self) -> str:
         return 'HyperbolicTangentDecay({})'.format(
             tu.indent("\n".join([
-                '{}={}'.format(k, v)
-                for k, v in self.__dict__.items()
+                '{}={}'.format(k, v) for k, v in self.__dict__.items()
                 if k != 'optimizer'
             ])))
