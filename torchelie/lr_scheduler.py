@@ -100,8 +100,14 @@ class CosineDecay(_LRScheduler):
         """
         self.last_epoch += 1
 
-        lr_mul = min(self.last_epoch / (self.total_iters * self.warmup + 1), 1)
-        lr_mul *= math.cos(self.last_epoch / self.total_iters * math.pi)
+        progress = self.last_epoch / self.total_iters
+
+        if self.warmup != 0.0:
+            lr_mul = min(progress / self.warmup, 1)
+        else:
+            lr_mul = 1
+
+        lr_mul *= 0.5 * (math.cos(progress * math.pi) + 1)
         for group in self.optimizer.param_groups:
             group['lr'] = lr_mul * group['initial_lr']
 
