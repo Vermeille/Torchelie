@@ -39,11 +39,14 @@ class ResNetInput(nn.Module):
         if stride == 1:
             self.conv.conv.stride = (1, 1)
             self.pool = nn.Identity()
-        if stride >= 2:
+        elif stride >= 2:
             self.conv.conv.stride = (1, 1)
             self.pool = nn.MaxPool2d(3, 2, 1)
-        if stride == 4:
+        elif stride == 4:
             self.conv.conv.stride = (2, 2)
+            self.pool = nn.MaxPool2d(3, 2, 1)
+        else:
+            self.conv.conv.stride = (stride // 2, stride // 2)
             self.pool = nn.MaxPool2d(3, 2, 1)
         return self
 

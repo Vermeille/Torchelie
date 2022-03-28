@@ -17,7 +17,6 @@ class AdaptiveConcatPool2d(nn.Module):
         target_size: the target output size (single integer or
             double-integer tuple)
     """
-
     def __init__(self, target_size):
         super(AdaptiveConcatPool2d, self).__init__()
         self.target_size = target_size
