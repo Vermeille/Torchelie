@@ -17,12 +17,20 @@ class LocalSelfAttention2d(nn.Module):
         super().__init__()
         hidden_channels = hidden_channels or in_channels
         self.hidden_channels = hidden_channels
-        self.proj = tu.kaiming(Conv1x1(in_channels, hidden_channels * 3))
+        self.proj = tu.kaiming(
+            Conv1x1(in_channels, hidden_channels * 3, bias=False))
         self.position = nn.Parameter(
-            torch.zeros(hidden_channels, kernel_size, kernel_size))
+            torch.zeros(num_heads, 2 * kernel_size, 2 * kernel_size))
         self.out = tu.kaiming(Conv1x1(hidden_channels, in_channels))
         self.kernel_size = kernel_size
         self.num_heads = num_heads
+
+    def unfolded_posenc(self):
+        w = self.kernel_size
+        pos = torch.tensor([[x, y] for x in range(w) for y in range(w)])
+        pos = pos[None, :, :] - pos[:, None, :]
+        pos += w
+        return self.position[:, pos[:, :, 0], pos[:, :, 1]]
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         H, W, P = x.shape[2], x.shape[3], self.kernel_size
@@ -30,8 +38,8 @@ class LocalSelfAttention2d(nn.Module):
         if pad != (0, 0):
             x = F.pad(x, (pad[0] // 2, pad[0] - pad[0] // 2, pad[1] // 2,
                           pad[1] - pad[1] // 2))
-        x = local_attention_2d(x, self.proj, self.position, self.num_heads,
-                               self.kernel_size)
+        x = local_attention_2d(x, self.proj, self.unfolded_posenc(),
+                               self.num_heads, self.kernel_size)
         x = self.out(x)
         if pad == (0, 0):
             return x
