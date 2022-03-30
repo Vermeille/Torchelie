@@ -68,7 +68,7 @@ def tempered_cross_entropy(x: torch.Tensor,
     The bi-tempered loss from https://arxiv.org/abs/1906.03361
 
     Args:
-        x (tensor): a tensor of batched probabilities like for cross_entropy
+        x (tensor): a tensor of batched logits like for cross_entropy
         y (tensor): a tensor of labels
         t1 (float): temperature 1
         t2 (float): temperature 2
@@ -131,6 +131,7 @@ class TemperedCrossEntropyLoss(torch.nn.Module):
         reduction (str): how to reduce the batch of losses: 'none', 'sum', or
             'mean'
     """
+
     def __init__(self, t1, t2, weight=None, reduction='mean'):
         super(TemperedCrossEntropyLoss, self).__init__()
         self.t1 = t1
@@ -143,7 +144,7 @@ class TemperedCrossEntropyLoss(torch.nn.Module):
         Forward pass
 
         Args:
-            x (tensor): a tensor of batched probabilities like for
+            x (tensor): a tensor of batched logits like for
                 cross_entropy
             y (tensor): a tensor of labels
 
