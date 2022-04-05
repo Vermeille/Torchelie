@@ -17,6 +17,7 @@ from .avg import *
 
 try:
     from torch.utils.tensorboard import SummaryWriter
+    import matplotlib.pyplot as plt
     HAS_TS = True
 except Exception:
     HAS_TS = False
@@ -584,6 +585,8 @@ class TensorboardLogger:
                 else:
                     assert False, "incorrect tensor shape {} for {}".format(
                         repr(x.shape), name)
+            elif isinstance(x, plt.Figure):
+                self.writer.add_figure(name, x, iters)
             else:
                 assert False, "incorrect type {} for key {}".format(
                     x.__class__.__name__, name)
