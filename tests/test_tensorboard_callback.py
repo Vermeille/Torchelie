@@ -1,6 +1,7 @@
 import pytest
 import torch
 import torchelie.callbacks as tcb
+import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torchvision.datasets import FashionMNIST
 from torchvision.transforms import PILToTensor
@@ -35,6 +36,8 @@ def test_tesorboard():
 
     def train(b):
         x, y = b
+        fig = plt.figure()
+        plt.plot([0, int(y[0])])
         return {'letter_number_int':     int(y[0]),
                 'letter_number_tensor':  y[0],
                 'letter_text':  dst.classes[int(y[0])],
@@ -43,7 +46,8 @@ def test_tesorboard():
                 'letter_gray_img_CHW':   x[0, :1],
                 'letter_gray_imgs_NCHW':  x[:, :1],
                 'letter_color_img_CHW':  x[0],
-                'letter_color_imgs_NCHW': x}
+                'letter_color_imgs_NCHW': x,
+                'test_matplotlib': fig}
 
     r = Recipe(train, DataLoader(dst, batch_size))
     r.callbacks.add_callbacks([
@@ -58,6 +62,7 @@ def test_tesorboard():
         tcb.Log('letter_gray_imgs_NCHW', 'letter_gray_imgs_NCHW'),
         tcb.Log('letter_color_img_CHW', 'letter_color_img_CHW'),
         tcb.Log('letter_color_imgs_NCHW', 'letter_color_imgs_NCHW'),
+        tcb.Log('test_matplotlib', 'test_matplotlib'),
     ])
     r.run(1)
 
