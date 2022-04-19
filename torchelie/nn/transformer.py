@@ -8,12 +8,18 @@ from .functional.transformer import local_attention_2d
 from typing import Optional
 
 
+class LocalSelfAttentionHook(nn.Module):
+    def forward(self, x, attn, pad):
+        return x, attn, pad
+
+
 class LocalSelfAttention2d(nn.Module):
     def __init__(self,
                  in_channels: int,
                  num_heads: int,
                  kernel_size: int,
-                 hidden_channels: Optional[int] = None):
+                 hidden_channels: Optional[int] = None,
+                 dropout=0):
         super().__init__()
         hidden_channels = hidden_channels or in_channels
         self.hidden_channels = hidden_channels

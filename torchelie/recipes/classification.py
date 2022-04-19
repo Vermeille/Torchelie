@@ -125,7 +125,7 @@ def Classification(model,
 
     loop.test_loop.callbacks.add_callbacks([
         tcb.AccAvg(post_each_batch=False, avg_type='running'),
-        tcb.WindowedMetricAvg('loss', False),
+        tcb.EpochMetricAvg('loss', False),
     ])
 
     if visdom_env is not None:
@@ -143,10 +143,10 @@ def Classification(model,
         ])
     else:
         loop.callbacks.add_callbacks([
-            tcb.TopkAccAvg(),
+            tcb.TopkAccAvg(k=5),
         ])
         loop.test_loop.callbacks.add_callbacks([
-            tcb.TopkAccAvg(post_each_batch=False, avg_type='running'),
+            tcb.TopkAccAvg(k=5, post_each_batch=False, avg_type='running'),
         ])
 
     loop.test_loop.callbacks.cbs[2] = [
