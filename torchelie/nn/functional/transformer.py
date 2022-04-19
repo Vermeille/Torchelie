@@ -27,4 +27,4 @@ def local_attention_2d(x: Tensor, conv_kqv: nn.Conv2d, posenc: Tensor,
     v = v.view(B, H * W, N, hidC, P * P)
     kqv = torch.matmul(v, kq.transpose(-1, -2)).view(B, H, W, N, hidC, P, P)
     kqv = kqv.permute(0, 3, 4, 1, 5, 2, 6).reshape(B, hidC * N, fullH, fullW)
-    return kqv
+    return kqv, kq
