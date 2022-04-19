@@ -83,3 +83,15 @@ class InformationBottleneckFunc(Function):
 
 information_bottleneck = InformationBottleneckFunc.apply
 unit_gaussian_prior = InformationBottleneckFunc.apply
+
+
+def drop_path(x, drop_prob=0.0, training=False):
+    if drop_prob == 0. or not training:
+        return x
+    keep_prob = 1 - drop_prob
+    shape = (x.shape[0], ) + (1, ) * (x.ndim - 1)
+    random_tensor = keep_prob + torch.rand(
+        shape, dtype=x.dtype, device=x.device)
+    random_tensor.floor_()
+    output = x * random_tensor.div(keep_prob)
+    return output
