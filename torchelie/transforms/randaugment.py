@@ -57,6 +57,7 @@ class RandAugment(torch.nn.Module):
         self.transforms += [
             Solarize(magnitude * 256),
             TF.RandomEqualize(p=1),
+            TF.ColorJitter(hue=0.5 * magnitude),
         ]
         return self
 
@@ -69,6 +70,7 @@ class RandAugment(torch.nn.Module):
             TF.ColorJitter(contrast=0.9 * magnitude),
             TF.ColorJitter(brightness=0.9 * magnitude),
             TF.RandomAdjustSharpness(0.9 * magnitude, p=1),
+            Lighting(1 * magnitude),
         ]
         return self
 
