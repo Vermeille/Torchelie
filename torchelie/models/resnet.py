@@ -39,7 +39,7 @@ class ResNetInput(nn.Module):
         if stride == 1:
             self.conv.conv.stride = (1, 1)
             self.pool = nn.Identity()
-        elif stride >= 2:
+        elif stride == 2:
             self.conv.conv.stride = (1, 1)
             self.pool = nn.MaxPool2d(3, 2, 1)
         elif stride == 4:
@@ -83,7 +83,10 @@ class ResNetInputImproved(tnn.CondSeq):
                                    out_channels // 2,
                                    3,
                                    stride=2)
-        self.conv3 = tnn.ConvBlock(out_channels // 2, out_channels, 3, stride=1)
+        self.conv3 = tnn.ConvBlock(out_channels // 2,
+                                   out_channels,
+                                   3,
+                                   stride=1)
 
     def set_input_specs(self, input_size: int, in_channels=3) -> 'ResNetInput':
         out_ch = self.out_channels
@@ -107,7 +110,6 @@ class ResNetInputImproved(tnn.CondSeq):
 
 
 class ResNet(nn.Module):
-
     def __init__(self, arch: List[str], num_classes: int) -> None:
         super().__init__()
 
@@ -136,7 +138,8 @@ class ResNet(nn.Module):
         if block_type == 'resnext':
             return tnn.ResBlockBottleneck(in_ch, out_ch, stride).resnext()
         if block_type == 'preact_resnext':
-            return tnn.PreactResBlockBottleneck(in_ch, out_ch, stride).resnext()
+            return tnn.PreactResBlockBottleneck(in_ch, out_ch,
+                                                stride).resnext()
         if block_type == 'wide':
             return tnn.ResBlockBottleneck(in_ch, out_ch, stride).wide()
         if block_type == 'preact_wide':
@@ -255,15 +258,15 @@ def seresnet18(num_classes: int) -> ResNet:
 
 @register
 def resnet34(num_classes: int) -> ResNet:
-    return ResNet(['64:4'] + ['64:1'] * 3 + ['128:2'] + ['128:1'] * 3
-                  + ['256:2'] + ['256:1'] * 5 + ['512:2', '512:1', '512:1'],
+    return ResNet(['64:4'] + ['64:1'] * 3 + ['128:2'] + ['128:1'] * 3 +
+                  ['256:2'] + ['256:1'] * 5 + ['512:2', '512:1', '512:1'],
                   num_classes)
 
 
 @register
 def resnet50(num_classes: int) -> ResNet:
-    net = ResNet(['64:4'] + ['256:1'] * 3 + ['512:2'] + ['512:1'] * 3
-                 + ['1024:2'] + ['1024:1'] * 5 + ['2048:2', '2048:1', '2048:1'],
+    net = ResNet(['64:4'] + ['256:1'] * 3 + ['512:2'] + ['512:1'] * 3 +
+                 ['1024:2'] + ['1024:1'] * 5 + ['2048:2', '2048:1', '2048:1'],
                  num_classes)
     net.to_bottleneck()
     return net
@@ -271,18 +274,18 @@ def resnet50(num_classes: int) -> ResNet:
 
 @register
 def resnet101(num_classes: int) -> ResNet:
-    net = ResNet(['64:4'] + ['256:1'] * 3 + ['512:2'] + ['512:1'] * 3
-                 + ['1024:2'] + ['1024:1'] * 22
-                 + ['2048:2', '2048:1', '2048:1'], num_classes)
+    net = ResNet(['64:4'] + ['256:1'] * 3 + ['512:2'] + ['512:1'] * 3 +
+                 ['1024:2'] + ['1024:1'] * 22 + ['2048:2', '2048:1', '2048:1'],
+                 num_classes)
     net.to_bottleneck()
     return net
 
 
 @register
 def resnet152(num_classes: int) -> ResNet:
-    net = ResNet(['64:4'] + ['256:1'] * 3 + ['512:2'] + ['512:1'] * 7
-                 + ['1024:2'] + ['1024:1'] * 35
-                 + ['2048:2', '2048:1', '2048:1'], num_classes)
+    net = ResNet(['64:4'] + ['256:1'] * 3 + ['512:2'] + ['512:1'] * 7 +
+                 ['1024:2'] + ['1024:1'] * 35 + ['2048:2', '2048:1', '2048:1'],
+                 num_classes)
     net.to_bottleneck()
     return net
 
