@@ -49,7 +49,6 @@ class PairedDataset(torch.utils.data.Dataset):
         dataset1 (Dataset): a dataset
         dataset2 (Dataset): another dataset
     """
-
     def __init__(self, dataset1: Sequence, dataset2: Sequence) -> None:
         super(PairedDataset, self).__init__()
         self.dataset1 = dataset1
@@ -70,8 +69,8 @@ class PairedDataset(torch.utils.data.Dataset):
         return len(self.dataset1) * len(self.dataset2)
 
     def __repr__(self) -> str:
-        return ("PairedDataset:\n" + tu.indent(repr(self.dataset1)) + "\n--\n" +
-                tu.indent(repr(self.dataset2)))
+        return ("PairedDataset:\n" + tu.indent(repr(self.dataset1)) +
+                "\n--\n" + tu.indent(repr(self.dataset2)))
 
 
 class RandomPairsDataset(torch.utils.data.Dataset):
@@ -88,7 +87,6 @@ class RandomPairsDataset(torch.utils.data.Dataset):
         dataset1 (Dataset): a dataset
         dataset2 (Dataset): another dataset
     """
-
     def __init__(self, dataset1, dataset2):
         super(RandomPairsDataset, self).__init__()
         self.dataset1 = dataset1
@@ -151,7 +149,6 @@ def mixup(x1, x2, y1, y2, num_classes, mixer=None, alpha=0.4):
 
 
 class _Wrap:
-
     def __init__(self, instance):
         # FIXME: NOT WORKING WHEN SETTING MEMBERS
         # self.__dict__ = instance.__dict__
@@ -179,7 +176,6 @@ class MixUpDataset(_Wrap):
         alpha (float): the alpha that parameterizes the beta distribution from
             which the blending factor is sampled
     """
-
     def __init__(self, dataset, alpha=0.4, transform=None):
         super(MixUpDataset, self).__init__(dataset)
         self.ds = dataset
@@ -204,7 +200,6 @@ class MixUpDataset(_Wrap):
 
 
 class _Proxy:
-
     def __init__(self, ds, indices, remap_unused_classes, cls_map):
         self.ds = ds
         self.indices = indices
@@ -260,7 +255,6 @@ class Subset:
     set_10pct = Subset(dataset, ratio=0.9, seed=42, include=False)
     ```
     """
-
     def __init__(self,
                  ds,
                  ratio=None,
@@ -334,7 +328,6 @@ class NoexceptDataset(_Wrap):
     Args:
         ds (Dataset): a dataset
     """
-
     def __init__(self, ds):
         super(NoexceptDataset, self).__init__(ds)
         self.ds = ds
@@ -365,7 +358,6 @@ class WithIndexDataset(_Wrap):
     Args:
         ds (Dataset): A dataset
     """
-
     def __init__(self, ds):
         super(WithIndexDataset, self).__init__(ds)
         self.ds = ds
@@ -397,7 +389,6 @@ class CachedDataset(_Wrap):
         transform (Callable): transform to apply on cached elements
         device: the device on which the cache is allocated
     """
-
     def __init__(self, ds, transform=None, device='cpu'):
         super(CachedDataset, self).__init__(ds)
         self.ds = ds
@@ -431,10 +422,11 @@ class CachedDataset(_Wrap):
 
 
 @tu.experimental
-def StratifiedSampler(dataset):
+def StratifiedSampler(dataset, num_samples=None):
     weights = torch.tensor([0.0] * len(dataset.classes))
     for s in dataset.samples:
         weights[s[1]] += 1
 
     return torch.utils.data.WeightedRandomSampler(
-        [1 / weights[klass] for _, klass in dataset.samples], len(dataset))
+        [1 / weights[klass] for _, klass in dataset.samples], num_samples
+        or len(weights))

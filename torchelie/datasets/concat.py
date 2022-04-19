@@ -107,13 +107,14 @@ class MergedSamples:
 
 
 class MergedDataset(Dataset):
-    def __init__(self, datasets):
+    def __init__(self, datasets, transform=None):
         self.datasets = datasets
         self.classes = list(set(c for d in datasets for c in d.classes))
         self.classes.sort()
         self.class_to_idx = {c: i for i, c in enumerate(self.classes)}
 
         self.samples = MergedSamples(self)
+        self.transform = transform or (lambda x: x)
 
     def __len__(self):
         return sum(len(d) for d in self.datasets)
@@ -122,7 +123,7 @@ class MergedDataset(Dataset):
         for ds in self.datasets:
             if i < len(ds):
                 x, y, *ys = ds[i]
-                return [x, self.class_to_idx[ds.classes[y]]] + ys
+                return [self.transform(x), self.class_to_idx[ds.classes[y]]] + ys
             i -= len(ds)
         raise IndexError
 
