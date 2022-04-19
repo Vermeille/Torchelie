@@ -74,9 +74,9 @@ def kaiming_gain(m: T_Module,
     Return the std needed to initialize a weight matrix with given parameters.
     """
     if mode == 'fan_inout':
-        fan = (
-            math.sqrt(nn.init._calculate_correct_fan(m.weight, 'fan_in')) +
-            math.sqrt(nn.init._calculate_correct_fan(m.weight, 'fan_out'))) / 2
+        fan = (math.sqrt(nn.init._calculate_correct_fan(m.weight, 'fan_in'))
+               + math.sqrt(nn.init._calculate_correct_fan(m.weight,
+                                                          'fan_out'))) / 2
     else:
         fan = math.sqrt(nn.init._calculate_correct_fan(m.weight, mode))
     gain = nn.init.calculate_gain(nonlinearity, param=a)
@@ -678,8 +678,8 @@ def experimental(func):
         if doc is None:
             return f'**Experimental**\n\n.. warning::\n  {msg}\n\n.\n'
         else:
-            return ('**Experimental**: ' + dedent(func.__doc__) +
-                    f'.. warning::\n {msg}\n\n\n')
+            return ('**Experimental**: ' + dedent(func.__doc__)
+                    + f'.. warning::\n {msg}\n\n\n')
 
     if isfunction(func):
         func.__doc__ = deprecate_doc(func.__doc__)

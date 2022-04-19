@@ -30,7 +30,6 @@ class RandAugment(torch.nn.Module):
         interpolation: interpolation to use for suitable transforms
         fill: fill value to use for suitable transforms
     """
-
     def __init__(self,
                  n_transforms: int,
                  magnitude: float,

@@ -409,7 +409,8 @@ def train(args, rank, world_size):
 
     if not args.cache:
         trainset = tch.datasets.FastImageFolder(args.trainset, transform=tfm)
-        testset = tch.datasets.FastImageFolder(args.testset, transform=tfm_test)
+        testset = tch.datasets.FastImageFolder(args.testset,
+                                               transform=tfm_test)
     else:
         trainset = ImageFolder(args.trainset)
         testset = ImageFolder(args.testset)
