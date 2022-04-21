@@ -10,17 +10,31 @@ from typing_extensions import Literal
 
 
 class LocalSelfAttentionHook(nn.Module):
+
     def forward(self, x, attn, pad):
         return x, attn, pad
 
 
 class LocalSelfAttention2d(nn.Module):
+
     def __init__(self,
                  in_channels: int,
                  num_heads: int,
                  kernel_size: int,
                  hidden_channels: Optional[int] = None,
                  padding_mode: Literal['none', 'auto'] = 'none'):
+        """
+        Args:
+            in_channels (int): number of input channels
+            num_heads (int): how many self attention heads
+            kernel_size (int): the self attention window size. Must divide
+                input size if padding_mode is 'none'.
+            hidden_channels (int): how many channels *per head*.
+            padding_mode (str): if 'none', no padding is used and kernel_size
+                must divide the input spatial size. If 'auto', zero padding
+                will be used to center the input feature map, and make it
+                a multiple of kernel_size
+        """
         super().__init__()
         hidden_channels = hidden_channels or (in_channels // num_heads)
         self.hidden_channels = hidden_channels
@@ -28,8 +42,7 @@ class LocalSelfAttention2d(nn.Module):
             Conv1x1(in_channels, hidden_channels * num_heads * 3, bias=False))
         self.position = nn.Parameter(
             torch.zeros(num_heads, 2 * kernel_size, 2 * kernel_size))
-        self.out = tu.kaiming(Conv1x1(hidden_channels * num_heads,
-                                      in_channels))
+        self.out = tu.kaiming(Conv1x1(hidden_channels * num_heads, in_channels))
         self.kernel_size = kernel_size
         self.num_heads = num_heads
         self.attn_hook = LocalSelfAttentionHook()
