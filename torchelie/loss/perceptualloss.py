@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import List, Callable, cast
+from typing import List, Callable, cast, Union, Tuple
 
 from torchelie.nn import ImageNetInputNorm
 from torchelie.models import PerceptualNet
@@ -21,15 +21,30 @@ class PerceptualLoss(nn.Module):
         loss_fn (distance function): a distance function to compare the
             representations, like mse_loss or l1_loss
     """
+
     def __init__(self,
-                 layers: List[str],
+                 layers: Union[List[str], List[Tuple[str, float]]],
                  rescale: bool = False,
                  loss_fn: Callable[[torch.Tensor, torch.Tensor],
                                    torch.Tensor] = F.mse_loss,
                  use_avg_pool: bool = True,
                  remove_unused_layers: bool = True):
         super(PerceptualLoss, self).__init__()
-        self.m = PerceptualNet(layers,
+
+        def key(l):
+            if isinstance(l, (tuple, list)):
+                return l[0]
+            else:
+                return l
+
+        def weight(l):
+            if isinstance(l, (tuple, list)):
+                return l[1]
+            else:
+                return 1
+
+        self.weight = {key(l): weight(l) for l in layers}
+        self.m = PerceptualNet([key(l) for l in layers],
                                use_avg_pool=use_avg_pool,
                                remove_unused_layers=remove_unused_layers)
         self.norm = ImageNetInputNorm()
@@ -48,6 +63,8 @@ class PerceptualLoss(nn.Module):
 
         _, ref = self.m(self.norm(y), detach=True)
         _, acts = self.m(self.norm(x), detach=False)
-        loss = cast(torch.Tensor,
-                    sum(self.loss_fn(acts[k], ref[k]) for k in acts.keys()))
+        loss = cast(
+            torch.Tensor,
+            sum(self.weight[k] * self.loss_fn(acts[k], ref[k])
+                for k in acts.keys()))
         return loss / len(acts)
