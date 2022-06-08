@@ -24,6 +24,9 @@ def get_args():
     parser.add_argument('--network', required=True)
     parser.add_argument('--train-path', required=True)
     parser.add_argument('--test-path', required=True)
+    parser.add_argument('--optimizer',
+                        choices=['sgd', 'adabelief'],
+                        default='sgd')
     parser.add_argument('--weights')
     parser.add_argument('--pretrained')
     parser.add_argument('--from-ckpt')
@@ -53,7 +56,7 @@ def build_transforms(train_im_size, test_im_size):
 
 
 def get_datasets(train_path, test_path, train_im_size, test_im_size):
-    tfms, train_tfms = build_transforms(train_im_size, test_im_size)
+    train_tfms, tfms = build_transforms(train_im_size, test_im_size)
     ds = FastImageFolder(train_path, transform=train_tfms)
     dst = FastImageFolder(test_path, transform=tfms)
     return ds, dst
@@ -103,7 +106,7 @@ def train(opts, rank, world_size):
                                         dl,
                                         dlt,
                                         ds.classes,
-                                        optimizer='sgd',
+                                        optimizer=opts.optimizer,
                                         lr=opts.lr,
                                         wd=opts.wd,
                                         beta1=0.9,

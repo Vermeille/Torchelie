@@ -258,16 +258,15 @@ def CrossEntropyClassification(model,
         opt = AdaBelief(model.parameters(),
                         lr=lr,
                         betas=(beta1, beta2),
-                        weight_decay=wd)
+                        weight_decay=wd,
+                        eps=1e-8)
         if n_iters is not None:
-            sched = HyperbolicTangentDecay(opt, n_iters)
+            sched = LinearDecay(opt, n_iters)
     else:
         opt = torch.optim.SGD(model.parameters(),
                               lr=lr,
                               weight_decay=wd,
                               momentum=beta1)
-    if n_iters is not None:
-        sched = LinearDecay(opt, n_iters)
 
     loop.register('opt', opt)
     loop.callbacks.add_callbacks([
@@ -275,6 +274,7 @@ def CrossEntropyClassification(model,
         tcb.Throughput(),
     ])
     if n_iters is not None:
+        sched = LinearDecay(opt, n_iters)
         loop.register('sched', sched)
 
         loop.callbacks.add_callbacks(
