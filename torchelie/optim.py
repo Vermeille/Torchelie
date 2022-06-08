@@ -186,11 +186,11 @@ class AdaBelief(Optimizer):
                 # Decay the first and second moment running average coefficient
                 exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
                 belief = grad - exp_avg
-                exp_avg_sq.mul_(beta2).addcmul_(belief, belief, value=1 - beta2)
+                exp_avg_sq.mul_(beta2).addcmul_(belief, belief, value=1 -
+                        beta2).add_(eps)
                 # This is everything. See EAdam.
-                exp_avg_sq = exp_avg_sq + eps
 
-                var = exp_avg_sq.mul_(1 / (1 - beta2**t))
+                var = exp_avg_sq.mul(1 / (1 - beta2**t))
                 var.sqrt_()
 
                 # Perform stepweight decay
