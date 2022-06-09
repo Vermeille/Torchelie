@@ -950,7 +950,7 @@ class CallRecipe:
         self.init_fun = init_fun
 
     def on_batch_end(self, state):
-        if state['iters'] != 0 and state['iters'] % self.run_every == 0:
+        if state['iters'] % self.run_every == 0:
             if self.init_fun is not None:
                 self.init_fun(state)
             try:
