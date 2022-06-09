@@ -1172,6 +1172,44 @@ class GANMetrics:
         return torch.mean(is_included).item()
 
 
+class LPIPS:
+    """
+    Compute LPIPS between :code:`real_key` and :code:`fake_key` and store the
+    result in :code:`state['lpips']`.
+
+    Args:
+        real_key (str): state key of real pictures.
+        fake_key (str): state key of fake pictures.
+        model (str): model name to use for the computation of LPIPS. Possible
+            values: :code:`alex` or :code:`vgg`.
+    """
+
+    def __init__(self, real_key: str, fake_key: str, model: str = 'alex'):
+        try:
+            import lpips
+        except Exception as e:
+            print('package lpips is needed for LPIPS callback, try '
+                  'pip install lpips')
+            raise e
+        self.fun = lpips.LPIPS(net=model)
+        self.real_key = real_key
+        self.fake_key = fake_key
+
+    def norm(self, x: torch.Tensor) -> torch.Tensor:
+        N = x.shape[0]
+        m = x.view(N, -1).min(dim=1).values[:, None, None, None]
+        M = x.view(N, -1).max(dim=1).values[:, None, None, None]
+        r = (M - m) / 2 + 1e-6
+        c = (m + M) / 2
+        return (x - c) / r
+
+    @torch.no_grad()
+    def on_batch_end(self, state):
+        fake = self.norm(tu.dict_by_key(state, self.fake_key))
+        real = self.norm(tu.dict_by_key(state, self.real_key))
+        state['lpips'] = self.fun(fake, real).mean()
+
+
 class SeedDistributedSampler:
     """
     If the current DataLoader uses DistributedSampler, it has to be seeded
