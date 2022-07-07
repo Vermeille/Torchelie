@@ -26,7 +26,6 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
     ```
 
     """
-
     def __init__(self, arch: List[str]) -> None:
         super().__init__()
         self.arch = arch
@@ -69,8 +68,9 @@ class Pix2PixHDGlobalGenerator(tnn.CondSeq):
             out_ch = int(arch[i][1:])
             convblock = tnn.ConvBlock(ch, out_ch, 3, stride=1).add_upsampling()
             self.decode.add_module(f'out_conv_{ii}', convblock)
-            tnn.utils.insert_after(convblock, 'norm',
-                                   tnn.Noise(1, inplace=True), 'noise')
+            tnn.utils.insert_after(convblock, 'norm', tnn.Noise(1,
+                                                                inplace=True),
+                                   'noise')
             ch = out_ch
             i += 1
             ii += 1
@@ -161,13 +161,12 @@ def pix2pixhd_dev() -> Pix2PixHDGlobalGenerator:
 
 @tu.experimental
 def pix2pixhd_res_dev() -> Pix2PixHDGlobalGenerator:
-    return Pix2PixHDGlobalGenerator(['8', 'd16', 'd32', 'd64', 'd128', 'd256'] +
-                                    ['R256'] * 10 +
-                                    ['u256', 'u128', 'u64', 'u32', 'u16'])
+    return Pix2PixHDGlobalGenerator(
+        ['8', 'd16', 'd32', 'd64', 'd128', 'd256'] + ['R256'] * 10 +
+        ['u256', 'u128', 'u64', 'u32', 'u16'])
 
 
 class MultiScaleDiscriminator(nn.Module):
-
     def __init__(self, base_model: nn.Module, n_scales=3):
         super().__init__()
         self.scales = nn.ModuleList()
@@ -181,7 +180,7 @@ class MultiScaleDiscriminator(nn.Module):
         for i in range(len(self.scales)):
             scale = 2**i
             out = self.scales[i](nn.functional.interpolate(
-                x, scale_factor=1 / scale, mode='bilinear')).view(N, -1)
+                x, scale_factor=1 / scale, mode='area')).view(N, -1)
             outs.append(out.view(N, -1))
 
         if flatten:

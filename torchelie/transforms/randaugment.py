@@ -60,6 +60,10 @@ class RandAugment(torch.nn.Module):
         ]
         return self
 
+    def add_hue(self):
+        self.transforms.append(TF.ColorJitter(hue=0.5 * self.magnitude))
+        return self
+
     def add_colors(self):
         magnitude = self.magnitude
         self.transforms += [

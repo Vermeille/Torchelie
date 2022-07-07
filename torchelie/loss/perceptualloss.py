@@ -21,7 +21,6 @@ class PerceptualLoss(nn.Module):
         loss_fn (distance function): a distance function to compare the
             representations, like mse_loss or l1_loss
     """
-
     def __init__(self,
                  layers: Union[List[str], List[Tuple[str, float]]],
                  rescale: bool = False,
@@ -57,9 +56,9 @@ class PerceptualLoss(nn.Module):
         """
         if self.rescale:
             s = 224 / min(y.shape[-2:])
-            y = F.interpolate(y, scale_factor=s, mode='bicubic')
+            y = F.interpolate(y, scale_factor=s, mode='area')
             s = 224 / min(x.shape[-2:])
-            x = F.interpolate(x, scale_factor=s, mode='bicubic')
+            x = F.interpolate(x, scale_factor=s, mode='area')
 
         _, ref = self.m(self.norm(y), detach=True)
         _, acts = self.m(self.norm(x), detach=False)

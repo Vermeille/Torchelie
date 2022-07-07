@@ -18,13 +18,13 @@ class UnlabeledImages:
         root (str): path to the root directory
         transform (callable): transformations
     """
-
-    def __init__(self, root: str, transform: Optional[Callable] = None) -> None:
+    def __init__(self,
+                 root: str,
+                 transform: Optional[Callable] = None) -> None:
         root = os.path.expanduser(root)
         self.root = root
         self.samples = list(
-            root + '/' + name
-            for root, _, files in os.walk(root)
+            root + '/' + name for root, _, files in os.walk(root)
             for name in files
             if name.split('.')[-1].lower() in ['bmp', 'jpg', 'jpeg', 'png'])
         self.transform = transform
@@ -54,7 +54,6 @@ class ImagesPaths:
         paths (List[str]): paths to images
         transform (callable): transformations
     """
-
     def __init__(self,
                  paths: List[str],
                  transform: Optional[Callable] = None) -> None:
@@ -82,8 +81,11 @@ class SideBySideImagePairsDataset(UnlabeledImages):
     Dataset for side-by-side images. It splits the images so that the same
     transforms are applied to pairs and remain meaningful.
     """
-
-    def __init__(self, root: str, transform: Optional[Callable] = None) -> None:
+    def __init__(self,
+                 root: str,
+                 transform: Optional[Callable] = None,
+                 pre_split_transform: Optional[Callable] = None) -> None:
+        self.pre_split_transform = pre_split_transform
         super().__init__(root, transform)
 
     def __getitem__(self, i: int) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -91,7 +93,10 @@ class SideBySideImagePairsDataset(UnlabeledImages):
         Return the ith paired image as (img1, img2)
         """
         img_path = self.samples[i]
-        img = to_tensor(Image.open(img_path))
+        img = Image.open(img_path)
+        if self.pre_split_transform is not None:
+            img = self.pre_split_transform(img)
+        img = to_tensor(img)
 
         img = self._concat(img)
 
@@ -127,7 +132,6 @@ class Pix2PixDataset(SideBySideImagePairsDataset):
 
     night2day, facades have traint, test and val splits.
     """
-
     def __init__(self,
                  root: str,
                  which: str,

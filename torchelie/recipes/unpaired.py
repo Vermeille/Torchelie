@@ -11,7 +11,6 @@ import torch.nn as nn
 
 
 class Matcher(nn.Module):
-
     @tu.experimental
     def __init__(self, n_scales=3):
         super().__init__()
@@ -224,7 +223,6 @@ def train(rank, world_size, opts):
         return {'G_loss': loss.item()}
 
     class GradientPenalty:
-
         def __init__(self, gamma):
             self.gamma = gamma
             self.iters = 0
@@ -248,6 +246,8 @@ def train(rank, world_size, opts):
     gradient_penalty_x = GradientPenalty(opts.r0_D)
 
     def D_fun(batch) -> dict:
+        print(batch)
+        print(len(batch[0]))
         x, y = batch
         x = x * 2 - 1
         y = y * 2 - 1

@@ -20,7 +20,6 @@ class PerceptualNet(WithSavedActivations):
         remove_unused_layers (bool): whether to remove layers past the last one
             used (default: True)
     """
-
     def __init__(self,
                  layers: List[str],
                  use_avg_pool: bool = True,

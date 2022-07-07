@@ -7,7 +7,7 @@ import torchelie as tch
 import torchelie.utils as tu
 import torchelie.callbacks as tcb
 import torchelie.loss.gan.standard as gan_loss
-from torchelie.optim import RAdamW
+from torchelie.optim import RAdamW, AdaBelief
 from torchelie.loss.gan.penalty import zero_gp
 from torchelie.recipes.gan import GANRecipe
 from torchelie.callbacks.avg import ExponentialAvg
@@ -124,7 +124,7 @@ def StyleGAN2Recipe(G: nn.Module,
                     *,
                     ppl_coef: float = 0,
                     G_lr: float = 2e-3,
-                    D_lr: float = 2e-3,
+                    D_lr: float = 1e-3,
                     tag: str = 'model',
                     ada: bool = True,
                     mixing: bool = True):
@@ -152,14 +152,16 @@ def StyleGAN2Recipe(G: nn.Module,
     print(G)
     print(D)
 
-    optG: torch.optim.Optimizer = RAdamW(G.parameters(),
-                                         G_lr,
-                                         betas=(0., 0.99),
-                                         weight_decay=0)
-    optD: torch.optim.Optimizer = RAdamW(D.parameters(),
-                                         D_lr,
-                                         betas=(0., 0.99),
-                                         weight_decay=0)
+    optG: torch.optim.Optimizer = AdaBelief(G.parameters(),
+                                            G_lr,
+                                            betas=(0.5, 0.999),
+                                            weight_decay=0,
+                                            eps=1e-16)
+    optD: torch.optim.Optimizer = AdaBelief(D.parameters(),
+                                            D_lr,
+                                            betas=(0.5, 0.999),
+                                            weight_decay=0,
+                                            eps=1e-16)
 
     batch_size = len(next(iter(dataloader))[0])
     diffTF = ADATF(-2 if not ada else -0.9,
@@ -291,18 +293,19 @@ def StyleGAN2Recipe(G: nn.Module,
             'out': out,
         }
 
-    recipe = GANRecipe(G,
-                       D,
-                       G_train,
-                       D_train,
-                       test,
-                       dataloader,
-                       test_loader=testloader,
-                       visdom_env=tag if gpu_id == 0 else None,
-                       log_every=10,
-                       test_every=1000,
-                       checkpoint=tag if gpu_id == 0 else None,
-                       g_every=1)
+    recipe = GANRecipe(
+        G,
+        D,
+        G_train,
+        D_train,
+        test,
+        dataloader,
+        test_loader=None,  #testloader,
+        visdom_env=tag if gpu_id == 0 else None,
+        log_every=10,
+        test_every=1000,
+        checkpoint=tag if gpu_id == 0 else None,
+        g_every=1)
     recipe.callbacks.add_callbacks([
         tcb.Log('batch.0', 'x'),
         tcb.WindowedMetricAvg('fake_loss'),
@@ -364,7 +367,7 @@ def train(rank, world_size):
                            img_size=opts.img_size,
                            ch_mul=opts.ch_mul,
                            max_ch=opts.max_ch,
-                           mapping_lr_mul=1).use_affine_input()
+                           mapping_lr_mul=1)
     D = StyleGAN2Discriminator(input_sz=opts.img_size,
                                ch_mul=opts.ch_mul,
                                max_ch=opts.max_ch)

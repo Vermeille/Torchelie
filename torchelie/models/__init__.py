@@ -16,3 +16,4 @@ from .efficient import EfficientNet
 from .registry import *
 from .alexnet import *
 from .mlpmixer import *
+from .convnext import convnext18

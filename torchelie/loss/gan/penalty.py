@@ -21,7 +21,12 @@ def zero_gp(model,
     Returns:
         A tuple (loss, gradient norm)
     """
-    t = torch.rand(real.shape[0], 1, 1, 1, device=real.device, dtype=real.dtype)
+    t = torch.rand(real.shape[0],
+                   1,
+                   1,
+                   1,
+                   device=real.device,
+                   dtype=real.dtype)
     x = t * real + (1 - t) * fake
     return gradient_penalty(model, x, 0., amp_scaler)
 
@@ -94,7 +99,7 @@ def gradient_penalty(model,
     Returns:
         A tuple (loss, gradient norm)
     """
-    data = data.detach()
+    data = data.detach().clone()
     data.requires_grad_(True)
 
     fp16 = amp_scaler is not None and amp_scaler.is_enabled()

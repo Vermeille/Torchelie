@@ -19,7 +19,7 @@ import torchvision.models as tvmodels
 import torchelie as tch
 import torchelie.callbacks as tcb
 import torchelie.utils as tu
-from torchelie.lr_scheduler import HyperbolicTangentDecay, LinearDecay
+from torchelie.lr_scheduler import CosineDecay
 from torchelie.recipes.trainandtest import TrainAndTest
 from torchelie.optim import Lookahead, AdaBelief
 
@@ -170,12 +170,11 @@ def CrossEntropyClassification(model,
                                test_every: int = 1000,
                                log_every: int = 100,
                                checkpoint: Optional[str] = 'model',
-                               optimizer: Literal['sgd',
-                                                  'adabelief'] = 'adabelief',
+                               optimizer: Literal['sgd', 'adamw'] = 'adamw',
                                n_iters: Optional[int] = None):
     """
     Extends Classification with default cross entropy forward passes. Also adds
-    AdaBelief/SGD and HTC/LinearSchedule
+    AdamW/SGD and CosineDecay schedule
 
     Inherited training callbacks:
 
@@ -190,7 +189,7 @@ def CrossEntropyClassification(model,
 
     Training callbacks:
 
-    - Optimizer with AdaBelief/SGD
+    - Optimizer with AdamW/SGD
     - LRSched with ReduceLROnPlateau
 
     Testing:
@@ -214,8 +213,8 @@ def CrossEntropyClassification(model,
         test_loader (DataLoader): Testing set dataloader
         classes (list of str): classes name, in order
         lr (float): the learning rate
-        beta1 (float): AdaBelief's beta1 / SGD's momentum
-        beta2 (float): AdaBelief's beta2
+        beta1 (float): AdamW's beta1 / SGD's momentum
+        beta2 (float): AdamW's beta2
         wd (float): weight decay
         visdom_env (str): name of the visdom environment to use, or None for
             not using Visdom (default: None)
@@ -226,20 +225,26 @@ def CrossEntropyClassification(model,
         n_iters (optional, int): the number of iterations to train for. If
             provided, switch to a FlatAndCosineEnd scheduler
     """
-    assert optimizer in ['sgd', 'adabelief']
+    assert optimizer in ['sgd', 'adamw']
 
     def train_step(batch):
         x, y = batch
         with autocast():
-            pred = model(x)
-            loss = torch.nn.functional.cross_entropy(pred, y)
-            loss.backward()
+            pred = model(x).float()
+        #loss = torch.nn.functional.cross_entropy(pred, y, label_smoothing=0.1)
+        yy = torch.full((len(y), len(classes)), 0.1 / 1000, device=y.device)
+        yy[torch.arange(len(y)), y] = 0.9 + 0.1 / 1000
+        loss = torch.nn.functional.binary_cross_entropy_with_logits(
+            pred, yy, reduction='sum')
+        loss /= len(y)
+        loss.backward()
         return {'loss': loss, 'pred': pred.float()}
 
     @torch.no_grad()
     def validation_step(batch):
         x, y = batch
-        pred = model(x)
+        with autocast():
+            pred = model(x).float()
         loss = torch.nn.functional.cross_entropy(pred, y)
         return {'loss': loss, 'pred': pred}
 
@@ -254,14 +259,11 @@ def CrossEntropyClassification(model,
                           log_every=log_every,
                           checkpoint=checkpoint)
 
-    if optimizer == 'adabelief':
-        opt = AdaBelief(model.parameters(),
-                        lr=lr,
-                        betas=(beta1, beta2),
-                        weight_decay=wd,
-                        eps=1e-8)
-        if n_iters is not None:
-            sched = LinearDecay(opt, n_iters)
+    if optimizer == 'adamw':
+        opt = torch.optim.AdamW(model.parameters(),
+                                lr=lr,
+                                betas=(beta1, beta2),
+                                weight_decay=wd)
     else:
         opt = torch.optim.SGD(model.parameters(),
                               lr=lr,
@@ -274,7 +276,7 @@ def CrossEntropyClassification(model,
         tcb.Throughput(),
     ])
     if n_iters is not None:
-        sched = LinearDecay(opt, n_iters)
+        sched = CosineDecay(opt, n_iters)
         loop.register('sched', sched)
 
         loop.callbacks.add_callbacks(
@@ -409,8 +411,7 @@ def train(args, rank, world_size):
 
     if not args.cache:
         trainset = tch.datasets.FastImageFolder(args.trainset, transform=tfm)
-        testset = tch.datasets.FastImageFolder(args.testset,
-                                               transform=tfm_test)
+        testset = tch.datasets.FastImageFolder(args.testset, transform=tfm_test)
     else:
         trainset = ImageFolder(args.trainset)
         testset = ImageFolder(args.testset)
@@ -424,8 +425,8 @@ def train(args, rank, world_size):
 
     sampler = torch.utils.data.RandomSampler(trainset,
                                              replacement=True,
-                                             num_samples=len(trainset) //
-                                             world_size)
+                                             num_samples=len(trainset)
+                                             // world_size)
     trainloader = DataLoader(
         trainset,
         args.batch_size,
@@ -485,7 +486,8 @@ def train(args, rank, world_size):
             testloader,
             trainset.classes,
             log_every=max(10, min(len(trainloader) // 50, 1000)),
-            test_every=len(trainloader),
+            test_every=200,  #len(trainloader),
+            optimizer='sgd',
             lr=args.lr,
             beta1=args.beta1,
             beta2=args.beta2,
@@ -501,7 +503,17 @@ def train(args, rank, world_size):
         clf_recipe.load_state_dict(
             torch.load(args.from_ckpt, map_location='cuda:' + str(rank)))
     clf_recipe.to(rank)
-    clf_recipe.run(args.epochs)
+
+    if True:
+        clf_recipe.run(args.epochs)
+    else:
+        # UURRHHH SO UGLY
+        clf_recipe.test_loop.callbacks.update_state({
+            'epoch': 0,
+            'iters': 0,
+            'epoch_batch': 0
+        })
+        clf_recipe.test_loop.run(1)
 
 
 if __name__ == '__main__':

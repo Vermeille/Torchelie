@@ -71,21 +71,23 @@ def train():
                                      num_workers=4,
                                      batch_size=128,
                                      pin_memory=True,
+                                     persistent_workers=True,
                                      shuffle=True)
     dlt = torch.utils.data.DataLoader(dst,
                                       num_workers=4,
                                       batch_size=256,
+                                      persistent_workers=True,
                                       pin_memory=True)
     recipe = CrossEntropyClassification(model,
                                         dl,
                                         dlt,
                                         ds.classes,
-                                        optimizer='sgd',
+                                        optimizer='adabelief',
                                         lr=opts.lr,
                                         wd=opts.wd,
                                         beta1=0.9,
                                         log_every=100,
-                                        test_every=len(dl),
+                                        test_every=len(dl) * opts.epochs // 10,
                                         visdom_env='cifar_' + m,
                                         n_iters=len(dl) * opts.epochs)
 

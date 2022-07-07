@@ -123,10 +123,13 @@ class MergedDataset(Dataset):
         for ds in self.datasets:
             if i < len(ds):
                 x, y, *ys = ds[i]
-                return [self.transform(x), self.class_to_idx[ds.classes[y]]] + ys
+                return [self.transform(x), self.class_to_idx[ds.classes[y]]
+                        ] + ys
             i -= len(ds)
         raise IndexError
 
     def __repr__(self):
-        return "MergedDatasets: \n" + "\n".join(
-            [indent(repr(ds)) for ds in self.datasets])
+        return "MergedDatasets: \n" + (
+            f"    num_samples: {len(self)}\n"
+            f"    num_classes: {len(self.classes)}\n") + "\n".join(
+                [indent(repr(ds)) for ds in self.datasets])

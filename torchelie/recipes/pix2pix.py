@@ -336,7 +336,7 @@ def train(rank, world_size):
                                           pin_memory=True,
                                           drop_last=True)
 
-    pix2pix = Pix2PixHDLoss(G, D, opts.l1_gain)
+    pix2pix = Pix2PixLoss(G, D, opts.l1_gain)
     pix2pix.use_r0(opts.r0_gamma)
     print(pix2pix)
 
@@ -376,11 +376,11 @@ def train(rank, world_size):
 
     recipe.callbacks.add_callbacks([
         tch.callbacks.Optimizer(
-            tch.optim.Lookahead(
-                torch.optim.AdamW(D.parameters(),
-                                  lr=2e-3,
-                                  betas=(0., 0.99),
-                                  weight_decay=0))),
+            tch.optim.AdaBelief(D.parameters(),
+                                lr=2e-4,
+                                betas=(0.5, 0.99),
+                                eps=1e-16,
+                                weight_decay=0)),
         tch.callbacks.Log('out', 'out'),
         tch.callbacks.Log('batch.0', 'x'),
         tch.callbacks.Log('batch.1', 'y'),
@@ -395,11 +395,11 @@ def train(rank, world_size):
     ])
     recipe.G_loop.callbacks.add_callbacks([
         tch.callbacks.Optimizer(
-            tch.optim.Lookahead(
-                torch.optim.AdamW(G.parameters(),
-                                  lr=2e-3,
-                                  betas=(0., 0.99),
-                                  weight_decay=0))),
+            tch.optim.AdaBelief(G.parameters(),
+                                lr=1e-4,
+                                betas=(0.5, 0.99),
+                                eps=1e-16,
+                                weight_decay=0)),
         tch.callbacks.Polyak(G.module, G_polyak),
     ])
     recipe.test_loop.callbacks.add_callbacks([
