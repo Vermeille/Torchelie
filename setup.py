@@ -10,7 +10,8 @@ setup(
         install_requires=[
             'visdom>=0.1.8',
             'crayons>=0.2',
-            'torchvision>=0.4',
+            'torchvision>=1.13',
+            'torch>=1.12',
             'numpy>=1.16',
             'Pillow>=6',
         ]
