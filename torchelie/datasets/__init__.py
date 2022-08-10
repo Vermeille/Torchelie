@@ -271,7 +271,7 @@ class Subset:
         generator = torch.Generator()
         if seed is not None:
             generator.manual_seed(seed)
-        indices = torch.randperm(len(ds), generator=generator)
+        indices = torch.randperm(len(ds), generator=generator).tolist()
         if num_indices is None:
             num_indices = int(len(indices) * ratio)
 
@@ -313,7 +313,8 @@ class Subset:
         return len(self.indices)
 
     def __getitem__(self, i):
-        b = self.ds[self.indices[i]]
+        i = self.indices[i]
+        b = self.ds[i]
         if self.remap_classes:
             b = list(b)
             b[1] = self.cls_map[b[1]]
