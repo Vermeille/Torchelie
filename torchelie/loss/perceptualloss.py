@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import List, Callable, cast, Union, Tuple
 
-from torchelie.nn import ImageNetInputNorm
-from torchelie.models import PerceptualNet
+from torchelie.nn.imagenetinputnorm import ImageNetInputNorm
+from torchelie.models.perceptualnet import PerceptualNet
 
 
 class PerceptualLoss(nn.Module):

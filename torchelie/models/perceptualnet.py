@@ -2,10 +2,9 @@ from collections import OrderedDict
 
 import torch.nn as nn
 from .vgg import vgg19
-from torchelie.nn import WithSavedActivations
-from typing import List
 from torchelie.nn.utils import edit_model
-
+from typing import List
+from torchelie.nn.withsavedactivations import WithSavedActivations
 
 class PerceptualNet(WithSavedActivations):
     """
