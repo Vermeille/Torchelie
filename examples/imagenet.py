@@ -24,9 +24,7 @@ def get_args():
     parser.add_argument('--network', required=True)
     parser.add_argument('--train-path', required=True)
     parser.add_argument('--test-path', required=True)
-    parser.add_argument('--optimizer',
-                        choices=['sgd', 'adabelief'],
-                        default='sgd')
+    parser.add_argument('--optimizer', choices=['sgd', 'adamw'], default='sgd')
     parser.add_argument('--weights')
     parser.add_argument('--pretrained')
     parser.add_argument('--from-ckpt')

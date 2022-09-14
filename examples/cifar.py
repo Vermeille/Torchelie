@@ -82,7 +82,7 @@ def train():
                                         dl,
                                         dlt,
                                         ds.classes,
-                                        optimizer='adabelief',
+                                        optimizer='adamw',
                                         lr=opts.lr,
                                         wd=opts.wd,
                                         beta1=0.9,
