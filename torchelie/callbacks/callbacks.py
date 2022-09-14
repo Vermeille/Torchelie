@@ -21,7 +21,13 @@ try:
     HAS_TS = True
 except Exception:
     HAS_TS = False
-    pass
+
+try:
+    from sklearn.svm import LinearSVC
+    HAS_SKLEARN = True
+except Exception as e:
+    HAS_SKLEARN = False
+
 MISSING = object()
 
 
@@ -1028,7 +1034,8 @@ class GANMetrics:
         real_key (str): name of the batch of real images in the state
         fake_key (str): name of the batch of generated images in the state
         device: a torch device on which to compute the InceptionV3 activations.
-        metrics (List[str]): which metrics to use 'kid', 'fid' or both.
+        metrics (List[str]): which metrics to use 'kid', 'fid', 'precision',
+        'recall', 'ids'.
 
     .. warning::
         The FID is *heavily* biased but stable. This means the scale of the FID
@@ -1056,6 +1063,8 @@ class GANMetrics:
         When doing distributed training, the computation is ran on all gathered
         batches.
 
+    .. note::
+        IDS is Paired Inception Discriminative Score from CoModGAN
     """
 
     def __init__(
@@ -1065,6 +1074,7 @@ class GANMetrics:
             device='cpu',
             metrics: List[str] = ['fid', 'kid', 'precision', 'recall']) -> None:
         from pytorch_fid.inception import InceptionV3
+        assert 'ids' not in metrics or HAS_SKLEARN, "IDS needs scikit-learn"
         self.model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]])
         self.model.eval()
         self.model.to(device)
@@ -1138,6 +1148,19 @@ class GANMetrics:
 
         if 'recall' in self.metrics:
             state['recall'] = self.manifold_estimate(all_fake, all_real)
+
+        if 'ids' in self.metrics:
+            state['ids'] = self.compute_ids(all_real, all_fake)
+
+    def compute_ids(self,
+            feat_real: np.ndarray,
+            feat_fake: np.ndarray):
+        x = np.concatenate([feat_real, feat_fake]).astype('float64')
+        y = np.array([1] * len(feat_real) + [0] * len(feat_fake))
+        svm = LinearSVC(dual=False)
+        svm.fit(x, y)
+        return np.mean(svm.decision_function(feat_fake) >
+                svm.decision_function(feat_real))
 
     @torch.no_grad()
     def compute_fid(self,
