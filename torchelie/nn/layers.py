@@ -88,26 +88,31 @@ class SelfAttention2d(nn.Module):
     Args:
         ch (int): number of input / output channels
     """
-    def __init__(self, ch: int):
+
+    def __init__(self, ch: int, num_heads: int = 1):
         super().__init__()
-        self.key = nn.Conv1d(ch, ch // 8, 1)
-        self.query = nn.Conv1d(ch, ch // 8, 1)
-        self.value = nn.Conv1d(ch, ch, 1)
-        self.gamma = nn.Parameter(torch.tensor([0.]))
+        self.num_heads = num_heads
+        self.key = tu.xavier(nn.Conv1d(ch, ch, 1,bias=True))
+        self.query = tu.xavier(nn.Conv1d(ch, ch, 1,bias=True))
+        self.value = tu.xavier(nn.Conv1d(ch, ch, 1))
+        self.out = tu.xavier(nn.Conv2d(ch, ch, 1))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         forward
         """
-        x_flat = x.view(*x.shape[:2], -1)
-        k = self.key(x_flat)
-        q = self.query(x_flat)
-        v = self.value(x_flat)
+        N, C, H, W = x.shape
+        K = self.num_heads
+        x_flat = x.view(N, C, -1)
+        k = self.key(x_flat).view(N, K, -1, H * W)
+        q = self.query(x_flat).view(N, K, -1, H * W)
+        v = self.value(x_flat).view(N, K, -1, H * W)
 
-        affinity = torch.einsum('bki,bkj->bij', q, k)
-        attention = F.softmax(affinity, dim=1)
-        out = torch.einsum('bci,bih->bch', v, attention).view(*x.shape)
-        return self.gamma * out + x
+        affinity = torch.matmul(q.permute(0, 1, 3, 2),
+                                k).mul_(1 / math.sqrt(q.shape[2]))
+        attention = F.softmax(affinity, dim=-1)
+        out = torch.matmul(v, attention.transpose(-1, -2)).view(*x.shape)
+        return self.out(out)
 
 
 class GaussianPriorFunc(Function):
