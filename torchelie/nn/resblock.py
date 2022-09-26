@@ -311,7 +311,9 @@ class PreactResBlock(nn.Module):
         return self
 
     def no_preact(self) -> 'PreactResBlock':
-        self.preact_skip()
+        mods = collections.OrderedDict(
+            [*self.preact.named_children(), *self.branch.named_children()])
+        self.branch = CondSeq(mods)
         self.preact = CondSeq()
         return self
 
@@ -405,7 +407,9 @@ class PreactResBlockBottleneck(nn.Module):
         return self
 
     def no_preact(self) -> 'PreactResBlockBottleneck':
-        self.preact_skip()
+        mods = collections.OrderedDict(
+            [*self.preact.named_children(), *self.branch.named_children()])
+        self.branch = CondSeq(mods)
         self.preact = CondSeq()
         return self
 
