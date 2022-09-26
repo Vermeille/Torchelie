@@ -89,13 +89,17 @@ class SelfAttention2d(nn.Module):
         ch (int): number of input / output channels
     """
 
-    def __init__(self, ch: int, num_heads: int = 1):
+    def __init__(self,
+                 ch: int,
+                 num_heads: int = 1,
+                 out_ch: Optional[int] = None):
         super().__init__()
         self.num_heads = num_heads
-        self.key = tu.xavier(nn.Conv1d(ch, ch, 1,bias=True))
-        self.query = tu.xavier(nn.Conv1d(ch, ch, 1,bias=True))
+        self.key = tu.xavier(nn.Conv1d(ch, ch, 1, bias=True))
+        self.query = tu.xavier(nn.Conv1d(ch, ch, 1, bias=True))
         self.value = tu.xavier(nn.Conv1d(ch, ch, 1))
-        self.out = tu.xavier(nn.Conv2d(ch, ch, 1))
+        out_ch = out_ch or ch
+        self.out = tu.xavier(nn.Conv2d(ch, out_ch, 1))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
