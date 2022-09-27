@@ -41,10 +41,10 @@ class WindowedMetricAvg(tu.AutoStateDict):
             or only on epoch ends (False)
     """
 
-    def __init__(self, name, post_each_batch=True):
+    def __init__(self, name, post_each_batch=True, k=100):
         super(WindowedMetricAvg, self).__init__()
         self.name = name
-        self.avg = WindowAvg(k=100)
+        self.avg = WindowAvg(k=k)
         self.post_each_batch = post_each_batch
 
     def on_epoch_start(self, state):
