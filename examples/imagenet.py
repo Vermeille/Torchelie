@@ -34,7 +34,7 @@ def get_args():
 def build_transforms(train_im_size, test_im_size):
     tfm = TF.Compose([
         TF.RandomApply([TTF.PadToSquare()]),
-        TTF.RandAugment(1, 30),
+        #TTF.RandAugment(1, 30),
         TF.RandomResizedCrop(train_im_size),
         TF.RandomHorizontalFlip(),
         TF.ColorJitter(0.4, 0.4, 0.4, 0.05),
@@ -84,25 +84,25 @@ def train(opts, rank, world_size):
 
     dl = torch.utils.data.DataLoader(
         ds,
-        num_workers=4,
+        num_workers=16,
         batch_size=opts.batch_size,
         sampler=torch.utils.data.DistributedSampler(ds),
         persistent_workers=True,
+        prefetch_factor=2,
         pin_memory=True,
         drop_last=True)
 
     dlt = torch.utils.data.DataLoader(dst,
-                                      num_workers=4,
-                                      batch_size=opts.batch_size,
+                                      num_workers=16,
+                                      batch_size=opts.batch_size // 2,
                                       persistent_workers=True,
-                                      prefetch_factor=4,
-                                      pin_memory=True)
+                                      prefetch_factor=1,
+                                      pin_memory=False)
 
     env = ('imagenet_' + opts.network) if rank == 0 else None
 
     recipe = CrossEntropyClassification(model,
-                                        dl,
-                                        dlt,
+                                        dl, [next(iter(dlt))],
                                         ds.classes,
                                         optimizer=opts.optimizer,
                                         lr=opts.lr,

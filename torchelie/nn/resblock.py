@@ -27,7 +27,8 @@ class SEBlock(nn.Module):
                                      ('squeeze', kaiming(Conv1x1(in_ch,
                                                                  reduc))),
                                      ('relu', nn.ReLU(True)),
-                                     ('excite', kaiming(Conv1x1(reduc, in_ch))),
+                                     ('excite', kaiming(Conv1x1(reduc,
+                                                                in_ch))),
                                      ('attn', nn.Sigmoid())]))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -72,7 +73,8 @@ class ResBlockBottleneck(nn.Module):
 
         self.wide(divisor=4)
 
-        self.shortcut = _make_resnet_shortcut(in_channels, out_channels, stride)
+        self.shortcut = _make_resnet_shortcut(in_channels, out_channels,
+                                              stride)
 
         self.post = CondSeq()
         self.post.relu = nn.ReLU(True)
@@ -150,7 +152,8 @@ class ResBlockBottleneck(nn.Module):
                       'upsample')
 
         if hasattr(self.shortcut, 'pool'):
-            self.shortcut.pool = InterpolateBilinear2d(scale_factor=self.stride)
+            self.shortcut.pool = InterpolateBilinear2d(
+                scale_factor=self.stride)
         return self
 
 
@@ -191,7 +194,8 @@ class ResBlock(nn.Module):
                 ('bn2', constant_init(nn.BatchNorm2d(out_channels), 0))
             ]))
 
-        self.shortcut = _make_resnet_shortcut(in_channels, out_channels, stride)
+        self.shortcut = _make_resnet_shortcut(in_channels, out_channels,
+                                              stride)
 
         self.post = CondSeq()
         self.post.relu = nn.ReLU(True)

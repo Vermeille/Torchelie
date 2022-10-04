@@ -18,6 +18,7 @@ class AdaptiveConcatPool2d(nn.Module):
         target_size: the target output size (single integer or
             double-integer tuple)
     """
+
     def __init__(self, target_size):
         super(AdaptiveConcatPool2d, self).__init__()
         self.target_size = target_size
@@ -31,6 +32,7 @@ class AdaptiveConcatPool2d(nn.Module):
 
 
 class ModulatedConv(nn.Conv2d):
+
     def __init__(self,
                  in_channels: int,
                  noise_channels: int,
@@ -127,10 +129,12 @@ class SelfAttention2d(nn.Module):
                                                     preserve_rng_state=False)
         else:
             out = kqv(k, q, v, x.shape)
+
         return self.out(out)
 
 
 class GaussianPriorFunc(Function):
+
     @staticmethod
     def forward(ctx, mu, sigma, mu2, sigma2, strength=1):
         z = torch.randn_like(mu)
@@ -185,6 +189,7 @@ class UnitGaussianPrior(nn.Module):
             samples. 'sum' means the kl term of each sample is summed, while
             'mean' divides the loss by the number of examples.
     """
+
     def __init__(self,
                  in_channels,
                  num_latents,
@@ -231,6 +236,7 @@ class Const(nn.Module):
     Args:
         *size (ints): the shape of the volume to learn
     """
+
     def __init__(self, *size: int) -> None:
         super().__init__()
         self.size = size
@@ -251,6 +257,7 @@ class Const(nn.Module):
 
 @tu.experimental
 class SinePositionEncoding2d(nn.Module):
+
     def __init__(self, n_fourier_freqs: int) -> None:
         super().__init__()
         self.register_buffer('fourier_freqs',
@@ -269,6 +276,7 @@ class SinePositionEncoding2d(nn.Module):
 
 class MinibatchStddev(nn.Module):
     """Minibatch Stddev layer from Progressive GAN"""
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         stddev_map = torch.sqrt(x.var(dim=0) + 1e-8).mean()
         stddev = stddev_map.expand(x.shape[0], 1, *x.shape[2:])
@@ -279,6 +287,7 @@ class HardSigmoid(nn.Module):
     """
     Hard Sigmoid
     """
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x.add_(0.5).clamp_(min=0, max=1)
 
@@ -287,11 +296,13 @@ class HardSwish(nn.Module):
     """
     Hard Swish
     """
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x.add(0.5).clamp_(min=0, max=1).mul_(x)
 
 
 class DropPath(nn.Module):
+
     def __init__(self, p, **kwargs):
         super().__init__()
 

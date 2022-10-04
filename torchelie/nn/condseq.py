@@ -7,6 +7,7 @@ class CondSeq(nn.Sequential):
     An extension to torch's Sequential that allows conditioning either as a
     second forward argument or `condition()`
     """
+
     def condition(self, z: Any) -> None:
         """
         Conditions all the layers on z
@@ -27,9 +28,13 @@ class CondSeq(nn.Sequential):
             z (optional): conditioning. condition() must be called first if
                 left None
         """
-        for m in self:
-            if hasattr(m, 'condition') and z is not None:
-                x = m(x, z)
-            else:
-                x = m(x)
+        for nm, m in self.named_children():
+            try:
+                if hasattr(m, 'condition') and z is not None:
+                    x = m(x, z)
+                else:
+                    x = m(x)
+            except Exception as e:
+                raise Exception(
+                    f'Exception during forward pass of {nm}') from e
         return x

@@ -65,7 +65,8 @@ class WindowedMetricAvg(tu.AutoStateDict):
     def __repr__(self) -> str:
         return "{}({})".format(
             self.__class__.__name__,
-            ", ".join(["{}={}".format(k, v) for k, v in self.__dict__.items()]))
+            ", ".join(["{}={}".format(k, v)
+                       for k, v in self.__dict__.items()]))
 
 
 class ExponentialMetricAvg(tu.AutoStateDict):
@@ -259,7 +260,8 @@ class MetricsTable(tu.AutoStateDict):
 
         for k, v in state['metrics'].items():
             if isinstance(v, float):
-                html += '<tr><th>{}</th><td>{}</td></tr>'.format(k, round(v, 6))
+                html += '<tr><th>{}</th><td>{}</td></tr>'.format(
+                    k, round(v, 6))
             elif isinstance(v, torch.Tensor) and v.numel() == 1:
                 html += '<tr><th>{}</th><td>{}</td></tr>'.format(
                     k, round(v.item(), 6))
@@ -544,8 +546,9 @@ class TensorboardLogger:
                  post_epoch_ends=True):
         self.log_dir = log_dir
         if log_dir is not None:
-            assert HAS_TS, ("Can't import Tensorboard. Some callbacks will not "
-                            "work properly")
+            assert HAS_TS, (
+                "Can't import Tensorboard. Some callbacks will not "
+                "work properly")
             if log_dir is MISSING:
                 self.writer = SummaryWriter(log_dir=None)
             else:
@@ -662,7 +665,8 @@ class ImageGradientVis:
         grad_img = x.grad.abs().sum(1, keepdim=True)
         b, c, h, w = grad_img.shape
         gi_flat = grad_img.view(b, c, -1)
-        cl = torch.kthvalue(gi_flat, int(grad_img[0].numel() * 0.99), dim=-1)[0]
+        cl = torch.kthvalue(gi_flat, int(grad_img[0].numel() * 0.99),
+                            dim=-1)[0]
         cl = cl.unsqueeze(-1).unsqueeze(-1)
         grad_img = torch.min(grad_img, cl) / cl
         x = x.detach()
@@ -917,7 +921,8 @@ class ConfusionMatrix:
             else:
                 row_str = ''.join([
                     ('<td style="background-color:rgb({0}, {0}, {0})">{1}'
-                     '</td>').format(int(255 - x / total * 255), x) for x in row
+                     '</td>').format(int(255 - x / total * 255), x)
+                    for x in row
                 ])
             s += "<tr><th>{}</th>{}</tr>".format(label, row_str)
 
@@ -1072,7 +1077,8 @@ class GANMetrics:
             real_key: str = 'batch.0',
             fake_key: str = 'fake',
             device='cpu',
-            metrics: List[str] = ['fid', 'kid', 'precision', 'recall']) -> None:
+            metrics: List[str] = ['fid', 'kid', 'precision',
+                                  'recall']) -> None:
         from pytorch_fid.inception import InceptionV3
         assert 'ids' not in metrics or HAS_SKLEARN, "IDS needs scikit-learn"
         self.model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]])
@@ -1152,15 +1158,14 @@ class GANMetrics:
         if 'ids' in self.metrics:
             state['ids'] = self.compute_ids(all_real, all_fake)
 
-    def compute_ids(self,
-            feat_real: np.ndarray,
-            feat_fake: np.ndarray):
+    def compute_ids(self, feat_real: np.ndarray, feat_fake: np.ndarray):
         x = np.concatenate([feat_real, feat_fake]).astype('float64')
         y = np.array([1] * len(feat_real) + [0] * len(feat_fake))
         svm = LinearSVC(dual=False)
         svm.fit(x, y)
-        return np.mean(svm.decision_function(feat_fake) >
-                svm.decision_function(feat_real))
+        return np.mean(
+            svm.decision_function(feat_fake) > svm.decision_function(feat_real)
+        )
 
     @torch.no_grad()
     def compute_fid(self,
@@ -1187,9 +1192,11 @@ class GANMetrics:
         m = min(min(feat_real.shape[0], feat_fake.shape[0]), max_subset_size)
         t = 0
         for _subset_idx in range(num_subsets):
-            x = feat_fake[np.random.choice(feat_fake.shape[0], m,
+            x = feat_fake[np.random.choice(feat_fake.shape[0],
+                                           m,
                                            replace=False)]
-            y = feat_real[np.random.choice(feat_real.shape[0], m,
+            y = feat_real[np.random.choice(feat_real.shape[0],
+                                           m,
                                            replace=False)]
             a = (x @ x.T / n + 1)**3 + (y @ y.T / n + 1)**3
             b = (x @ y.T / n + 1)**3
