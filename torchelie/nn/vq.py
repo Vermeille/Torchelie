@@ -66,7 +66,7 @@ class VQ(nn.Module):
             x_flat = x.view(-1, x.shape[-1])
             emb_weight = self.embedding.weight.data
             emb_weight[dead[:len(x_flat)]] = x_flat[torch.randperm(
-                len(x_flat))[:len(dead)]]
+                len(x_flat))[:len(dead)]].to(emb_weight.dtype)
             self.age[dead[:len(x_flat)]] = 0
 
             if torch.distributed.is_initialized():
