@@ -21,19 +21,20 @@ class Interpolate2d(nn.Module):
                 x: torch.Tensor,
                 size: Optional[List[int]] = None) -> torch.Tensor:
         rsf = True if self.scale_factor is not None else None
+        align = False if self.mode != 'nearest' else None
         if not size:
             return F.interpolate(x,
                                  mode=self.mode,
                                  size=self.size,
                                  scale_factor=self.scale_factor,
                                  recompute_scale_factor=rsf,
-                                 align_corners=False)
+                                 align_corners=align)
         else:
             return F.interpolate(x,
                                  mode=self.mode,
                                  size=size,
                                  recompute_scale_factor=rsf,
-                                 align_corners=False)
+                                 align_corners=align)
 
     def extra_repr(self) -> str:
         return f'scale_factor={self.scale_factor} size={self.size}'
