@@ -90,9 +90,61 @@ def drop_path(x, drop_prob=0.0, training=False):
     if drop_prob == 0. or not training:
         return x
     keep_prob = 1 - drop_prob
-    shape = (x.shape[0], ) + (1, ) * (x.ndim - 1)
+    shape = (x.shape[0],) + (1,) * (x.ndim - 1)
     random_tensor = keep_prob + torch.rand(
         shape, dtype=x.dtype, device=x.device)
     random_tensor.floor_()
     output = x * random_tensor.div(keep_prob)
     return output
+
+
+class SquaReLUFunc(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, input, inplace=False):
+        x = F.relu(input, inplace=inplace)
+        ctx.save_for_backward(x)
+        return x * x
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        x, = ctx.saved_tensors
+        return grad_output * 2 * x, None
+
+
+squarelu = SquaReLUFunc.apply
+
+
+class StaReLUFunc(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, input, weight, bias, inplace=False):
+        x = F.relu(input)
+
+        x = x * x * weight
+        if bias is not None:
+            x += bias
+
+        if inplace:
+            input.copy_(x)
+            ctx.save_for_backward(input, weight, bias)
+            return input
+        ctx.save_for_backward(x, weight, bias)
+        return x
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        out, w, b = ctx.saved_tensors
+        if b is None:
+            d_bias = None
+        else:
+            d_bias = torch.sum(grad_output)
+            out -= b
+
+        out /= w
+        d_weight = torch.sum(grad_output * out)
+        d_input = grad_output * 2 * out.sqrt() * w
+        return d_input, d_weight, d_bias, None
+
+
+starelu = StaReLUFunc.apply

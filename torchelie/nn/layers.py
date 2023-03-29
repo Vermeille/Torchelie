@@ -118,7 +118,8 @@ class SelfAttention2d(nn.Module):
             affinity = torch.matmul(q.permute(0, 1, 3, 2),
                                     k).mul_(1 / math.sqrt(q.shape[2]))
             attention = F.softmax(affinity, dim=-1)
-            return torch.matmul(v, attention.transpose(-1, -2)).view(*out_shape)
+            return torch.matmul(v, attention.transpose(-1,
+                                                       -2)).view(*out_shape)
 
         if self.training:
             out = torch.utils.checkpoint.checkpoint(kqv,
@@ -126,6 +127,7 @@ class SelfAttention2d(nn.Module):
                                                     q,
                                                     v,
                                                     x.shape,
+                                                    use_reentrant=False,
                                                     preserve_rng_state=False)
         else:
             out = kqv(k, q, v, x.shape)
