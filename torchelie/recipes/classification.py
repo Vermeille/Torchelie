@@ -50,7 +50,7 @@ def Classification(model,
     Training callbacks:
 
     - AccAvg for displaying accuracy
-    - WindowedMetricAvg for displaying loss
+    - Log for displaying loss
     - ConfusionMatrix if len(classes) <= 25
     - ClassificationInspector
     - MetricsTable
@@ -68,7 +68,7 @@ def Classification(model,
     Testing callbacks:
 
     - AccAvg
-    - WindowedMetricAvg
+    - EpochMetricAvg
     - ConfusionMatrix if :code:`len(classes) <= 25`
     - ClassificationInspector
     - MetricsTable
@@ -119,7 +119,7 @@ def Classification(model,
 
     loop.callbacks.add_callbacks([
         tcb.AccAvg(),
-        tcb.WindowedMetricAvg('loss'),
+        tcb.Log('loss', 'loss'),
     ])
     loop.register('classes', classes)
 
@@ -179,7 +179,7 @@ def CrossEntropyClassification(model,
     Inherited training callbacks:
 
     - AccAvg for displaying accuracy
-    - WindowedMetricAvg for displaying loss
+    - Log for displaying loss
     - ConfusionMatrix if len(classes) <= 25
     - ClassificationInspector
     - MetricsTable
@@ -199,7 +199,7 @@ def CrossEntropyClassification(model,
     Inherited testing callbacks:
 
     - AccAvg
-    - WindowedMetricAvg
+    - EpochMetricAvg
     - ConfusionMatrix if :code:`len(classes) <= 25`
     - ClassificationInspector
     - MetricsTable
@@ -349,13 +349,13 @@ def MixupClassification(model,
                         log_every=log_every)
 
     loop.callbacks.add_callbacks([
-        tcb.WindowedMetricAvg('loss'),
+        tcb.Log('loss', 'loss'),
     ])
     loop.register('classes', classes)
 
     loop.test_loop.callbacks.add_callbacks([
         tcb.AccAvg(post_each_batch=False),
-        tcb.WindowedMetricAvg('loss', False),
+        tcb.EpochMetricAvg('loss', False),
     ])
 
     if visdom_env is not None:
@@ -411,7 +411,8 @@ def train(args, rank, world_size):
 
     if not args.cache:
         trainset = tch.datasets.FastImageFolder(args.trainset, transform=tfm)
-        testset = tch.datasets.FastImageFolder(args.testset, transform=tfm_test)
+        testset = tch.datasets.FastImageFolder(args.testset,
+                                               transform=tfm_test)
     else:
         trainset = ImageFolder(args.trainset)
         testset = ImageFolder(args.testset)
@@ -425,8 +426,8 @@ def train(args, rank, world_size):
 
     sampler = torch.utils.data.RandomSampler(trainset,
                                              replacement=True,
-                                             num_samples=len(trainset)
-                                             // world_size)
+                                             num_samples=len(trainset) //
+                                             world_size)
     trainloader = DataLoader(
         trainset,
         args.batch_size,
