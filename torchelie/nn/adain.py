@@ -84,8 +84,13 @@ class FiLM2d(nn.Module):
 
     def __init__(self, channels: int, cond_channels: int):
         super(FiLM2d, self).__init__()
-        self.make_weight = nn.Linear(cond_channels, channels)
-        self.make_bias = nn.Linear(cond_channels, channels)
+        self.make_weight = nn.Sequential(
+            tu.constant_init(nn.Linear(cond_channels, channels), 0.02))
+        self.make_weight[-1].bias.data.fill_(1.0)
+
+        self.make_bias = nn.Sequential(
+            tu.constant_init(nn.Linear(cond_channels, channels, bias=False),
+                             0.02))
 
         self.weight = None
         self.bias = None
@@ -107,7 +112,7 @@ class FiLM2d(nn.Module):
 
         w = self.weight
         assert w is not None
-        x = w * x
+        x = x * w
 
         b = self.bias
         if b is not None:
@@ -122,5 +127,5 @@ class FiLM2d(nn.Module):
         Args:
             z (2D tensor, optional): conditioning vector
         """
-        self.weight = self.make_weight(z)[:, :, None, None].mul_(0.1).add_(1)
-        self.bias = self.make_bias(z)[:, :, None, None].mul_(0.01)
+        self.weight = self.make_weight(z)[:, :, None, None]
+        self.bias = self.make_bias(z)[:, :, None, None]
