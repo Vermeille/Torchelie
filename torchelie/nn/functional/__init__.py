@@ -57,6 +57,7 @@ def combine_laplacians(laplacians):
 
 
 class InformationBottleneckFunc(Function):
+
     @staticmethod
     def forward(ctx, mu, sigma, strength=1):
         z = torch.randn_like(mu)
