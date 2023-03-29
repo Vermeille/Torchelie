@@ -380,14 +380,23 @@ def load_state_dict_forgiving(dst, state_dict: dict, silent: bool = False):
     Loads a state dict, but don't crash if shapes don't match.
     """
     dst_dict = dst.state_dict()
+    from_dict = set(state_dict.keys())
+    dst_names = set(dst_dict.keys())
+    failed = set()
     for name, val in state_dict.items():
         try:
             dst_dict[name].copy_(val)
         except Exception as e:
+            failed.add(name)
             if silent:
                 continue
             print('error in', name, ': checkpoint has ', val.shape,
                   '-> model has', dst_dict[name].shape, '(', str(e), ')')
+    return {
+        'dst_only': dst_names - from_dict,
+        'state_only': from_dict - dst_names,
+        'failed': failed
+    }
 
 
 class FrozenModule(nn.Module):
