@@ -8,6 +8,7 @@ U = TypeVar('U')
 
 
 class CatedSamples(Generic[T]):
+
     def __init__(self, samples: List[List[Tuple[T, int]]]) -> None:
         self.samples = samples
         self.n_classes = [
@@ -28,6 +29,7 @@ class CatedSamples(Generic[T]):
 
 
 class CatedLists(Sequence[T]):
+
     def __init__(self, ls: List[List[T]]) -> None:
         self.ls = ls
 
@@ -91,6 +93,7 @@ class HorizontalConcatDataset(Dataset):
 
 
 class MergedSamples:
+
     def __init__(self, ds) -> None:
         self.ds = ds
 
@@ -107,6 +110,7 @@ class MergedSamples:
 
 
 class MergedDataset(Dataset):
+
     def __init__(self, datasets, transform=None):
         self.datasets = datasets
         self.classes = list(set(c for d in datasets for c in d.classes))
@@ -124,7 +128,7 @@ class MergedDataset(Dataset):
             if i < len(ds):
                 x, y, *ys = ds[i]
                 return [self.transform(x), self.class_to_idx[ds.classes[y]]
-                        ] + ys
+                       ] + ys
             i -= len(ds)
         raise IndexError
 
