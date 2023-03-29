@@ -22,6 +22,7 @@ __all__ = [
     'Cutout',
     'Identity',
     'Subsample',
+    'HighPass',
     'JPEGArtifacts',
     'Canny',
     'SampleMixup',
@@ -126,10 +127,13 @@ class Subsample:
         interpolation (InterpolationMode): interpolation mode
     """
 
-    def __init__(self,
-                 max_ratio: int = 3,
-                 p: float = 0.5,
-                 interpolation: InterpolationMode = InterpolationMode.BILINEAR):
+    def __init__(
+            self,
+            min_ratio: int = 1,
+            max_ratio: int = 3,
+            p: float = 0.5,
+            interpolation: InterpolationMode = InterpolationMode.BILINEAR):
+        self.min_ratio = min_ratio
         self.max_ratio = max_ratio
         self.p = p
         self.interpolation = interpolation
@@ -139,14 +143,39 @@ class Subsample:
             return x
 
         size = min(x.size)
-        x = F.resize(x, int(size // random.uniform(1, self.max_ratio)),
-                     self.interpolation)
+        x = F.resize(
+            x, int(size // random.uniform(self.min_ratio, self.max_ratio)),
+            self.interpolation)
         x = F.resize(x, size, self.interpolation)
         return x
 
     def __repr__(self) -> str:
-        return "SubsampleResize(p={}, max_ratio={})".format(
-            self.p, self.max_ratio)
+        return "Subsample(p={}, min_ratio={}, max_ratio={})".format(
+            self.p, self.min_ratio, self.max_ratio)
+
+
+class HighPass:
+    """
+    Randomly apply a high pass filter to images.
+
+    Args:
+        p (float): the transform is applied with probability p
+        max_ratio (int): maximum subscaling factor
+        interpolation (InterpolationMode): interpolation mode
+    """
+
+    def __init__(
+            self,
+            min_ratio: int = 1,
+            max_ratio: int = 3,
+            p: float = 0.5,
+            interpolation: InterpolationMode = InterpolationMode.BILINEAR):
+        self.subsample = Subsample(min_ratio, max_ratio, p, interpolation)
+
+    def __call__(self, x: PILImage) -> PILImage:
+        sub = self.subsample(x)
+        x = np.array(x).astype(float) + 128 - np.array(sub)
+        return PIL.Image.fromarray(x.astype('uint8')).convert('RGB')
 
 
 class JPEGArtifacts:

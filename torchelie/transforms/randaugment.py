@@ -30,6 +30,7 @@ class RandAugment(torch.nn.Module):
         interpolation: interpolation to use for suitable transforms
         fill: fill value to use for suitable transforms
     """
+
     def __init__(self,
                  n_transforms: int,
                  magnitude: float,
@@ -140,7 +141,12 @@ class RandAugment(torch.nn.Module):
 
     def add_subsampling(self) -> 'RandAugment':
         return self.add_transform(
-            Subsample(int(self.magnitude * 8), 1., self.interpolation))
+            Subsample(1, int(self.magnitude * 8), 1., self.interpolation))
+
+    def add_highpass(self) -> 'RandAugment':
+        return self.add_transform(
+            HighPass(8, max(1, int(16 - self.magnitude * 8)), 1.,
+                     self.interpolation))
 
     def add_jpeg(self):
         return self.add_transform(JPEGArtifacts(1 - self.magnitude, p=1))
