@@ -93,6 +93,7 @@ class RandAugment(torch.nn.Module):
                             interpolation=self.interpolation,
                             fill=self.fill),
             Cutout(0., 0.1 + magnitude * 0.6),
+            PatchCutout(0., 0.1 + magnitude),
             TF.RandomAffine(0,
                             translate=(0.3 * magnitude, 0),
                             interpolation=self.interpolation,
