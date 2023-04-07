@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torchelie.utils as tu
 import torchelie as tch
 from torchelie.nn.functional import drop_path
-from typing import Optional
+from typing import Optional, Tuple, List, Union
 from torch.autograd import Function
 
 
@@ -94,14 +94,22 @@ class SelfAttention2d(nn.Module):
     def __init__(self,
                  ch: int,
                  num_heads: int = 1,
-                 out_ch: Optional[int] = None):
+                 out_ch: Optional[int] = None,
+                 channels_per_head: Optional[int] = None,
+                 shape: Optional[Tuple[int, int]] = None):
         super().__init__()
         self.num_heads = num_heads
-        self.key = tu.xavier(nn.Conv1d(ch, ch, 1, bias=True))
-        self.query = tu.xavier(nn.Conv1d(ch, ch, 1, bias=True))
-        self.value = tu.xavier(nn.Conv1d(ch, ch, 1))
+        inner_ch = ch
+        if channels_per_head is not None:
+            inner_ch = channels_per_head * num_heads
+        self.key = tu.xavier(nn.Conv1d(ch, inner_ch, 1, bias=False))
+        self.query = tu.xavier(nn.Conv1d(ch, inner_ch, 1, bias=False))
+        self.value = tu.xavier(nn.Conv1d(ch, inner_ch, 1, bias=False))
         out_ch = out_ch or ch
-        self.out = tu.xavier(nn.Conv2d(ch, out_ch, 1))
+        self.out = tu.xavier(nn.Conv2d(inner_ch, out_ch, 1, bias=False))
+        self.positional = None
+        if shape is not None:
+            self.positional = nn.Parameter(torch.randn(ch, *shape))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -109,28 +117,31 @@ class SelfAttention2d(nn.Module):
         """
         N, C, H, W = x.shape
         K = self.num_heads
+
+        if self.positional is not None:
+            x = x + self.positional
         x_flat = x.view(N, C, -1)
         k = self.key(x_flat).view(N, K, -1, H * W)
         q = self.query(x_flat).view(N, K, -1, H * W)
         v = self.value(x_flat).view(N, K, -1, H * W)
 
         def kqv(k, q, v, out_shape):
-            affinity = torch.matmul(q.permute(0, 1, 3, 2),
+            affinity = torch.matmul(q.transpose(-2, -1),
                                     k).mul_(1 / math.sqrt(q.shape[2]))
             attention = F.softmax(affinity, dim=-1)
-            return torch.matmul(v, attention.transpose(-1,
-                                                       -2)).view(*out_shape)
+            return torch.matmul(attention, v.transpose(-2,
+                                                       -1)).view(*out_shape)
 
         if self.training:
-            out = torch.utils.checkpoint.checkpoint(kqv,
-                                                    k,
-                                                    q,
-                                                    v,
-                                                    x.shape,
-                                                    use_reentrant=False,
-                                                    preserve_rng_state=False)
+            out = torch.utils.checkpoint.checkpoint(
+                kqv,
+                k,
+                q,
+                v, (N, self.key.weight.shape[0], H, W),
+                use_reentrant=False,
+                preserve_rng_state=False)
         else:
-            out = kqv(k, q, v, x.shape)
+            out = kqv(k, q, v, (N, self.key.weight.shape[0], H, W))
 
         return self.out(out)
 

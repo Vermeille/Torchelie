@@ -109,7 +109,7 @@ class Cutout:
 class PatchCutout:
     """
     Applies a random PatchCutout filter erasing at most :code:`max_size*100`% of
-    the picture.
+    the picture. It cuts out square patches of size :code:`patch_size`.
 
     Args:
         max_size (float): the maximum ratio that can be erased. 0 means no
@@ -119,7 +119,7 @@ class PatchCutout:
     def __init__(self,
                  min_ratio: float,
                  max_ratio: float,
-                 patch_size: int = 32):
+                 patch_size: Optional[int] = None):
         self.min_ratio = min_ratio
         self.max_ratio = max_ratio
         self.patch_size = patch_size
@@ -131,20 +131,21 @@ class PatchCutout:
             x = np.array(x).astype(float).transpose(1, 2, 0)
         h, w = x.shape[:2]
 
+        ps = self.patch_size or int(32 / 224 * max(h, w))
+
         mean_color = x.mean(axis=(0, 1), keepdims=True)
-        mask = torch.rand(1, h // self.patch_size + 1, w // self.patch_size + 1)
+        mask = torch.rand(1, h // ps + 1, w // ps + 1)
         mask = mask < random.uniform(self.min_ratio, self.max_ratio)
         mask = F.resize(mask.float(),
                         size=(h, w),
                         interpolation=InterpolationMode.NEAREST)
         mask = mask.permute(1, 2, 0).numpy()
-        print(x.shape, mask.shape, mean_color.shape)
         x = x * (1 - mask) + mean_color * mask
-        print(x.shape)
         return PIL.Image.fromarray(x.astype('uint8')).convert('RGB')
 
     def __repr__(self) -> str:
-        return f'Cutout(min_size={self.min_size}, max_size={self.max_size})'
+        return (f'PatchCutout(min_ratio={self.min_ratio}, '
+                f'max_ratio={self.max_ratio}, patch_size={self.patch_size})')
 
 
 class Identity:
@@ -169,11 +170,12 @@ class Subsample:
         interpolation (InterpolationMode): interpolation mode
     """
 
-    def __init__(self,
-                 min_ratio: int = 1,
-                 max_ratio: int = 3,
-                 p: float = 0.5,
-                 interpolation: InterpolationMode = InterpolationMode.BILINEAR):
+    def __init__(
+            self,
+            min_ratio: int = 1,
+            max_ratio: int = 3,
+            p: float = 0.5,
+            interpolation: InterpolationMode = InterpolationMode.BILINEAR):
         self.min_ratio = min_ratio
         self.max_ratio = max_ratio
         self.p = p
@@ -205,11 +207,12 @@ class HighPass:
         interpolation (InterpolationMode): interpolation mode
     """
 
-    def __init__(self,
-                 min_ratio: int = 1,
-                 max_ratio: int = 3,
-                 p: float = 0.5,
-                 interpolation: InterpolationMode = InterpolationMode.BILINEAR):
+    def __init__(
+            self,
+            min_ratio: int = 1,
+            max_ratio: int = 3,
+            p: float = 0.5,
+            interpolation: InterpolationMode = InterpolationMode.BILINEAR):
         self.subsample = Subsample(min_ratio, max_ratio, p, interpolation)
 
     def __call__(self, x: PILImage) -> PILImage:
