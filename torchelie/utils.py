@@ -74,9 +74,9 @@ def kaiming_gain(m: T_Module,
     Return the std needed to initialize a weight matrix with given parameters.
     """
     if mode == 'fan_inout':
-        fan = (math.sqrt(nn.init._calculate_correct_fan(m.weight, 'fan_in'))
-               + math.sqrt(nn.init._calculate_correct_fan(m.weight,
-                                                          'fan_out'))) / 2
+        fan = (
+            math.sqrt(nn.init._calculate_correct_fan(m.weight, 'fan_in')) +
+            math.sqrt(nn.init._calculate_correct_fan(m.weight, 'fan_out'))) / 2
     else:
         fan = math.sqrt(nn.init._calculate_correct_fan(m.weight, mode))
     gain = nn.init.calculate_gain(nonlinearity, param=a)
@@ -390,8 +390,12 @@ def load_state_dict_forgiving(dst, state_dict: dict, silent: bool = False):
             failed.add(name)
             if silent:
                 continue
-            print('error in', name, ': checkpoint has ', val.shape,
-                  '-> model has', dst_dict[name].shape, '(', str(e), ')')
+            if name in dst_dict:
+                print('error in', name, ': checkpoint has ', val.shape,
+                      '-> model has', dst_dict[name].shape, '(', str(e), ')')
+            else:
+                print('error in', name, ': checkpoint has ', val.shape,
+                      '-> model has no such key')
     return {
         'dst_only': dst_names - from_dict,
         'state_only': from_dict - dst_names,
