@@ -296,7 +296,8 @@ class Optimizer(tu.AutoStateDict):
                  clip_grad_norm=None,
                  centralize_grad=False,
                  log_lr=False,
-                 log_mom=False):
+                 log_mom=False,
+                 grad_multiplier=1):
         super(Optimizer, self).__init__()
         self.opt = opt
         self.accumulation = accumulation
@@ -304,6 +305,7 @@ class Optimizer(tu.AutoStateDict):
         self.log_mom = log_mom
         self.clip_grad_norm = clip_grad_norm
         self.centralize_grad = centralize_grad
+        self.grad_multiplier = grad_multiplier
 
     def on_batch_start(self, state):
         if state['iters'] % self.accumulation == 0:
@@ -328,11 +330,11 @@ class Optimizer(tu.AutoStateDict):
         if (state['iters'] + 1) % self.accumulation != 0:
             return
 
-        if self.accumulation != 1:
+        if self.accumulation != 1 or self.grad_multiplier != 1:
             for pg in self.opt.param_groups:
                 for p in pg['params']:
                     if p.grad is not None:
-                        p.grad.data /= self.accumulation
+                        p.grad.data *= self.grad_multiplier / self.accumulation
         if self.centralize_grad:
             for pg in self.opt.param_groups:
                 for p in pg['params']:
