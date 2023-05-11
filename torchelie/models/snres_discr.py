@@ -73,7 +73,7 @@ class ResidualDiscriminator(nn.Module):
     @tu.experimental
     def to_equal_lr(self, leak=0.2) -> 'ResidualDiscriminator':
         for m in self.modules():
-            if isinstance(m, (nn.Linear, nn.Conv2d)):
+            if isinstance(m, (nn.Linear, nn.Conv2d, nn.Conv1d)):
                 tu.kaiming(m, dynamic=True, a=leak)
 
         return self
