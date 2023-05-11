@@ -131,7 +131,6 @@ def kaiming(m: T_Module,
 def xavier(m: T_Module,
            a: float = 0,
            nonlinearity: str = 'relu',
-           mode: str = 'fan_in',
            dynamic: bool = False) -> T_Module:
     """
     Initialize a module with xavier normal init
@@ -657,7 +656,8 @@ def parallel_run(fun, *args, n_gpus: int = torch.cuda.device_count(),
     import torch.multiprocessing as mp
     from tempfile import NamedTemporaryFile
     f = NamedTemporaryFile()
-    mp.spawn(_WrapFun(fun, *args, **kwargs, world_size=n_gpus, tmp_file=f.name),
+    mp.spawn(_WrapFun(fun, *args, **kwargs, world_size=n_gpus,
+                      tmp_file=f.name),
              nprocs=n_gpus,
              join=True)
     f.seek(0)
@@ -691,8 +691,8 @@ def experimental(func):
         if doc is None:
             return f'**Experimental**\n\n.. warning::\n  {msg}\n\n.\n'
         else:
-            return ('**Experimental**: ' + dedent(func.__doc__)
-                    + f'.. warning::\n {msg}\n\n\n')
+            return ('**Experimental**: ' + dedent(func.__doc__) +
+                    f'.. warning::\n {msg}\n\n\n')
 
     if isfunction(func):
         func.__doc__ = deprecate_doc(func.__doc__)

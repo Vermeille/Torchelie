@@ -297,6 +297,7 @@ class Optimizer(tu.AutoStateDict):
                  centralize_grad=False,
                  log_lr=False,
                  log_mom=False,
+                 scaler=None,
                  grad_multiplier=1):
         super(Optimizer, self).__init__()
         self.opt = opt
@@ -306,6 +307,7 @@ class Optimizer(tu.AutoStateDict):
         self.clip_grad_norm = clip_grad_norm
         self.centralize_grad = centralize_grad
         self.grad_multiplier = grad_multiplier
+        self.scaler = scaler
 
     def on_batch_start(self, state):
         if state['iters'] % self.accumulation == 0:
@@ -330,6 +332,9 @@ class Optimizer(tu.AutoStateDict):
         if (state['iters'] + 1) % self.accumulation != 0:
             return
 
+        if self.scaler is not None:
+            self.scaler.unscale_(self.opt)
+
         if self.accumulation != 1 or self.grad_multiplier != 1:
             for pg in self.opt.param_groups:
                 for p in pg['params']:
@@ -345,7 +350,12 @@ class Optimizer(tu.AutoStateDict):
             state['metrics']['grad_norm'] = torch.nn.utils.clip_grad_norm_(
                 (p for pg in self.opt.param_groups for p in pg['params']),
                 self.clip_grad_norm)
-        self.opt.step()
+
+        if self.scaler is not None:
+            self.scaler.step(self.opt)
+            self.scaler.update()
+        else:
+            self.opt.step()
 
 
 class LRSched(tu.AutoStateDict):
