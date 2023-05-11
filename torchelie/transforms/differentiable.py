@@ -344,3 +344,4 @@ class AllAtOnceColor:
         out = F.conv2d(x, w, None, groups=self.B)
         out = out.view(B, C, H, W)
         return out + b
+

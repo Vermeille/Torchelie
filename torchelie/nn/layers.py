@@ -96,7 +96,8 @@ class SelfAttention2d(nn.Module):
                  num_heads: int = 1,
                  out_ch: Optional[int] = None,
                  channels_per_head: Optional[int] = None,
-                 shape: Optional[Tuple[int, int]] = None):
+                 shape: Optional[Tuple[int, int]] = None,
+                 checkpoint: bool = True):
         super().__init__()
         self.num_heads = num_heads
         inner_ch = ch
@@ -110,6 +111,9 @@ class SelfAttention2d(nn.Module):
         self.positional = None
         if shape is not None:
             self.positional = nn.Parameter(torch.randn(ch, *shape))
+        self.out = tu.xavier(nn.Conv2d(ch, out_ch, 1))
+        self.attn_hooks = []
+        self.checkpoint = checkpoint
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -129,10 +133,12 @@ class SelfAttention2d(nn.Module):
             affinity = torch.matmul(q.transpose(-2, -1),
                                     k).mul_(1 / math.sqrt(q.shape[2]))
             attention = F.softmax(affinity, dim=-1)
+            for h in self.attn_hooks:
+                h(affinity.view(N, K, H, W, H, W))
             return torch.matmul(attention, v.transpose(-2,
                                                        -1)).view(*out_shape)
 
-        if self.training:
+        if self.training and self.checkpoint:
             out = torch.utils.checkpoint.checkpoint(
                 kqv,
                 k,

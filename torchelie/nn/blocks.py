@@ -19,6 +19,7 @@ from .utils import remove_weight_scale
 from .interpolate import InterpolateBilinear2d
 from .encdec import ConvDeconvBlock
 from .conv import ConvBlock, Conv2d, Conv3x3, Conv1x1
+from torchelie.transforms.differentiable import BinomialFilter2d
 
 
 @experimental
@@ -186,7 +187,7 @@ class ResidualDiscrBlock(PreactResBlock):
                  downsample: bool = False) -> None:
         super().__init__(in_channels, out_channels)
         if downsample:
-            self.post.add_module('downsample', nn.AvgPool2d(2))
+            self.post.add_module('downsample', BinomialFilter2d(2))
         self.remove_batchnorm()
         make_leaky(self)
 
@@ -322,3 +323,42 @@ class StyleGAN2Block(nn.Module):
             w=w,
             **({f'noise_{i}': None for i in range(len(self.inside) // 3)}))
         return rgb + self.to_rgb(maps, w), maps
+
+
+class FocalModulation(nn.Module):
+
+    def __init__(self, in_channels, out_channels, num_focal=3):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.proj_in = Conv1x1(in_channels,
+                               in_channels + in_channels + num_focal + 1)
+
+        self.focal = nn.ModuleList([
+            nn.Sequential(
+                nn.Conv2d(in_channels,
+                          in_channels,
+                          k * 2 + 3,
+                          padding=(k * 2 + 3) // 2,
+                          groups=in_channels),
+                nn.SiLU(True),
+            ) for k in range(num_focal)
+        ] + [
+            nn.Sequential(nn.AdaptiveAvgPool2d(1),
+                          nn.Conv2d(in_channels, in_channels, 1), nn.SiLU(True))
+        ])
+        self.out_proj = nn.Conv2d(in_channels, out_channels, 1)
+
+    def forward(self, x):
+        x = self.proj_in(x)
+        v = x[:, :self.in_channels]
+
+        k = x[:, self.in_channels:2 * self.in_channels]
+        q = x[:, 2 * self.in_channels:]
+
+        o = []
+        for i, f in enumerate(self.focal):
+            k = f(k)
+            o.append(k * q[:, i:i + 1])
+
+        return self.out_proj(v * sum(o))

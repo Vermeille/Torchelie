@@ -6,7 +6,12 @@ from torchelie.utils import kaiming, experimental
 from .interpolate import InterpolateBilinear2d
 
 
-def Conv2d(in_ch, out_ch, ks, stride=1, bias=True) -> nn.Conv2d:
+def Conv2d(in_ch,
+           out_ch,
+           ks,
+           stride=1,
+           bias=True,
+           depthwise: bool = False) -> nn.Conv2d:
     """
     A Conv2d with 'same' padding
     """
@@ -15,7 +20,8 @@ def Conv2d(in_ch, out_ch, ks, stride=1, bias=True) -> nn.Conv2d:
                      ks,
                      padding=(ks - 1) // 2,
                      stride=stride,
-                     bias=bias)
+                     bias=bias,
+                     groups=out_ch if depthwise else 1)
 
 
 def Conv3x3(in_ch: int,

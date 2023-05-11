@@ -104,15 +104,15 @@ def gradient_penalty(model,
 
     fp16 = amp_scaler is not None and amp_scaler.is_enabled()
     with torch.cuda.amp.autocast(enabled=fp16):
-        out = model(data).sum()
+        out = model(data)
 
     scale = amp_scaler.scale if fp16 else (lambda x: x)
-    g = torch.autograd.grad(outputs=scale(out),
+    g = torch.autograd.grad(outputs=scale(out).sum(),
                             inputs=data,
                             create_graph=True,
                             only_inputs=True)[0]
 
     g = (g / amp_scaler.get_scale()) if fp16 else g
 
-    g_norm = g.pow(2).sum(dim=(1, 2, 3)).add_(1e-8).sqrt()
+    g_norm = g.pow(2).sum(dim=(1, 2, 3)).sqrt()
     return (g_norm - objective_norm).pow(2).mean(), g_norm.mean().item()

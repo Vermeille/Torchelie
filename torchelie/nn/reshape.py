@@ -8,7 +8,9 @@ class Lambda(nn.Module):
     Args:
         lamb (fn): the lambda function
     """
-    def __init__(self, lam):
+    lam: nn.Module
+
+    def __init__(self, lam: nn.Module):
         super(Lambda, self).__init__()
         self.lam = lam
 

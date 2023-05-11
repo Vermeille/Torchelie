@@ -230,17 +230,19 @@ class JPEGArtifacts:
         min_compression (float): minimum quality (1: maximum quality)
     """
 
-    def __init__(self, min_compression: float = 0.5, p: float = 0.5):
+    def __init__(self, min_compression: float = 0.5, p: float = 0.5, **jpeg_args):
         self.p = p
         self.min_compression = min_compression
+        self.jpeg_args = jpeg_args
 
     def __call__(self, x: PILImage) -> PILImage:
-        if random.uniform(0, 1) > self.p:
+        if not random.uniform(0, 1) < self.p:
             return x
         f = BytesIO()
         x.save(f,
                format='JPEG',
-               quality=random.randint(int(self.min_compression * 100), 100))
+               quality=random.randint(int(self.min_compression * 100), 75),
+               **self.jpeg_args)
         f.seek(0)
         return PIL.Image.open(f)
 
