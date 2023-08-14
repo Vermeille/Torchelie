@@ -34,6 +34,7 @@ class VQ(nn.Module):
                  return_indices: bool = True,
                  max_age: int = 1000):
         super(VQ, self).__init__()
+        self.latent_dim = latent_dim
         self.embedding = nn.Embedding(num_tokens, latent_dim)
         nn.init.normal_(self.embedding.weight, 0, 1.1)
         self.dim = dim
@@ -89,13 +90,13 @@ class VQ(nn.Module):
         nb_codes = self.embedding.weight.shape[0]
 
         codebook = self.embedding.weight
-        if (self.init_mode == 'first' and self.initialized.item() == 0 and
-                self.training):
+        if (self.init_mode == 'first' and self.initialized.item() == 0
+                and self.training):
             n_proto = self.embedding.weight.shape[0]
 
             ch_first = x.transpose(dim, -1).contiguous().view(-1, x.shape[dim])
             n_samples = ch_first.shape[0]
-            idx = torch.randint(0, n_samples, (n_proto,))[:nb_codes]
+            idx = torch.randint(0, n_samples, (n_proto, ))[:nb_codes]
             self.embedding.weight.data.copy_(ch_first[idx])
             self.initialized[:] = 1
 
@@ -171,3 +172,15 @@ class MultiVQ(nn.Module):
             return q, torch.cat([q[1] for q in quantized], dim=self.dim)
         else:
             return torch.cat(quantized, dim=self.dim)
+
+
+class MultiVQ2(VQ):
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        d = self.latent_dim
+        dims = x.shape
+        batched_dims = list(dims)
+        batched_dims[self.dim] = d
+        batched_dims[self.dim - 1] = -1
+        out = super(MultiVQ2, self).forward(x.view(*batched_dims))
+        return out.view(*dims).contiguous()

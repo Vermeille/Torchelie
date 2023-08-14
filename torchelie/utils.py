@@ -374,7 +374,10 @@ def load_recursive_state_dict(x: Any, obj: Any) -> None:
             load_recursive_state_dict(xx[k], oo[k])
 
 
-def load_state_dict_forgiving(dst, state_dict: dict, silent: bool = False):
+def load_state_dict_forgiving(dst,
+                              state_dict: dict,
+                              silent: bool = False,
+                              fit_dst_size: bool = False):
     """
     Loads a state dict, but don't crash if shapes don't match.
     """
@@ -384,7 +387,22 @@ def load_state_dict_forgiving(dst, state_dict: dict, silent: bool = False):
     failed = set()
     for name, val in state_dict.items():
         try:
-            dst_dict[name].copy_(val)
+            if not fit_dst_size:
+                dst_dict[name].copy_(val)
+            else:
+                if dst_dict[name].ndim != val.ndim:
+                    failed.add(name)
+                    if not silent:
+                        print('error in', name, ", can't load shape",
+                              val.shape, "into shape", dst_dict[name].shape)
+                slices = [
+                    slice(0, min(a, b))
+                    for a, b in zip(val.shape, dst_dict[name].shape)
+                ]
+                dst_dict[name][slices].copy_(val[slices])
+                if dst_dict[name].shape != val.shape and not silent:
+                    print('shrunk', name, ': checkpoint has ', val.shape,
+                          '-> model has', dst_dict[name].shape)
         except Exception as e:
             failed.add(name)
             if silent:
@@ -719,4 +737,4 @@ def experimental(func):
             # '__getstate__': __getstate__,
             # '__setstate__': __setstate__
         }
-        return type(cls.__name__, (cls,), d)
+        return type(cls.__name__, (cls, ), d)
