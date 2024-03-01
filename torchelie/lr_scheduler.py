@@ -262,7 +262,6 @@ class HyperbolicTangentDecay(_LRScheduler):
     def __repr__(self) -> str:
         return 'HyperbolicTangentDecay({})'.format(
             tu.indent("\n".join([
-                '{}={}'.format(k, v)
-                for k, v in self.__dict__.items()
+                '{}={}'.format(k, v) for k, v in self.__dict__.items()
                 if k != 'optimizer'
             ])))
