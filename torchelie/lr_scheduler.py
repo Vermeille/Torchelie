@@ -169,12 +169,11 @@ class OneCycle(CurriculumScheduler):
             mom = math.log(mom[0]), math.log(mom[1])
 
         third = num_iters // 3
-        super(OneCycle, self).__init__(opt, [(0, lr[0], mom[0]),
-                                             (third, lr[1], mom[1]),
-                                             (2 * third, lr[0], mom[0]),
-                                             (num_iters, lr[0] /
-                                              (lr[1] / lr[0] * 10000), mom[0])],
-                                       last_iter=last_iter)
+        super(OneCycle, self).__init__(
+            opt, [(0, lr[0], mom[0]), (third, lr[1], mom[1]),
+                  (2 * third, lr[0], mom[0]),
+                  (num_iters, lr[0] / (lr[1] / lr[0] * 10000), mom[0])],
+            last_iter=last_iter)
 
     def step(self, *unused):
         super(OneCycle, self).step()
