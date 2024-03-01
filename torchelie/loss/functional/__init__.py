@@ -48,7 +48,13 @@ def focal_loss(input: torch.Tensor,
                                             reduction='none')
     p = torch.exp(-mlogp).clamp(min=1e-8, max=1 - 1e-8)
     loss = (1 - p)**gamma * mlogp
-    return loss.mean()
+    if reduction == 'mean':
+        return loss.mean()
+    if reduction == 'sum':
+        return loss.sum()
+    if reduction == 'none':
+        return loss
+    assert False, f'{reduction} not a valid reduction method'
 
 
 def continuous_cross_entropy(pred: torch.Tensor,
