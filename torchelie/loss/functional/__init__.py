@@ -31,16 +31,16 @@ def total_variation(i: torch.Tensor) -> torch.Tensor:
 def focal_loss(input: torch.Tensor,
                target: torch.Tensor,
                gamma: float = 0,
-               weight: Optional[torch.Tensor] = None) -> torch.Tensor:
+               weight: Optional[torch.Tensor] = None,
+               reduction: str = 'none') -> torch.Tensor:
     r"""
     Returns the focal loss between `target` and `input`
 
     :math:`\text{FL}(p_t)=-(1-p_t)^\gamma\log(p_t)`
     """
     if input.shape[1] == 1:
-        mlogp = nn.functional.binary_cross_entropy_with_logits(input,
-                                                               target,
-                                                               reduction='none')
+        mlogp = nn.functional.binary_cross_entropy_with_logits(
+            input, target, reduction='none')
     else:
         mlogp = nn.functional.cross_entropy(input,
                                             target,
