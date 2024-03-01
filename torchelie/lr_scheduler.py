@@ -193,6 +193,44 @@ class OneCycle(CurriculumScheduler):
         return 'OneCycle({})'.format(self.schedule)
 
 
+class WSD(CurriculumScheduler):
+    """
+    Implements the Warmup-Step-Decay schedule.
+
+    Goes from:
+    - 0 to 1 during `warmup_iters` iterations
+    - stays at 1 during `step_iters` iterations
+    - goes from 1 to `end_mul` during `decay_iters` iterations
+
+    Args:
+        opt (Optimizer): the optimizer on which to modulate lr
+        warmup_iters (int): number of iterations to warmup
+        step_iters (int): number of iterations to keep the same lr
+        decay_iters (optional, int): number of iterations to decay lr. Defaults
+            to 10% of step_iters.
+        end_mul (optional, float): final lr multiplier (default to 0.1)
+        last_iter (int): last_iteration index
+    """
+
+    def __init__(self,
+                 opt,
+                 warmup_iters: int,
+                 step_iters: int,
+                 decay_iters: int = None,
+                 end_mul: float = 0.1,
+                 last_iter: int = -1):
+        if decay_iters is None:
+            decay_iters = step_iters // 10
+
+        super(WSD, self).__init__(opt, [(0, 0, None), (warmup_iters, 1, None),
+                                        (step_iters - decay_iters, 1, None),
+                                        (step_iters, end_mul, None)],
+                                  last_epoch=last_iter)
+
+    def __repr__(self):
+        return 'WSD({})'.format(self.schedule)
+
+
 class HyperbolicTangentDecay(_LRScheduler):
     """
     Coming from Stochastic gradient descent with hyperbolic-tangent decay on
