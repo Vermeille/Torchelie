@@ -5,11 +5,13 @@ class PixelNorm(torch.nn.Module):
     """
     PixelNorm from ProgressiveGAN
     """
+
     def forward(self, x):
         return x / (x.pow(2).mean(dim=1, keepdim=True).sqrt() + 1e-8)
 
 
 class ChannelNorm(torch.nn.Module):
+
     def __init__(self, dim=1, affine=True, channels=1):
         super().__init__()
         self.affine = affine
