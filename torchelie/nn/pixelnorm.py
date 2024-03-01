@@ -30,20 +30,9 @@ class ChannelNorm(torch.nn.Module):
     def forward(self, x):
         var = x.var(dim=self.dim, keepdim=True, unbiased=False)
         if not self.affine:
-            return (x ) * var.rsqrt()
+            return (x) * var.rsqrt()
         expand = [(self.channels[self.dim.index(i)] if i in self.dim else 1)
                   for i in range(x.dim())]
-        w = self.weight.view(expand)
-        w_ = var.rsqrt() * w
-        return x * w_
 
-        mean = x.mean(dim=self.dim, keepdim=True)
-        var = x.var(dim=self.dim, keepdim=True, unbiased=False)
-        if not self.affine:
-            return (x - mean) * var.rsqrt()
-        expand = [(self.channels[self.dim.index(i)] if i in self.dim else 1)
-                  for i in range(x.dim())]
         w = self.weight.view(expand)
-        b = self.bias.view(expand)
-        w_ = var.rsqrt() * w
-        return x * w_ - (mean * w_ + b)
+        return x * var.rsqrt() * w
