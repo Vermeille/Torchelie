@@ -24,8 +24,13 @@ class CurriculumScheduler(_LRScheduler):
                  optimizer,
                  schedule: List[Tuple[float, float, float]],
                  last_epoch: int = -1,
-                 verbose: bool = False):
+                 verbose: bool = False,
+                 transition: str = 'linear'):
         self.schedule = schedule
+        self.transition = transition
+        if transition == 'log':
+            self.schedule = [(a, math.log(b), math.log(c))
+                             for a, b, c in self.schedule]
         super().__init__(optimizer, last_epoch, verbose)
 
     def step(self, *unused) -> None:
@@ -35,6 +40,7 @@ class CurriculumScheduler(_LRScheduler):
         self.last_epoch += 1
         lr_mul = self.schedule[-1][1]
         the_mom = self.schedule[-1][2]
+        t = 1
         for lo, hi in zip(self.schedule[:-1], self.schedule[1:]):
             limit_lo, lr_lo, mom_lo = lo
             lim_hi, lr_hi, mom_hi = hi
@@ -45,6 +51,18 @@ class CurriculumScheduler(_LRScheduler):
                 the_mom = None
                 if not (mom_lo is None or mom_hi is None):
                     the_mom = tu.lerp(mom_lo, mom_hi, t)
+                break
+
+        if self.transition == 'log':
+            lr_mul = math.exp(lr_mul)
+            if the_mom is not None:
+                the_mom = math.exp(the_mom)
+
+        elif self.transition == 'cosine':
+            cos = math.cos(t * math.pi + math.pi) / 2 + 0.5
+            lr_mul = (lr_hi - lr_lo) * cos + lr_lo
+            if the_mom is not None:
+                the_mom = (mom_hi - mom_lo) * cos + mom_lo
 
         for group in self.optimizer.param_groups:
             group['lr'] = lr_mul * group['initial_lr']
@@ -109,8 +127,8 @@ class CosineDecay(_LRScheduler):
             warmup = min(self.last_epoch / warmup_iters, 1)
             lr_mul = 1 - 0.5 * (math.cos(warmup * math.pi) + 1)
         else:
-            progress = (self.last_epoch - warmup_iters) / (self.total_iters
-                                                           - warmup_iters)
+            progress = (self.last_epoch - warmup_iters) / (self.total_iters -
+                                                           warmup_iters)
             lr_mul = 0.5 * (math.cos(progress * math.pi) + 1)
 
         for group in self.optimizer.param_groups:
