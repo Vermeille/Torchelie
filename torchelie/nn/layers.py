@@ -216,7 +216,7 @@ class UnitGaussianPrior(nn.Module):
                  kl_reduction='mean'):
         super().__init__()
         self.project = tu.kaiming(nn.Linear(in_channels, 2 * num_latents))
-        self.project.bias.data[num_latents:].fill_(1)
+        self.stability = nn.Parameter(torch.tensor([0.0]))
         self.strength = strength
         assert kl_reduction in ['mean', 'sum']
         self.reduction = kl_reduction
@@ -227,17 +227,19 @@ class UnitGaussianPrior(nn.Module):
             x (Tensor): A 2D (N, in_channels) tensor
 
         Returns:
-            A 2D (N, num_channels) tensor sampled from the implicit gaussian
+            A (..., num_channels) tensor sampled from the implicit gaussian
                 distribution.
         """
         x = self.project(x)
-        mu, sigma = torch.chunk(x, 2, dim=1)
+        mu, sigma = torch.chunk(x, 2, dim=-1)
+        #print('mu', mu.mean().item(), mu.std().item(), 'sigma', (self.stability * sigma).exp().min().item(), (self.stability * sigma).exp().max().item())
         if self.training:
-            sigma = torch.exp(0.5 * sigma).add_(1e-5)
+            sigma = torch.exp(sigma * self.stability).add(1e-5)
             strength = self.strength
             if self.reduction == 'mean':
                 strength = strength / x.shape[0]
-            return tch.nn.functional.unit_gaussian_prior(mu, sigma, strength)
+            out = tch.nn.functional.unit_gaussian_prior(mu, sigma, strength)
+            return out
         else:
             return mu
 
