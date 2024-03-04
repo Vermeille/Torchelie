@@ -1,4 +1,4 @@
-from .reshape import Reshape, Lambda
+from .reshape import Reshape, Lambda, Permute
 from .conv import *
 from .debug import Debug, Dummy
 from .noise import Noise

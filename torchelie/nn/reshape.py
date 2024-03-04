@@ -26,9 +26,26 @@ class Reshape(nn.Module):
         *shape (ints): new shape, WITHOUT specifying batch size as first
         dimension, as it will remain unchanged.
     """
+
     def __init__(self, *shape):
         super(Reshape, self).__init__()
         self.shape = shape
 
     def forward(self, x):
         return x.view(x.shape[0], *self.shape)
+
+
+class Permute(nn.Module):
+    """
+    Permute the dimensions of the input tensor
+
+    Args:
+        *dims (ints): new permutation of the dimensions
+    """
+
+    def __init__(self, *dims):
+        super(Permute, self).__init__()
+        self.dims = dims
+
+    def forward(self, x):
+        return x.permute(*self.dims)
