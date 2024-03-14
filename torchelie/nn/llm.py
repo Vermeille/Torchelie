@@ -85,7 +85,7 @@ class SelfAttention(nn.Module):
             kv_cache[:] = [k, v]
         q, k, v = self.rotary(q, k, v)
         att = nn.functional.scaled_dot_product_attention(
-            q, k, v, is_causal=kv_cache is None or self.causal)
+            q, k, v, is_causal=kv_cache is not None or self.causal)
         # bhld -> blhd
         att = att.permute(0, 2, 1, 3).contiguous().reshape(b, l, h * d)
         return self.fc(att)
