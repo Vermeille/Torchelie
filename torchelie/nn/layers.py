@@ -125,29 +125,13 @@ class SelfAttention2d(nn.Module):
         if self.positional is not None:
             x = x + self.positional
         x_flat = x.view(N, C, -1)
-        k = self.key(x_flat).view(N, K, -1, H * W)
-        q = self.query(x_flat).view(N, K, -1, H * W)
-        v = self.value(x_flat).view(N, K, -1, H * W)
+        q = self.query(x_flat).view(N, K, -1, H * W).transpose(-1, -2)
+        k = self.key(x_flat).view(N, K, -1, H * W).transpose(-1, -2)
+        v = self.value(x_flat).view(N, K, -1, H * W).transpose(-1, -2)
 
-        def kqv(k, q, v, out_shape):
-            affinity = torch.matmul(q.transpose(-2, -1),
-                                    k).mul_(1 / math.sqrt(q.shape[2]))
-            attention = F.softmax(affinity, dim=-1)
-            for h in self.attn_hooks:
-                h(affinity.view(N, K, H, W, H, W))
-            return torch.matmul(attention, v.transpose(-2,
-                                                       -1)).view(*out_shape)
-
-        if self.training and self.checkpoint:
-            out = torch.utils.checkpoint.checkpoint(
-                kqv,
-                k,
-                q,
-                v, (N, self.key.weight.shape[0], H, W),
-                use_reentrant=False,
-                preserve_rng_state=False)
-        else:
-            out = kqv(k, q, v, (N, self.key.weight.shape[0], H, W))
+        q, k, v = self.rotary(q, k, v)
+        out = F.scaled_dot_product_attention(q, k, v).transpose(-1, -2)
+        out = out.reshape(N, -1, H, W)
 
         return self.out(out)
 
