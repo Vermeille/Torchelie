@@ -12,5 +12,5 @@ torch = "^1.0"
 pytest = "^3.0"
 
 [build-system]
-requires = ["poetry>=0.12"]
+requires = ["setuptools", "poetry>=0.12"]
 build-backend = "poetry.masonry.api"
