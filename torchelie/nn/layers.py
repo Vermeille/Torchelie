@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchelie.utils as tu
 import torchelie as tch
+from torchelie.nn.llm import Rotary
 from torchelie.nn.functional import drop_path
 from typing import Optional, Tuple, List, Union
 from torch.autograd import Function
@@ -96,7 +97,6 @@ class SelfAttention2d(nn.Module):
                  num_heads: int = 1,
                  out_ch: Optional[int] = None,
                  channels_per_head: Optional[int] = None,
-                 shape: Optional[Tuple[int, int]] = None,
                  checkpoint: bool = True):
         super().__init__()
         self.num_heads = num_heads
@@ -109,11 +109,10 @@ class SelfAttention2d(nn.Module):
         out_ch = out_ch or ch
         self.out = tu.xavier(nn.Conv2d(inner_ch, out_ch, 1, bias=False))
         self.positional = None
-        if shape is not None:
-            self.positional = nn.Parameter(torch.randn(ch, *shape))
         self.out = tu.xavier(nn.Conv2d(ch, out_ch, 1))
         self.attn_hooks = []
         self.checkpoint = checkpoint
+        self.rotary = Rotary(channels_per_head or ch // num_heads)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -122,8 +121,6 @@ class SelfAttention2d(nn.Module):
         N, C, H, W = x.shape
         K = self.num_heads
 
-        if self.positional is not None:
-            x = x + self.positional
         x_flat = x.view(N, C, -1)
         q = self.query(x_flat).view(N, K, -1, H * W).transpose(-1, -2)
         k = self.key(x_flat).view(N, K, -1, H * W).transpose(-1, -2)
