@@ -194,13 +194,15 @@ class UnitGaussianPrior(nn.Module):
                  in_channels,
                  num_latents,
                  strength=1,
-                 kl_reduction='mean'):
+                 kl_reduction='mean',
+                 return_std=False):
         super().__init__()
         self.project = tu.kaiming(nn.Linear(in_channels, 2 * num_latents))
-        self.stability = nn.Parameter(torch.tensor([0.0]))
+        #self.project.weight.data[num_latents:, :] = 0.
         self.strength = strength
         assert kl_reduction in ['mean', 'sum']
         self.reduction = kl_reduction
+        self.return_std = return_std
 
     def forward(self, x):
         """
@@ -213,16 +215,16 @@ class UnitGaussianPrior(nn.Module):
         """
         x = self.project(x)
         mu, sigma = torch.chunk(x, 2, dim=-1)
-        #print('mu', mu.mean().item(), mu.std().item(), 'sigma', (self.stability * sigma).exp().min().item(), (self.stability * sigma).exp().max().item())
+        sigma = sigma.exp()
         if self.training:
-            sigma = torch.exp(sigma * self.stability).add(1e-5)
+            print('sigma', sigma.shape, sigma.min().item(), sigma.max().item(), sigma.mean().item(), sigma.std().item())
             strength = self.strength
             if self.reduction == 'mean':
                 strength = strength / x.shape[0]
-            out = tch.nn.functional.unit_gaussian_prior(mu, sigma, strength)
-            return out
+            out = tchf.unit_gaussian_prior(mu, sigma, strength)
+            return out if not self.return_std else (out, sigma)
         else:
-            return mu
+            return mu if not self.return_std else (mu, sigma
 
 
 class InformationBottleneck(UnitGaussianPrior):
