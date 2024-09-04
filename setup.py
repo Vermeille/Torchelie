@@ -10,7 +10,7 @@ setup(name='Torchelie',
           'visdom>=0.1.8',
           'crayons>=0.2',
           'torchvision>=0.13',
-          'torch>=1.12',
+          'torch>=2',
           'numpy>=1.16',
           'Pillow>=6',
       ])
