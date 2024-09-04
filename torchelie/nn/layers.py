@@ -224,7 +224,7 @@ class UnitGaussianPrior(nn.Module):
             out = tchf.unit_gaussian_prior(mu, sigma, strength)
             return out if not self.return_std else (out, sigma)
         else:
-            return mu if not self.return_std else (mu, sigma
+            return mu if not self.return_std else (mu, sigma)
 
 
 class InformationBottleneck(UnitGaussianPrior):
