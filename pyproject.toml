@@ -5,8 +5,8 @@ description = ""
 authors = ["Guillaume Sanchez <Guillaume.v.sanchez@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
-torch = "^1.0"
+python = ">3.8"
+torch = ">2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"
