@@ -96,8 +96,7 @@ class SelfAttention2d(nn.Module):
                  ch: int,
                  num_heads: int = 1,
                  out_ch: Optional[int] = None,
-                 channels_per_head: Optional[int] = None,
-                 checkpoint: bool = True):
+                 channels_per_head: Optional[int] = None):
         super().__init__()
         self.num_heads = num_heads
         inner_ch = ch
@@ -110,9 +109,6 @@ class SelfAttention2d(nn.Module):
         self.out = tu.xavier(nn.Conv2d(inner_ch, out_ch, 1, bias=False))
         self.positional = None
         self.out = tu.xavier(nn.Conv2d(ch, out_ch, 1))
-        self.attn_hooks = []
-        self.checkpoint = checkpoint
-        self.rotary = Rotary(channels_per_head or ch // num_heads)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -126,7 +122,6 @@ class SelfAttention2d(nn.Module):
         k = self.key(x_flat).view(N, K, -1, H * W).transpose(-1, -2)
         v = self.value(x_flat).view(N, K, -1, H * W).transpose(-1, -2)
 
-        q, k, v = self.rotary(q, k, v)
         out = F.scaled_dot_product_attention(q, k, v).transpose(-1, -2)
         out = out.reshape(N, -1, H, W)
 
