@@ -89,7 +89,7 @@ class VQ(nn.Module):
             quantized tensor, or (quantized tensor, indices) if
             `self.return_indices`
         """
-        if torch.is_floating_point(my_tensor):
+        if torch.is_floating_point(x):
             return self.quantize(x)
         else:
             return self.lookup(x)
