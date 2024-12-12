@@ -89,6 +89,28 @@ class VQ(nn.Module):
             quantized tensor, or (quantized tensor, indices) if
             `self.return_indices`
         """
+        if torch.is_floating_point(my_tensor):
+            return self.quantize(x)
+        else:
+            return self.lookup(x)
+
+    def lookup(
+        self, x: torch.Tensor
+    ) -> torch.Tensor:
+        dim = self.dim
+        needs_transpose = dim != -1 or dim != x.dim() - 1
+
+        x = self.embedding(x)
+        if self.space == "angular":
+            x = F.normalize(x, dim=-1)
+
+        if needs_transpose:
+            x = x.transpose(-1, dim)
+        return x
+
+    def quantize(
+        self, x: torch.Tensor
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         dim = self.dim
         nb_codes = self.embedding.weight.shape[0]
 
