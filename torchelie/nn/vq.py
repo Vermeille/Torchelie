@@ -105,7 +105,10 @@ class VQ(nn.Module):
             x = F.normalize(x, dim=-1)
 
         if needs_transpose:
-            x = x.transpose(-1, dim)
+            dims = list(range(x.ndim))
+            dims.insert(dim, dims[-1])
+            dims.pop()
+            x = x.permute(*dims)
         return x
 
     def quantize(
