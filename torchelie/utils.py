@@ -551,6 +551,8 @@ def as_multiclass_shape(preds, as_probs=False):
 
     if preds has one dim, another one is added. If this is binary
     classification, a second column is added as 1 - preds.
+    The preds tensor must be [B, C, ...] where B is the batch dimension,
+    C is the logits dimensions; or as [B] if binary classification.
 
     Args:
         preds (tensor): predictions
@@ -559,7 +561,6 @@ def as_multiclass_shape(preds, as_probs=False):
     Returns:
         the predictions reshaped
     """
-    assert preds.ndim <= 2
 
     if preds.ndim == 1:
         preds = preds.unsqueeze(1)
