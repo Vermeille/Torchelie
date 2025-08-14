@@ -31,7 +31,7 @@ class CurriculumScheduler(_LRScheduler):
         if transition == 'log':
             self.schedule = [(a, math.log(b), math.log(c))
                              for a, b, c in self.schedule]
-        super().__init__(optimizer, last_epoch, verbose)
+        super().__init__(optimizer, last_epoch)
 
     def step(self, *unused) -> None:
         """
@@ -113,7 +113,7 @@ class CosineDecay(_LRScheduler):
                  verbose: bool = False):
         self.total_iters = total_iters
         self.warmup = warmup_ratio
-        super().__init__(optimizer, last_epoch, verbose)
+        super().__init__(optimizer, last_epoch)
 
     def step(self, *unused) -> None:
         """
@@ -248,7 +248,7 @@ class HyperbolicTangentDecay(_LRScheduler):
         self.n_iters_total = n_iters_total
         self.tanh_lower_bound = tanh_lower_bound
         self.tanh_upper_bound = tanh_upper_bound
-        super().__init__(optimizer, last_epoch, verbose)
+        super().__init__(optimizer, last_epoch)
 
     def get_lr(self) -> List[float]:
         t = self.last_epoch / self.n_iters_total
