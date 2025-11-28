@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import math
 import torch
 import torch.nn as nn
@@ -5,46 +7,82 @@ import torchelie.utils as tu
 
 
 class Rotary(torch.nn.Module):
+    _cache = {}
 
     def __init__(self, dim, base=10000):
-        """
-        Rotary Positional Embedding
-        Assumes input of shape (..., seq_len, dim)
-        Args:
-            dim (int): dimension of the input
-            base (int, optional): base of the sinusoidal function. Defaults to 10000.
-        """
         super().__init__()
-        inv_freq = 1.0 / (base**(torch.arange(0, dim, 2).float() / dim))
-        self.register_buffer("inv_freq", inv_freq)
-        self.seq_len_cached = None
-        self.cos_cached = None
-        self.sin_cached = None
+        self.dim = dim
+        self.base = base
+        inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2).float() / dim))
+        self.inv_freq = nn.Buffer(inv_freq)
 
-    def forward(self, q, k, v):
-        seq_len = max(q.shape[-2], k.shape[-2])
-        if seq_len != self.seq_len_cached:
-            self.seq_len_cached = seq_len
-            t = torch.arange(seq_len,
-                             device=q.device).type_as(self.inv_freq)
+    def _cache_key(self, device):
+        return (self.dim, self.base, device)
+
+    def forward(self, q, k, v, positions=None, seq_dim=-2):
+        seq_len = q.shape[seq_dim]
+        device = q.device
+        key = self._cache_key(device)
+        cos_cached, sin_cached, cached_len = self._cache.get(key, (None, None, 0))
+        needed_len = seq_len if positions is None else int(positions.max()) + 1
+        if cached_len < needed_len or cos_cached is None:
+            t = torch.arange(needed_len, device=device).type_as(self.inv_freq)
             freqs = torch.einsum("i,j->ij", t, self.inv_freq)
-            emb = torch.cat((freqs, freqs), dim=-1).to(q.device)
-            self.cos_cached = emb.cos()[:, :]
-            self.sin_cached = emb.sin()[:, :]
-        return self.apply_rotary_pos_emb(q, k, v, self.cos_cached,
-                                         self.sin_cached)
+            emb = torch.cat((freqs, freqs), dim=-1).to(device)
+            cos_cached = emb.cos()
+            sin_cached = emb.sin()
+            cached_len = needed_len
+            self._cache[key] = (cos_cached, sin_cached, cached_len)
+        if positions is None:
+            cos, sin = cos_cached[:seq_len], sin_cached[:seq_len]
+            ndim = q.ndim
+            seq_dim = seq_dim % ndim
+            # default layout already matches (seq_len, dim)
+            if seq_dim != ndim - 2:
+                shape = [1] * ndim
+                shape[seq_dim] = seq_len
+                shape[-1] = cos.shape[-1]
+                cos = cos.reshape(shape)
+                sin = sin.reshape(shape)
+        else:
+            cos = cos_cached.index_select(0, positions.reshape(-1)).view(
+                positions.shape + (cos_cached.shape[-1],)
+            )
+            sin = sin_cached.index_select(0, positions.reshape(-1)).view(
+                positions.shape + (sin_cached.shape[-1],)
+            )
+            ndim = q.ndim
+            seq_dim = seq_dim % ndim
+            shape = [1] * ndim
+            shape[0] = cos.shape[0]
+            shape[seq_dim] = cos.shape[1]
+            shape[-1] = cos.shape[-1]
+            cos = cos.reshape(shape)
+            sin = sin.reshape(shape)
+
+        return self.apply_rotary_pos_emb(q, k, v, cos, sin)
 
     # rotary pos emb helpers:
 
-    def rotate_half(self, x):
-        x1, x2 = torch.chunk(x, 2, dim=-1)
-        return torch.cat((-x2, x1), dim=x1.ndim - 1)
+    def rotate_half(self, x: torch.Tensor) -> torch.Tensor:
+        x1, x2 = x[..., : x.shape[-1] // 2], x[..., x.shape[-1] // 2 :]
+        return torch.cat(
+            (-x2, x1), dim=x1.ndim - 1
+        )  # dim=-1 triggers a bug in torch < 1.8.0
 
-    def apply_rotary_pos_emb(self, q, k, v, cos, sin):
-        q_len = q.shape[-2]
-        k_len = k.shape[-2]
-        return (q * cos[:q_len]) + (self.rotate_half(q) * sin[:q_len]), (
-                            k * cos[:k_len]) + (self.rotate_half(k) * sin[:k_len]), v
+    def apply_rotary_pos_emb(
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        cos: torch.Tensor,
+        sin: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        return (
+            (q * cos) + (self.rotate_half(q) * sin),
+            (k * cos) + (self.rotate_half(k) * sin),
+            v,
+        )
 
 
 class SelfAttention(nn.Module):
@@ -58,34 +96,34 @@ class SelfAttention(nn.Module):
         num_heads (int): number of heads
         head_size (int): size of each head
         causal (bool, optional): whether to apply causal masking. Defaults to True.
+        rotary (bool, optional): whether to apply RoPE. Defaults to True.
     """
 
-    def __init__(self, hidden_size, num_heads, head_size, causal=True):
+    def __init__(self, hidden_size, num_heads, head_size, causal=True, rotary=True):
         super().__init__()
         self.num_heads = num_heads
         self.head_size = head_size
-        self.qkv = tu.normal_init(
-            nn.Linear(hidden_size, head_size * num_heads * 3, bias=False),
-            math.sqrt(2 / (5 * hidden_size)))
-        self.fc = tu.xavier(
-            nn.Linear(head_size * num_heads, hidden_size, bias=False))
-        self.rotary = Rotary(head_size)
+        self.qkv = tu.kaiming(
+            nn.Linear(hidden_size, head_size * num_heads * 3, bias=False)
+        )
+        self.g = tu.kaiming(nn.Linear(hidden_size, num_heads))
+        self.fc = tu.xavier(nn.Linear(head_size * num_heads, hidden_size, bias=False))
+        self.rotary = Rotary(head_size) if rotary else None
         self.causal = causal
 
-    def forward(self, x, kv_cache=None):
+    def forward(self, x):
         b, l, h, d = x.shape[0], x.shape[1], self.num_heads, self.head_size
         # bld -> (q/k/v)bhld
         qkv = self.qkv(x).reshape(b, l, 3, h, d).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
-        if kv_cache is not None:
-            # update k, v
-            k, v = (torch.cat([kv_cache[0], k],
-                              dim=2), torch.cat([kv_cache[1], v], dim=2))
-            # update cache
-            kv_cache[:] = [k, v]
-        q, k, v = self.rotary(q, k, v)
+
+        if self.rotary is not None:
+            q, k, v = self.rotary(q, k, v)
+
+        g = self.g(x).permute(0, 2, 1).view(b, h, l, 1)  # blh -> bhl1
         att = nn.functional.scaled_dot_product_attention(
-            q, k, v, is_causal=kv_cache is not None or self.causal)
+            q, k, v, is_causal=self.causal
+        ) * torch.sigmoid(g)
         # bhld -> blhd
         att = att.permute(0, 2, 1, 3).contiguous().reshape(b, l, h * d)
         return self.fc(att)
