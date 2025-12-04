@@ -12,7 +12,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Lint with GitHub Super Linter
-        uses: github/super-linter@v3
+        uses: github/super-linter@v4
         env:
           LINTER_RULES_PATH: .  # Avoid having to create .github/linters/ dir
           VALIDATE_PYTHON_FLAKE8: true  # Code lint
