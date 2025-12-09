@@ -129,3 +129,16 @@ class FiLM2d(nn.Module):
         """
         self.weight = self.make_weight(z)[:, :, None, None]
         self.bias = self.make_bias(z)[:, :, None, None]
+
+
+class FiLM(FiLM2d):
+    def condition(self, z: torch.Tensor) -> None:
+        """
+        Conditions the layer before the forward pass if z will not be present
+        when calling forward
+
+        Args:
+            z (2D tensor, optional): conditioning vector
+        """
+        self.weight = self.make_weight(z)
+        self.bias = self.make_bias(z)
