@@ -19,12 +19,12 @@ class Rotary(torch.nn.Module):
     def _cache_key(self, device):
         return (self.dim, self.base, device)
 
-    def forward(self, q, k, v, positions=None, seq_dim=-2):
+    def forward(self, q, k, v, seq_dim=-2):
         seq_len = q.shape[seq_dim]
         device = q.device
         key = self._cache_key(device)
         cos_cached, sin_cached, cached_len = self._cache.get(key, (None, None, 0))
-        needed_len = seq_len if positions is None else int(positions.max()) + 1
+        needed_len = seq_len
         if cached_len < needed_len or cos_cached is None:
             t = torch.arange(needed_len, device=device).type_as(self.inv_freq)
             freqs = torch.einsum("i,j->ij", t, self.inv_freq)
@@ -33,29 +33,13 @@ class Rotary(torch.nn.Module):
             sin_cached = emb.sin()
             cached_len = needed_len
             self._cache[key] = (cos_cached, sin_cached, cached_len)
-        if positions is None:
-            cos, sin = cos_cached[:seq_len], sin_cached[:seq_len]
-            ndim = q.ndim
-            seq_dim = seq_dim % ndim
-            # default layout already matches (seq_len, dim)
-            if seq_dim != ndim - 2:
-                shape = [1] * ndim
-                shape[seq_dim] = seq_len
-                shape[-1] = cos.shape[-1]
-                cos = cos.reshape(shape)
-                sin = sin.reshape(shape)
-        else:
-            cos = cos_cached.index_select(0, positions.reshape(-1)).view(
-                positions.shape + (cos_cached.shape[-1],)
-            )
-            sin = sin_cached.index_select(0, positions.reshape(-1)).view(
-                positions.shape + (sin_cached.shape[-1],)
-            )
-            ndim = q.ndim
-            seq_dim = seq_dim % ndim
+        cos, sin = cos_cached[:seq_len], sin_cached[:seq_len]
+        ndim = q.ndim
+        seq_dim = seq_dim % ndim
+        # default layout already matches (seq_len, dim)
+        if seq_dim != ndim - 2:
             shape = [1] * ndim
-            shape[0] = cos.shape[0]
-            shape[seq_dim] = cos.shape[1]
+            shape[seq_dim] = seq_len
             shape[-1] = cos.shape[-1]
             cos = cos.reshape(shape)
             sin = sin.reshape(shape)
