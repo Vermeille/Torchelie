@@ -3,6 +3,8 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torchelie.utils as tu
 from .conv import Conv1x1
+from ..nn.condseq import CondSeq
+from ..nn.llm import SelfAttention
 from .functional.transformer import local_attention_2d
 
 from typing import Optional
@@ -74,4 +76,58 @@ class LocalSelfAttention2d(nn.Module):
             x = x[:, :, pad[2]:H + pad[2], pad[0]:W + pad[0]]
 
         x = self.out(x)
+        return x
+
+
+class ViTBlock(nn.Module):
+    """
+    Vision Transformer (ViT) block consisting of a self-attention layer and a feed-forward MLP,
+    each followed by RMS normalization and gated residual connections.
+
+    Args:
+        d_model (int): Dimension of the model.
+        num_heads (int): Number of attention heads.
+
+    Forward Args:
+        x (Tensor): Input tensor of shape [B, L, d_model].
+        z (Any): Optional conditioning input for CondSeq modules.
+
+    Returns:
+        Tensor: Output tensor of shape [B, L, d_model].
+    """
+
+    def __init__(self, d_model, num_heads):
+        super().__init__()
+        self.sa = CondSeq(
+            nn.RMSNorm(d_model),
+            SelfAttention(
+                d_model,
+                num_heads,
+                head_size=d_model // num_heads,
+                causal=False,
+                rotary=True,
+            ),
+        )
+        self.mlp = CondSeq(
+            nn.RMSNorm(d_model),
+            tu.kaiming(nn.Linear(d_model, 4 * d_model)),
+            nn.GELU(),
+            tu.kaiming(nn.Linear(4 * d_model, d_model)),
+        )
+        self.g1 = tu.kaiming(nn.Linear(d_model, d_model))
+        self.g2 = tu.kaiming(nn.Linear(d_model, d_model))
+
+    def forward(self, x, z):
+        """
+        Forward pass for the ViTBlock.
+
+        Args:
+            x (Tensor): Input tensor of shape [B, L, d_model].
+            z (Any): Optional conditioning input for CondSeq modules.
+
+        Returns:
+            Tensor: Output tensor of shape [B, L, d_model].
+        """
+        x = self.sa(x, z) * torch.tanh(self.g1(x)) + x
+        x = self.mlp(x, z) * torch.tanh(self.g2(x)) + x
         return x

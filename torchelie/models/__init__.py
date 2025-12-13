@@ -17,4 +17,5 @@ from .registry import *
 from .alexnet import *
 from .mlpmixer import *
 from .convnext import *
-#from .poolformer import *
+from .vit import ViTTrunk
+# from .poolformer import *
