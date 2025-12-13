@@ -16,6 +16,7 @@ class AdaIN2d(nn.Module):
         cond_channels (int): number of conditioning channels from which bias
             and scale will be derived
     """
+
     weight: Optional[torch.Tensor]
     bias: Optional[torch.Tensor]
 
@@ -26,9 +27,9 @@ class AdaIN2d(nn.Module):
         self.weight = None
         self.bias = None
 
-    def forward(self,
-                x: torch.Tensor,
-                z: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, z: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
         Forward pass
 
@@ -48,8 +49,9 @@ class AdaIN2d(nn.Module):
 
         z_w = self.weight
         z_b = self.bias
-        assert z_w is not None and z_b is not None, (
-            'AdaIN did not receive a conditioning vector yet')
+        assert (
+            z_w is not None and z_b is not None
+        ), "AdaIN did not receive a conditioning vector yet"
         weight = z_w / (s + 1e-5)
         bias = -m * weight + z_b
         out = weight * x + bias
@@ -79,18 +81,20 @@ class FiLM2d(nn.Module):
         cond_channels (int): number of conditioning channels from which bias
             and scale will be derived
     """
+
     weight: Optional[torch.Tensor]
     bias: Optional[torch.Tensor]
 
     def __init__(self, channels: int, cond_channels: int):
         super(FiLM2d, self).__init__()
         self.make_weight = nn.Sequential(
-            tu.constant_init(nn.Linear(cond_channels, channels), 0.02))
+            tu.constant_init(nn.Linear(cond_channels, channels), 0.02)
+        )
         self.make_weight[-1].bias.data.fill_(1.0)
 
         self.make_bias = nn.Sequential(
-            tu.constant_init(nn.Linear(cond_channels, channels, bias=False),
-                             0.02))
+            tu.constant_init(nn.Linear(cond_channels, channels, bias=False), 0.02)
+        )
 
         self.weight = None
         self.bias = None
