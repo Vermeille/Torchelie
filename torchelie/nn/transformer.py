@@ -117,17 +117,16 @@ class ViTBlock(nn.Module):
         self.g1 = tu.kaiming(nn.Linear(d_model, d_model))
         self.g2 = tu.kaiming(nn.Linear(d_model, d_model))
 
-    def forward(self, x, z):
+    def forward(self, x):
         """
         Forward pass for the ViTBlock.
 
         Args:
             x (Tensor): Input tensor of shape [B, L, d_model].
-            z (Any): Optional conditioning input for CondSeq modules.
 
         Returns:
             Tensor: Output tensor of shape [B, L, d_model].
         """
-        x = self.sa(x, z) * torch.tanh(self.g1(x)) + x
-        x = self.mlp(x, z) * torch.tanh(self.g2(x)) + x
+        x = self.sa(x) * torch.tanh(self.g1(x)) + x
+        x = self.mlp(x) * torch.tanh(self.g2(x)) + x
         return x
