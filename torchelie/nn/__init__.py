@@ -2,7 +2,7 @@ from .reshape import Reshape, Lambda, Permute
 from .conv import *
 from .debug import Debug, Dummy
 from .noise import Noise
-from .vq import VQ, MultiVQ, MultiVQ2
+from .vq import VQ, MultiVQ, RVQ
 from .imagenetinputnorm import ImageNetInputNorm
 from .withsavedactivations import WithSavedActivations
 from .maskedconv import MaskedConv2d, TopLeftConv2d
