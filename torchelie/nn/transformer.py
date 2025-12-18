@@ -114,8 +114,8 @@ class ViTBlock(nn.Module):
             nn.GELU(),
             tu.kaiming(nn.Linear(4 * d_model, d_model)),
         )
-        self.g1 = tu.kaiming(nn.Linear(d_model, d_model))
-        self.g2 = tu.kaiming(nn.Linear(d_model, d_model))
+        self.g1 = nn.Parameter(torch.zeros(d_model))
+        self.g2 = nn.Parameter(torch.zeros(d_model))
 
     def forward(self, x):
         """
@@ -127,6 +127,6 @@ class ViTBlock(nn.Module):
         Returns:
             Tensor: Output tensor of shape [B, L, d_model].
         """
-        x = self.sa(x) * torch.tanh(self.g1(x)) + x
-        x = self.mlp(x) * torch.tanh(self.g2(x)) + x
+        x = self.sa(x) * self.g1 + x
+        x = self.mlp(x) * self.g2 + x
         return x
