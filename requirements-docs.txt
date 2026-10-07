@@ -3,5 +3,5 @@ torchvision==0.20.1
 sphinx>=7,<9
 trackio>=0.40,<1
 crayons==0.2.0
-Pillow==10.0.1
+Pillow==12.3.0
 sphinx-rtd-theme
