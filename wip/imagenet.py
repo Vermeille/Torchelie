@@ -301,8 +301,7 @@ def main_worker(gpu, ngpus_per_node, args):
         num_workers=args.workers,
         pin_memory=True)
 
-    viz = Visdom(env='imagenet')
-    viz.close()
+    viz = TrackioLogger(trackio_project='imagenet')
 
     if args.evaluate:
         validate(val_loader, model, criterion, args, 0, viz)
@@ -452,7 +451,7 @@ class AverageMeter(object):
         return fmtstr.format(**self.__dict__)
 
 
-from visdom import Visdom
+from torchelie.callbacks import TrackioLogger
 
 
 class ProgressMeter(object):
@@ -469,11 +468,7 @@ class ProgressMeter(object):
         for meter in self.meters:
             name = meter.name
             val = meter.avg
-            viz.line(X=[batch],
-                     Y=[val],
-                     win=name,
-                     update='append',
-                     opts=dict(title=name))
+            viz.log(batch, {name: val.item() if torch.is_tensor(val) else val})
 
     def _get_batch_fmtstr(self, num_batches):
         num_digits = len(str(num_batches // 1))

@@ -11,7 +11,7 @@ def TrainAndTest(model,
                  test_loader,
                  *,
                  test_every=100,
-                 visdom_env='main',
+                 trackio_project='main',
                  log_every=10,
                  checkpoint='model',
                  key_best=None):
@@ -24,7 +24,7 @@ def TrainAndTest(model,
     Training callbacks:
 
     - Counter for counting iterations, connected to the testing loop as well
-    - VisdomLogger
+    - TrackioLogger
     - StdoutLogger
     - SeedDistributedSampler
 
@@ -34,7 +34,7 @@ def TrainAndTest(model,
 
     Testing callbacks:
 
-    - VisdomLogger
+    - TrackioLogger
     - StdoutLogger
     - Checkpoint
 
@@ -50,8 +50,8 @@ def TrainAndTest(model,
         test_loader (DataLoader): Testing set dataloader
         test_every (int): testing frequency, in number of iterations (default:
             100)
-        visdom_env (str): name of the visdom environment to use, or None for
-            not using Visdom (default: None)
+        trackio_project (str): name of the Trackio project to use, or None for
+            not using Trackio (default: None)
         log_every (int): logging frequency, in number of iterations (default:
             100)
         checkpoint (str): checkpointing path or None for no checkpointing
@@ -73,16 +73,20 @@ def TrainAndTest(model,
     train_loop.test_loop = test_loop
     train_loop.register('test_loop', test_loop)
 
+    logger = tcb.TrackioLogger(trackio_project=trackio_project,
+                               log_every=log_every)
+    train_loop.trackio_run = logger.run
     train_loop.callbacks.add_prologues([tcb.Counter()])
     train_loop.callbacks.add_epilogues([
-        tcb.VisdomLogger(visdom_env=visdom_env, log_every=log_every),
+        logger,
         tcb.StdoutLogger(log_every=log_every),
         tcb.CallRecipe(test_loop, test_every),
         tcb.SeedDistributedSampler(),
     ])
 
     test_loop.callbacks.add_epilogues([
-        tcb.VisdomLogger(visdom_env=visdom_env,
+        tcb.TrackioLogger(trackio_project=trackio_project,
+                         run=logger.run,
                          log_every=-1,
                          prefix='test_',
                          post_epoch_ends=True),

@@ -139,7 +139,7 @@ def StyleGAN2Recipe(G: nn.Module,
         total_num_gpus (int): how many GPUs are they
         G_lr (float): RAdamW lr for G
         D_lr (float): RAdamW lr for D
-        tag (str): tag for Visdom and checkpoints
+        tag (str): tag for Trackio and checkpoints
         ada (bool): whether to enable Adaptive Data Augmentation
 
     Returns:
@@ -301,7 +301,7 @@ def StyleGAN2Recipe(G: nn.Module,
         test,
         dataloader,
         test_loader=None,  #testloader,
-        visdom_env=tag if gpu_id == 0 else None,
+        trackio_project=tag if gpu_id == 0 else None,
         log_every=10,
         test_every=1000,
         checkpoint=tag if gpu_id == 0 else None,

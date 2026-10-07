@@ -13,6 +13,9 @@ class CallbacksRunner:
         self.state = {'metrics': {}}
 
     def __call__(self, name, *args, **kwargs):
+        if name == 'on_batch_start':
+            self.state['metrics_will_log'] = False
+            self.state['visdom_will_log'] = False
         for cb in self.callbacks():
             if hasattr(cb, name):
                 getattr(cb, name)(self.state, *args, **kwargs)

@@ -7,6 +7,9 @@ Loggers
 .. autoclass:: torchelie.callbacks.StdoutLogger
    :members:
 
+.. autoclass:: torchelie.callbacks.TrackioLogger
+   :members:
+
 .. autoclass:: torchelie.callbacks.VisdomLogger
    :members:
 
@@ -78,4 +81,3 @@ Misc
 
 .. autoclass:: torchelie.callbacks.CallRecipe
    :members:
-

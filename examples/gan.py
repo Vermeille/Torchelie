@@ -81,7 +81,7 @@ def train_net(Gen, Discr):
     ])
     loop.test_loop.callbacks.add_callbacks([
         tcb.Log('imgs', 'polyak_imgs'),
-        tcb.VisdomLogger('main', prefix='test')
+        tcb.TrackioLogger('main', prefix='test', run=loop.trackio_run)
     ])
     loop.to(device).run(100)
 

@@ -214,6 +214,8 @@ it to log the loss
       loss.backward()
       return {'loss': loss}
 
+   import trackio
+   run = trackio.init(project='main', embed=False)
    recipe = torchelie.recipes.Recipe(forward_pass, data_loader)
    # there's something new here!
    recipe.callbacks.add_callbacks([
@@ -221,7 +223,7 @@ it to log the loss
       tcb.Optimizer(opt),
       tcb.EpochMetricAvg('loss', post_each_batch=True)
       tcb.StdoutLogger(log_every=10),
-      tcb.VisdomLogger(visdom_env='main', log_every=10)
+      tcb.TrackioLogger(trackio_project='main', run=run, log_every=10)
    ])
    recipe.cuda()
    recipe.run(5)
@@ -232,7 +234,7 @@ a running average with all the loss values computed in this epoch so far, and
 post it to :code:`state['metrics']['loss']` on each batch.
 :code:`state['metrics']` is a conventional place where values are considered
 ready (for logging for instance). Every ten iterations, metrics will be
-displayed on the standard output and on visdom.
+displayed on the standard output and in Trackio.
 
 Note: Counter just keeps tracks of the iteration number, epoch number, and
 iteration in epoch number, and store that in the state. It is often mandatory
@@ -267,7 +269,7 @@ familiar? Of course, it's a recipe in itself. Let's write it down.
       tcb.Counter(),
       tcb.EpochMetricAvg('loss', post_each_batch=False)
       tcb.StdoutLogger(log_every=-1, prefix='Test'),
-      tcb.VisdomLogger(visdom_env='main', log_every=-1, prefix='Test')
+      tcb.TrackioLogger(trackio_project='main', run=run, log_every=-1, prefix='Test')
    ])
 
 We have a new forward pass disabling gradients and setting the model to eval
@@ -275,6 +277,9 @@ mode, a new dataloader, we've removed the Optimizer callback (obviously), and
 used other loggers instances that have prefixes in order to avoid name clashes
 with the training loop. And logging only happens at the end of the training
 loop.
+
+Both loggers share the same Trackio run. Call :code:`trackio.finish()` after
+the outer training loop to flush its logs.
 
 We have two recipes and they're not interacting for now, let's make the
 training recipe aware of the testing recipe and call it every 100 iterations.
@@ -292,6 +297,8 @@ The final code looks just like that:
 
 ::
 
+   import trackio
+   run = trackio.init(project='main', embed=False)
    model = torchvision.models.resnet18(num_classes=10)
    opt = torchelie.optim.RAdamW(model.parameters(), lr=0.01)
 
@@ -316,7 +323,7 @@ The final code looks just like that:
       tcb.Counter(),
       tcb.EpochMetricAvg('loss', post_each_batch=False)
       tcb.StdoutLogger(log_every=-1, prefix='Test'),
-      tcb.VisdomLogger(visdom_env='main', log_every=-1, prefix='Test')
+      tcb.TrackioLogger(trackio_project='main', run=run, log_every=-1, prefix='Test')
    ])
 
    recipe = torchelie.recipes.Recipe(forward_pass, data_loader)
@@ -327,11 +334,12 @@ The final code looks just like that:
       tcb.Optimizer(opt),
       tcb.EpochMetricAvg('loss', post_each_batch=True)
       tcb.StdoutLogger(log_every=10),
-      tcb.VisdomLogger(visdom_env='main', log_every=10)
+      tcb.TrackioLogger(trackio_project='main', run=run, log_every=10),
       tcb.CallRecipe(test_recipe, run_every=100, prefix='test')
    ])
    recipe.cuda()
    recipe.run(5)
+   trackio.finish()
 
 Using the predefined recipes and callbacks
 ==========================================

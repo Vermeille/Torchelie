@@ -53,7 +53,7 @@ def img2html(img: Union[torch.Tensor, np.ndarray], opts: dict = None) -> str:
 
 class ClassificationInspector:
     """
-    Visdom HTML display of classification results, with best, worst, and mode
+    HTML display of classification results, with best, worst, and mode
     indecisive results.
     """
 

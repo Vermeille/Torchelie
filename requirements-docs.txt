@@ -1,7 +1,7 @@
-torch==1.13.1
-torchvision==0.9.1
-sphinx==3.5.4
-visdom==0.1.8.8
+torch==2.5.1
+torchvision==0.20.1
+sphinx>=7,<9
+trackio>=0.40,<1
 crayons==0.2.0
 Pillow==10.0.1
 sphinx-rtd-theme

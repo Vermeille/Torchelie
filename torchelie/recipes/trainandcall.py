@@ -6,7 +6,7 @@ def TrainAndCall(model,
                  test_fun,
                  train_loader,
                  test_every=100,
-                 visdom_env='main',
+                 trackio_project='main',
                  checkpoint='model',
                  log_every=10,
                  key_best=None):
@@ -18,7 +18,7 @@ def TrainAndCall(model,
     Training callbacks:
 
     - Counter for counting iterations, connected to the testing loop as well
-    - VisdomLogger
+    - TrackioLogger
     - StdoutLogger
 
     Testing:
@@ -27,7 +27,7 @@ def TrainAndCall(model,
 
     Testing callbacks:
 
-    - VisdomLogger
+    - TrackioLogger
     - StdoutLogger
     - Checkpoint
 
@@ -42,8 +42,8 @@ def TrainAndCall(model,
         train_loader (DataLoader): Training set dataloader
         test_every (int): testing frequency, in number of iterations (default:
             100)
-        visdom_env (str): name of the visdom environment to use, or None for
-            not using Visdom (default: None)
+        trackio_project (str): name of the Trackio project to use, or None for
+            not using Trackio (default: None)
         checkpoint (str): checkpointing path or None for no checkpointing
         log_every (int): logging frequency, in number of iterations (default:
             10)
@@ -63,7 +63,7 @@ def TrainAndCall(model,
                         train_loader=train_loader,
                         test_loader=range(1),
                         test_every=test_every,
-                        visdom_env=visdom_env,
+                        trackio_project=trackio_project,
                         checkpoint=checkpoint,
                         log_every=log_every,
                         key_best=key_best)

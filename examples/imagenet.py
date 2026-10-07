@@ -110,7 +110,7 @@ def train(opts, rank, world_size):
                                         beta1=0.9,
                                         log_every=len(dl) // 50,
                                         test_every=opts.test_every or len(dl),
-                                        visdom_env=env,
+                                        trackio_project=env,
                                         checkpoint=env,
                                         n_iters=len(dl) * opts.epochs)
 

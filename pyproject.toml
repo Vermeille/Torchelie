@@ -5,8 +5,14 @@ description = ""
 authors = ["Guillaume Sanchez <Guillaume.v.sanchez@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = ">3.8"
+python = ">=3.10"
 torch = ">2"
+trackio = ">=0.40,<1"
+visdom = {version = ">=0.3.0", optional = true}
+matplotlib = {version = ">=3.5", optional = true}
+
+[tool.poetry.extras]
+visdom = ["visdom", "matplotlib"]
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"

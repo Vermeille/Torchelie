@@ -19,14 +19,44 @@ You may want to [read the detailed docs](https://torchelie.readthedocs.io/en/lat
 
 `pip install git+https://github.com/vermeille/Torchelie`
 
-It depends on Pytorch (obvi), and has an optional dependency on OpenCV for some
-transforms (Canny, as of today). It also depends on Visdom for realtime
-visualizations, plotting, etc.
+Requires Python 3.10 or newer and PyTorch. OpenCV is optional for some
+transforms (Canny, as of today). Experiments are tracked locally with
+[Trackio](https://huggingface.co/docs/trackio), which is installed as a dependency.
 
-To install visdom: `pip install visdom`. Then, you need to run a Visdom server
-with `python -m visdom.server`, direct your browser to `http://localhost:8097`.
-Now you're ready to use VisdomLogger and enjoy realtime tracking of your
-experiments.
+Pass `trackio_project='my-experiment'` to a recipe, or add
+`torchelie.callbacks.TrackioLogger(trackio_project='my-experiment')` to a custom
+recipe. Scalars, tensor images and HTML reports are saved locally. Pass
+`trackio_project=None` to disable logging. Call `trackio.finish()` after the
+outer training loop to flush the run; Trackio also does this at process exit.
+View results with `trackio show --project my-experiment`. Set `TRACKIO_DIR`
+before starting Python to choose where logs and media are stored.
+
+When composing custom recipes, initialize one run with
+`run = trackio.init(project='my-experiment', embed=False)` and pass `run=run`
+to each `TrackioLogger`. The built-in training/evaluation and GAN recipes
+share their run automatically.
+Their `recipe.trackio_run` attribute can be passed to additional loggers.
+
+All built-in recipes and CLI commands use Trackio. Their former `visdom_env`
+argument and `--visdom-env` option are now `trackio_project` and
+`--trackio-project`. Custom Trackio metric adapters can implement `to_trackio()`
+and return a Trackio loggable value. Existing Visdom histories are not imported.
+
+`VisdomLogger` remains available as an optional callback for custom code.
+Install the `visdom` package extra, or, when working from a source checkout,
+run `pip install 'visdom>=0.3.0' 'matplotlib>=3.5'`. Start its server with
+`python -m visdom.server`. You can add both callbacks to a custom recipe:
+
+```python
+recipe.callbacks.add_epilogues([
+    torchelie.callbacks.TrackioLogger(trackio_project='my-experiment'),
+    torchelie.callbacks.VisdomLogger(visdom_env='my-experiment'),
+])
+```
+
+Visdom retains scalar plots, heatmaps, images, HTML, and `to_visdom()` adapters.
+Pass `visdom_env=None` to disable that callback. Installing or adding it does
+not change the backend used by the built-in recipes.
 
 # ⚠ WARNINGS ⚠
 
@@ -112,7 +142,7 @@ which:
   model using the test dataset
 - gives as much insights as possible during the training through:
     - stdout (as shown above)
-    - visdom (TODO)
+    - Trackio for experiment tracking
 
 The cool thing is that all these building blocks are available!
 

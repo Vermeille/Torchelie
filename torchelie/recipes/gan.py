@@ -15,7 +15,7 @@ def GANRecipe(G: nn.Module,
               loader: Iterable[Any],
               *,
               test_loader: Optional[Iterable[Any]] = None,
-              visdom_env: Optional[str] = 'main',
+              trackio_project: Optional[str] = 'main',
               checkpoint: Optional[str] = 'model',
               test_every: int = 1000,
               log_every: int = 10,
@@ -93,12 +93,15 @@ def GANRecipe(G: nn.Module,
             'epoch_batch': state['epoch_batch']
         })
 
+    logger = tcb.TrackioLogger(trackio_project=trackio_project,
+                               log_every=log_every)
+    D_loop.trackio_run = logger.run
     D_loop.callbacks.add_prologues([tcb.Counter()])
 
     D_loop.callbacks.add_epilogues([
         tcb.Log('imgs', 'G_imgs'),
         tcb.CallRecipe(G_loop, g_every, init_fun=G_test, prefix='G'),
-        tcb.VisdomLogger(visdom_env=visdom_env, log_every=log_every),
+        logger,
         tcb.StdoutLogger(log_every=log_every),
         tcb.CallRecipe(test_loop,
                        test_every,
@@ -108,7 +111,8 @@ def GANRecipe(G: nn.Module,
 
     G_loop.callbacks.add_epilogues([
         tcb.WindowedMetricAvg('G_loss'),
-        tcb.VisdomLogger(visdom_env=visdom_env,
+        tcb.TrackioLogger(trackio_project=trackio_project,
+                         run=logger.run,
                          log_every=log_every,
                          post_epoch_ends=False)
     ])
@@ -116,7 +120,7 @@ def GANRecipe(G: nn.Module,
     if checkpoint is not None:
         test_loop.callbacks.add_epilogues([
             tcb.Checkpoint(checkpoint + '/ckpt_{iters}.pth', D_loop),
-            tcb.VisdomLogger(visdom_env=visdom_env),
+            tcb.TrackioLogger(trackio_project=trackio_project, run=logger.run),
         ])
 
     return D_loop

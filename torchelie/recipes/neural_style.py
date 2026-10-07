@@ -23,16 +23,16 @@ class NeuralStyle(torch.nn.Module):
 
     Args:
         device (device): where to run the computation
-        visdom_env (str or None): the name of the visdom env to use, or None
-            to disable Visdom
+        trackio_project (str or None): the name of the Trackio project to use, or None
+            to disable Trackio
     """
 
-    def __init__(self, device="cpu", visdom_env='style'):
+    def __init__(self, device="cpu", trackio_project='style'):
         super(NeuralStyle, self).__init__()
         self.loss = NeuralStyleLoss()
         self.loss2 = NeuralStyleLoss()
         self.device = device
-        self.visdom_env = visdom_env
+        self.trackio_project = trackio_project
 
     def fit(self,
             iters,
@@ -115,7 +115,7 @@ class NeuralStyle(torch.nn.Module):
             tcb.WindowedMetricAvg('content'),
             tcb.WindowedMetricAvg('style'),
             tcb.Log('img', 'img'),
-            tcb.VisdomLogger(visdom_env=self.visdom_env, log_every=10),
+            tcb.TrackioLogger(trackio_project=self.trackio_project, log_every=10),
             tcb.StdoutLogger(log_every=10),
             tcb.Optimizer(self.opt),
         ])
@@ -141,10 +141,10 @@ if __name__ == '__main__':
                         default=None,
                         type=lambda x: x and x.split(','))
     parser.add_argument('--iters', default=100, type=int)
-    parser.add_argument('--visdom-env')
+    parser.add_argument('--trackio-project')
     args = parser.parse_args(sys.argv[1:])
 
-    stylizer = NeuralStyle(device=args.device, visdom_env=args.visdom_env)
+    stylizer = NeuralStyle(device=args.device, trackio_project=args.trackio_project)
 
     content = Image.open(args.content)
     content.thumbnail((args.size, args.size))

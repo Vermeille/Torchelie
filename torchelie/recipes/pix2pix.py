@@ -370,7 +370,7 @@ def train(rank, world_size):
                        test_every=1000,
                        test_loader=test_ds,
                        checkpoint=tag if rank == 0 else None,
-                       visdom_env=tag if rank == 0 else None)
+                       trackio_project=tag if rank == 0 else None)
 
     recipe.register('G_polyak', G_polyak)
 

@@ -33,7 +33,7 @@ def Classification(model,
                    test_loader: Iterable[Any],
                    classes: List[str],
                    *,
-                   visdom_env: Optional[str] = None,
+                   trackio_project: Optional[str] = None,
                    checkpoint: Optional[str] = None,
                    test_every: int = 1000,
                    log_every: int = 100):
@@ -58,7 +58,7 @@ def Classification(model,
     Inherited training callbacks:
 
     - Counter for counting iterations, connected to the testing loop as well
-    - VisdomLogger
+    - TrackioLogger
     - StdoutLogger
 
     Testing:
@@ -75,7 +75,7 @@ def Classification(model,
 
     Inherited testing callbacks:
 
-    - VisdomLogger
+    - TrackioLogger
     - StdoutLogger
     - Checkpoint saving the best testing loss
 
@@ -95,8 +95,8 @@ def Classification(model,
         train_loader (DataLoader): Training set dataloader
         test_loader (DataLoader): Testing set dataloader
         classes (list of str): classes name, in order
-        visdom_env (str): name of the visdom environment to use, or None for
-            not using Visdom (default: None)
+        trackio_project (str): name of the Trackio project to use, or None for
+            not using Trackio (default: None)
         test_every (int): testing frequency, in number of iterations (default:
             1000)
         log_every (int): logging frequency, in number of iterations (default:
@@ -111,7 +111,7 @@ def Classification(model,
                         test_fun,
                         train_loader,
                         test_loader,
-                        visdom_env=visdom_env,
+                        trackio_project=trackio_project,
                         test_every=test_every,
                         log_every=log_every,
                         checkpoint=checkpoint,
@@ -128,7 +128,7 @@ def Classification(model,
         tcb.EpochMetricAvg('loss', False),
     ])
 
-    if visdom_env is not None:
+    if trackio_project is not None:
         if len(classes) <= 50:
             loop.callbacks.add_epilogues([
                 tcb.ConfusionMatrix(classes),
@@ -166,7 +166,7 @@ def CrossEntropyClassification(model,
                                beta1: float = 0.9,
                                beta2: float = 0.999,
                                wd: float = 1e-2,
-                               visdom_env: Optional[str] = 'main',
+                               trackio_project: Optional[str] = 'main',
                                test_every: int = 1000,
                                log_every: int = 100,
                                checkpoint: Optional[str] = 'model',
@@ -184,7 +184,7 @@ def CrossEntropyClassification(model,
     - ClassificationInspector
     - MetricsTable
     - Counter for counting iterations, connected to the testing loop as well
-    - VisdomLogger
+    - TrackioLogger
     - StdoutLogger
 
     Training callbacks:
@@ -203,7 +203,7 @@ def CrossEntropyClassification(model,
     - ConfusionMatrix if :code:`len(classes) <= 25`
     - ClassificationInspector
     - MetricsTable
-    - VisdomLogger
+    - TrackioLogger
     - StdoutLogger
     - Checkpoint saving the best testing loss
 
@@ -216,8 +216,8 @@ def CrossEntropyClassification(model,
         beta1 (float): AdamW's beta1 / SGD's momentum
         beta2 (float): AdamW's beta2
         wd (float): weight decay
-        visdom_env (str): name of the visdom environment to use, or None for
-            not using Visdom (default: None)
+        trackio_project (str): name of the Trackio project to use, or None for
+            not using Trackio (default: None)
         test_every (int): testing frequency, in number of iterations (default:
             1000)
         log_every (int): logging frequency, in number of iterations (default:
@@ -254,7 +254,7 @@ def CrossEntropyClassification(model,
                           train_loader,
                           test_loader,
                           classes,
-                          visdom_env=visdom_env,
+                          trackio_project=trackio_project,
                           test_every=test_every,
                           log_every=log_every,
                           checkpoint=checkpoint)
@@ -296,7 +296,7 @@ def MixupClassification(model,
                         beta1: float = 0.9,
                         beta2: float = 0.999,
                         wd: float = 1e-2,
-                        visdom_env: Optional[str] = 'main',
+                        trackio_project: Optional[str] = 'main',
                         test_every: int = 1000,
                         log_every: int = 100):
     """
@@ -316,8 +316,8 @@ def MixupClassification(model,
         beta1 (float): AdaBelief's beta1
         beta2 (float): AdaBelief's beta2
         wd (float): weight decay
-        visdom_env (str): name of the visdom environment to use, or None for
-            not using Visdom (default: None)
+        trackio_project (str): name of the Trackio project to use, or None for
+            not using Trackio (default: None)
         test_every (int): testing frequency, in number of iterations (default:
             1000)
         log_every (int): logging frequency, in number of iterations (default:
@@ -344,7 +344,7 @@ def MixupClassification(model,
                         validation_step,
                         train_loader,
                         test_loader,
-                        visdom_env=visdom_env,
+                        trackio_project=trackio_project,
                         test_every=test_every,
                         log_every=log_every)
 
@@ -358,7 +358,7 @@ def MixupClassification(model,
         tcb.EpochMetricAvg('loss', False),
     ])
 
-    if visdom_env is not None:
+    if trackio_project is not None:
         loop.callbacks.add_epilogues([tcb.MetricsTable()])
 
     if len(classes) <= 25:
@@ -479,7 +479,7 @@ def train(args, rank, world_size):
             beta1=args.beta1,
             beta2=args.beta2,
             wd=args.wd,
-            visdom_env=args.visdom_env if rank == 0 else None)
+            trackio_project=args.trackio_project if rank == 0 else None)
     else:
         clf_recipe = CrossEntropyClassification(
             model,
@@ -494,7 +494,7 @@ def train(args, rank, world_size):
             beta2=args.beta2,
             wd=args.wd,
             checkpoint='model' if rank == 0 else None,
-            visdom_env=args.visdom_env if rank == 0 else None,
+            trackio_project=args.trackio_project if rank == 0 else None,
             n_iters=len(trainloader) * (args.epochs - 1))
 
     if rank == 0:
@@ -529,7 +529,7 @@ if __name__ == '__main__':
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--wd', type=float, default=1e-2)
     parser.add_argument('--im-size', type=int, default=64)
-    parser.add_argument('--visdom-env', type=str)
+    parser.add_argument('--trackio-project', type=str)
     parser.add_argument('--from-ckpt', type=str)
     parser.add_argument('--from-weights', type=str)
     parser.add_argument('--cache', action='store_true', default=False)
