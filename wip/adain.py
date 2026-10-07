@@ -281,7 +281,7 @@ def train(rank, world_size):
                           ds,
                           dst,
                           log_every=50,
-                          visdom_env='style_{}'.format(rank),
+                          trackio_project='style_{}'.format(rank),
                           checkpoint='model' if rank == 0 else None,
                           test_every=500)
     import torchelie.callbacks as tcb

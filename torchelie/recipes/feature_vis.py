@@ -32,8 +32,8 @@ class FeatureVis(torch.nn.Module):
         num_feature (int): the number of channels of the input image (e.g 1 for grey, 3 for RGB)
         lr (float, optional): the learning rate
         device (device): where to run the computation
-        visdom_env (str or None): the name of the visdom env to use, or None
-            to disable Visdom
+        trackio_project (str or None): the name of the Trackio project to use, or None
+            to disable Trackio
     """
     def __init__(self,
                  model,
@@ -43,7 +43,7 @@ class FeatureVis(torch.nn.Module):
                  num_feature=3,
                  lr=1e-3,
                  device='cpu',
-                 visdom_env='feature_vis'):
+                 trackio_project='feature_vis'):
         super().__init__()
         self.device = device
         self.model = tnn.WithSavedActivations(model, names=[layer])
@@ -55,7 +55,7 @@ class FeatureVis(torch.nn.Module):
         self.num_feature = num_feature
         self.norm = tnn.ImageNetInputNorm() if num_feature == 3 else torch.nn.InstanceNorm2d(num_feature, momentum=0)
         self.lr = lr
-        self.visdom_env = visdom_env
+        self.trackio_project = trackio_project
 
     def fit(self, n_iters, neuron):
         """
@@ -97,7 +97,7 @@ class FeatureVis(torch.nn.Module):
             tcb.Log('loss', 'loss'),
             tcb.Log('img', 'img'),
             tcb.Optimizer(DeepDreamOptim(canvas.parameters(), lr=self.lr)),
-            tcb.VisdomLogger(visdom_env=self.visdom_env, log_every=10),
+            tcb.TrackioLogger(trackio_project=self.trackio_project, log_every=10),
             tcb.StdoutLogger(log_every=10)
         ])
         loop.to(self.device)
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     parser.add_argument('--out', default='features.png')
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--iters', default=4000, type=int)
-    parser.add_argument('--visdom-env')
+    parser.add_argument('--trackio-project')
     args = parser.parse_args()
 
     choice = models[args.model]
@@ -149,6 +149,6 @@ if __name__ == '__main__':
                     num_feature=args.feature,
                     lr=args.lr,
                     device=args.device,
-                    visdom_env=args.visdom_env)
+                    trackio_project=args.trackio_project)
     out = fv.fit(args.iters, args.neuron)
     TF.ToPILImage()(out).save(args.out)

@@ -32,7 +32,7 @@ def train(model, loader):
                            after_train,
                            dl,
                            test_every=500,
-                           visdom_env='pixelcnn')
+                           trackio_project='pixelcnn')
     trainer.callbacks.add_callbacks([
         tcb.WindowedMetricAvg('loss'),
         tcb.Log('reconstruction', 'reconstruction'),

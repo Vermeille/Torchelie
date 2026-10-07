@@ -310,7 +310,7 @@ def train(rank, world_size, opts):
                        test_every=5000,
                        log_every=100,
                        checkpoint='main_adain' if rank == 0 else None,
-                       visdom_env='main_adain' if rank == 0 else None)
+                       trackio_project='main_adain' if rank == 0 else None)
 
     recipe.callbacks.add_callbacks([
         tch.callbacks.Optimizer(

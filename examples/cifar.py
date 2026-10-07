@@ -88,7 +88,7 @@ def train():
                                         beta1=0.9,
                                         log_every=100,
                                         test_every=len(dl) * opts.epochs // 10,
-                                        visdom_env='cifar_' + m,
+                                        trackio_project='cifar_' + m,
                                         n_iters=len(dl) * opts.epochs)
 
     recipe.to(opts.device)

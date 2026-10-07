@@ -43,12 +43,12 @@ class DeepDream(torch.nn.Module):
         self.loss = DeepDreamLoss(model, dream_layer)
         self.norm = tnn.ImageNetInputNorm()
 
-    def fit(self, ref, iters, lr=3e-4, device='cpu', visdom_env='deepdream'):
+    def fit(self, ref, iters, lr=3e-4, device='cpu', trackio_project='deepdream'):
         """
         Args:
             lr (float, optional): the learning rate
-            visdom_env (str or None): the name of the visdom env to use, or None
-                to disable Visdom
+            trackio_project (str or None): the name of the Trackio project to use, or None
+                to disable Trackio
         """
         ref_tensor = TF.ToTensor()(ref).unsqueeze(0)
         canvas = ParameterizedImg(1, 3,
@@ -73,7 +73,7 @@ class DeepDream(torch.nn.Module):
             tcb.Log('loss', 'loss'),
             tcb.Log('img', 'img'),
             tcb.Optimizer(DeepDreamOptim(canvas.parameters(), lr=lr)),
-            tcb.VisdomLogger(visdom_env=visdom_env, log_every=10),
+            tcb.TrackioLogger(trackio_project=trackio_project, log_every=10),
             tcb.StdoutLogger(log_every=10)
         ])
         loop.to(device)
@@ -111,7 +111,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', default=3e-4, type=float)
     parser.add_argument('--iters', default=4000, type=int)
     parser.add_argument('--dream-layer')
-    parser.add_argument('--visdom-env')
+    parser.add_argument('--trackio-project')
     args = parser.parse_args()
 
     model = models[args.model]['ctor'](pretrained=True)
@@ -123,6 +123,6 @@ if __name__ == '__main__':
                  args.iters,
                  lr=args.lr,
                  device=args.device,
-                 visdom_env=args.visdom_env)
+                 trackio_project=args.trackio_project)
 
     TF.ToPILImage()(out).save(args.out)

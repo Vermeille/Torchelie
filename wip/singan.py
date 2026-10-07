@@ -145,7 +145,7 @@ if __name__ == '__main__':
                        D_fun,
                        test_G,
                        ds,
-                       visdom_env='singan',
+                       trackio_project='singan',
                        test_every=50)
     recipe.callbacks.add_callbacks([
         tcb.Optimizer(

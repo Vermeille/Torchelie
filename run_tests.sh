@@ -3,7 +3,7 @@
 set -e
 
 if false; then
-    RUN="--device cuda --iters 1000 --visdom-env torch-test"
+    RUN="--device cuda --iters 1000 --trackio-project torch-test"
 else
     RUN="--device cpu --iters 1"
 fi

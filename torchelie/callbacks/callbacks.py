@@ -5,7 +5,6 @@ from shutil import copyfile
 from pathlib import Path
 import torch
 import torch.nn as nn
-from visdom import Visdom
 import numpy as np
 
 from torchelie.utils import dict_by_key, recursive_state_dict
@@ -216,7 +215,7 @@ class AccAvg(TopkAccAvg):
 class MetricsTable(tu.AutoStateDict):
     """
     Generate a HTML table with all the current metrics, to be displayed in
-    Visdom.
+    Trackio.
 
     Args:
         post_each_batch (bool): whether to post on each batch or on epoch end.
@@ -269,7 +268,7 @@ class MetricsTable(tu.AutoStateDict):
         return html
 
     def on_batch_end(self, state):
-        if self.post_each_batch and state.get('visdom_will_log', False):
+        if self.post_each_batch and state.get('metrics_will_log', False):
             state['metrics']['table'] = self.make_html(state)
 
     def on_epoch_end(self, state):
@@ -439,10 +438,128 @@ class Log:
                 pass
 
 
+class TrackioLogger:
+    """
+    Log scalars, tensor images and HTML reports to Trackio.
+
+    Args:
+        trackio_project (str or None): local project name, or None to disable
+            logging. Defaults to 'main'.
+        log_every (int): batch logging frequency; -1 logs only at epoch ends.
+        prefix (str): prefix for all metric names.
+        post_epoch_ends (bool): whether to log at the end of each epoch.
+        run (trackio.Run or None): existing run to share with another logger.
+            The project must match. Otherwise a new run is initialized.
+
+    Two-dimensional tensors are normalized grayscale images, CHW tensors are
+    images, and NCHW tensors are image grids. Floating-point images outside
+    [0, 1] are normalized; uint8 images retain their intensity range. Custom
+    values may implement ``to_trackio()`` and return a Trackio loggable value.
+
+    Call ``trackio.finish()`` after the outer training loop to flush the shared
+    run. Epoch ends do not finish it, since evaluation can be a nested recipe.
+    Trackio also flushes the current run at process exit.
+    """
+
+    def __init__(self,
+                 trackio_project='main',
+                 log_every=10,
+                 prefix='',
+                 post_epoch_ends=True,
+                 *,
+                 run=None):
+        if log_every != -1 and log_every <= 0:
+            raise ValueError('log_every must be positive or -1')
+        if run is not None and run.project != trackio_project:
+            raise ValueError('run.project must match trackio_project')
+        self.log_every = log_every
+        self.prefix = prefix
+        self.post_epoch_ends = post_epoch_ends
+        self.run = run
+        if trackio_project is not None and run is None:
+            import trackio
+            self.run = trackio.init(project=trackio_project, embed=False)
+
+    def on_batch_start(self, state):
+        will_log = (self.run is not None and self.log_every != -1
+                    and state['iters'] % self.log_every == 0)
+        state['metrics_will_log'] = state.get('metrics_will_log', False) or will_log
+
+    @torch.no_grad()
+    def on_batch_end(self, state):
+        if self.log_every != -1 and state['iters'] % self.log_every == 0:
+            self.log(state['iters'], state['metrics'])
+
+    @torch.no_grad()
+    def on_epoch_end(self, state):
+        if self.post_epoch_ends:
+            self.log(state['iters'], state['metrics'])
+
+    @staticmethod
+    def _image(x):
+        import trackio
+        from torchvision.utils import make_grid
+
+        is_byte = x.dtype == torch.uint8
+        x = x.detach().to(device='cpu', dtype=torch.float32)
+        if is_byte:
+            x = x / 255
+        elif x.dim() == 2 or x.min() < 0 or x.max() > 1:
+            low, high = x.min(), x.max()
+            x = (x - low) / (high - low).clamp_min(1e-7)
+        if x.dim() == 4:
+            x = make_grid(x)
+        if x.dim() == 3:
+            if x.shape[0] not in (1, 3, 4):
+                raise ValueError('Images must have 1, 3 or 4 channels')
+            x = x.permute(1, 2, 0)
+            if x.shape[-1] == 1:
+                x = x.squeeze(-1)
+        pixels = x.clamp(0, 1).mul(255).round().to(torch.uint8).numpy()
+        return trackio.Image(pixels)
+
+    @torch.no_grad()
+    def log(self, iters, xs):
+        if self.run is None or not xs:
+            return
+        import trackio
+        from io import StringIO
+        from numbers import Real
+
+        metrics = {}
+        for name, value in xs.items():
+            name = self.prefix + name
+            if isinstance(value, Real):
+                metrics[name] = value.item() if isinstance(value, np.generic) else value
+            elif isinstance(value, str):
+                metrics[name] = trackio.Html(StringIO(value))
+            elif isinstance(value, torch.Tensor):
+                if value.numel() == 1:
+                    metrics[name] = value.item()
+                elif value.dim() in (2, 3, 4):
+                    metrics[name] = self._image(value)
+                else:
+                    raise ValueError('Incorrect tensor shape {} for {}'.format(
+                        tuple(value.shape), name))
+            elif hasattr(value, 'to_trackio'):
+                metrics[name] = value.to_trackio()
+            elif isinstance(value, (trackio.Image, trackio.Html, trackio.Table,
+                                    trackio.Histogram)):
+                metrics[name] = value
+            else:
+                raise TypeError('Incorrect type {} for key {}'.format(
+                    type(value).__name__, name))
+        self.run.log(metrics, step=iters)
+
+
 class VisdomLogger:
     """
     Log metrics to Visdom. It logs scalars and scalar tensors as plots, 3D and
     4D tensors as images, and strings as HTML.
+
+    This optional callback can be used alongside TrackioLogger in custom
+    recipes. Install it with ``pip install 'Torchelie[visdom]'`` and start a
+    Visdom server before enabling it. Built-in recipes use Trackio.
 
     Args:
         visdom_env (str): name of the target visdom env
@@ -455,18 +572,27 @@ class VisdomLogger:
                  log_every=10,
                  prefix='',
                  post_epoch_ends=True):
+        if log_every != -1 and log_every <= 0:
+            raise ValueError('log_every must be positive or -1')
         self.vis = None
         self.log_every = log_every
         self.prefix = prefix
         self.post_epoch_ends = post_epoch_ends
         if visdom_env is not None:
+            try:
+                from visdom import Visdom
+            except ImportError as exc:
+                raise ImportError(
+                    "VisdomLogger requires the optional Visdom dependency. "
+                    "Install it with pip install 'Torchelie[visdom]'.") from exc
             self.vis = Visdom(env=visdom_env)
-            self.vis.close()
 
     def on_batch_start(self, state):
         iters = state['iters']
-        state['visdom_will_log'] = (self.log_every != -1
-                                    and iters % self.log_every == 0)
+        will_log = (self.vis is not None and self.log_every != -1
+                    and iters % self.log_every == 0)
+        state['visdom_will_log'] = state.get('visdom_will_log', False) or will_log
+        state['metrics_will_log'] = state.get('metrics_will_log', False) or will_log
 
     @torch.no_grad()
     def on_batch_end(self, state):
@@ -479,10 +605,12 @@ class VisdomLogger:
         if self.post_epoch_ends:
             self.log(state['iters'], state['metrics'])
 
-    def log(self, iters, xs, store_history=[]):
+    @torch.no_grad()
+    def log(self, iters, xs, store_history=None):
         if self.vis is None:
             return
 
+        store_history = () if store_history is None else store_history
         for name, x in xs.items():
             name = self.prefix + name
             if isinstance(x, (float, int)):
@@ -495,6 +623,7 @@ class VisdomLogger:
             elif isinstance(x, str):
                 self.vis.text(x, win=name, opts=dict(title=name))
             elif isinstance(x, torch.Tensor):
+                x = x.detach().cpu()
                 if x.numel() == 1:
                     self.vis.line(X=[iters],
                                   Y=[x.item()],
@@ -518,10 +647,9 @@ class VisdomLogger:
                         x = x / (M - m + 1e-7)
                     if x.shape[1] == 1:
                         B, _, H, W = x.shape
-                        x_flat = x.view(B * H, W)
-                        import matplotlib.cm
-                        import numpy as np
-                        x_flat = matplotlib.cm.get_cmap('viridis')(x_flat)
+                        x_flat = x.reshape(B * H, W)
+                        from matplotlib import colormaps
+                        x_flat = colormaps['viridis'](x_flat.numpy())
                         x_flat = np.ascontiguousarray(x_flat[:, :, :3])
                         x_flat.shape = (B, H, W, 3)
                         x = x_flat.transpose(0, 3, 1, 2)
@@ -542,7 +670,7 @@ class VisdomLogger:
 
 class TensorboardLogger:
     """
-    Log metrics to Visdom. It logs scalars and scalar tensors as plots, 3D and
+    Log metrics to TensorBoard. It logs scalars and scalar tensors as plots, 3D and
     4D tensors as images, and strings as HTML.
 
     Args:
@@ -571,8 +699,9 @@ class TensorboardLogger:
 
     def on_batch_start(self, state):
         iters = state['iters']
-        state['visdom_will_log'] = (self.log_every != -1
-                                    and iters % self.log_every == 0)
+        will_log = (self.log_dir is not None and self.log_every != -1
+                    and iters % self.log_every == 0)
+        state['metrics_will_log'] = state.get('metrics_will_log', False) or will_log
 
     @torch.no_grad()
     def on_batch_end(self, state):
@@ -665,7 +794,7 @@ class ImageGradientVis:
 
     @torch.no_grad()
     def on_batch_end(self, state):
-        if not state.get('visdom_will_log', False):
+        if not state.get('metrics_will_log', False):
             return
 
         x = state['_batch_gpu'][0]
@@ -852,7 +981,7 @@ class ClassificationInspector:
         pred, y, x = state['pred'], state['batch'][1], state['batch'][0]
         paths = state['batch'][2] if len(state['batch']) > 2 else None
         self.vis.analyze(x, pred, y, paths=paths)
-        if self.post_each_batch and state.get('visdom_will_log', False):
+        if self.post_each_batch and state.get('metrics_will_log', False):
             state['metrics']['report'] = self.vis.show()
 
     def on_epoch_end(self, state):
@@ -885,7 +1014,7 @@ class SegmentationInspector:
     def on_batch_end(self, state):
         pred, y, x = state['pred'], state['batch'][1], state['batch'][0]
         self.vis.analyze(x, pred, y)
-        if self.post_each_batch and state.get('visdom_will_log', False):
+        if self.post_each_batch and state.get('metrics_will_log', False):
             state['metrics']['report'] = self.vis.show()
 
     def on_epoch_end(self, state):
